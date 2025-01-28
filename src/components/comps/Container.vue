@@ -13,8 +13,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { history, ActionType } from '../../utils/history';
 
 const props = defineProps<{
+  id: string;
   width?: number;
   height?: number;
   x?: number;
@@ -59,46 +61,41 @@ const startSize = ref({ width: 0, height: 0 });
 const isResizing = ref(false);
 const resizeHandle = ref<string | null>(null);
 
-// 组件样式
+// 记录拖动开始时的状态
+let startState = {
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0
+};
+
+// 容器样式
 const containerStyle = computed(() => {
-
-  // 处理缩放比例
-  const scale = props.scale || 1;
-  // 处理边框样式
-  const borderStyle = props.borderStyle || 'none';
-  const borderWidth = props.borderWidth ? `${props.borderWidth}px` : '0';
-  const borderColor = props.borderColor || '#000';
-
-  // 处理阴影样式
-  const shadowX = props.shadowX || 0;
-  const shadowY = props.shadowY || 0;
-  const shadowBlur = props.shadowBlur || 0;
-  const shadowSpread = props.shadowSpread || 0;
-  const shadowColor = props.shadowColor || '#000000';
-  const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
-
-  // 处理背景样式
-  let background = props.backgroundColor || 'transparent';
-  if (props.gradientType === 'linear') {
-    background = `linear-gradient(${props.gradientColor1}, ${props.gradientColor2})`;
-  } else if (props.gradientType === 'radial') {
-    background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
-  } else if (props.backgroundImage) {
-    background = `url(${props.backgroundImage})`;
-  }
-
-  const style: Record<string, any> = {
-    width: `${props.width || 200}px`,
+  const style: Record<string, string> = {
+    width: `${props.width || 100}px`,
     height: `${props.height || 100}px`,
     transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
     position: 'absolute',
-    left: 0,
-    top: 0,
-    cursor: isResizing.value ? getResizeCursor() : (isDragging.value ? 'grabbing' : 'grab'),
-    border: borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none',
-    boxShadow,
-    background,
+    border: props.borderWidth ? 
+      `${props.borderWidth}px ${props.borderStyle || 'solid'} ${props.borderColor || '#000'}` : 
+      undefined,
+    boxShadow: props.shadowX !== undefined ? 
+      `${props.shadowX}px ${props.shadowY}px ${props.shadowBlur}px ${props.shadowSpread}px ${props.shadowColor || '#000'}` : 
+      undefined,
+    backgroundColor: props.backgroundColor,
+    backgroundImage: props.gradientType && props.gradientColor1 && props.gradientColor2 ?
+      `${props.gradientType}-gradient(${props.gradientColor1}, ${props.gradientColor2})` :
+      props.backgroundImage ? `url(${props.backgroundImage})` : undefined,
+    backgroundSize: props.backgroundImage ? 'cover' : undefined,
+    cursor: isDragging.value ? 'move' : undefined
   };
+
+  // 移除所有 undefined 的属性
+  Object.keys(style).forEach(key => {
+    if (style[key] === undefined) {
+      delete style[key];
+    }
+  });
 
   return style;
 });
@@ -119,41 +116,23 @@ function getResizeCursor() {
 
 // 处理鼠标按下
 function handleMouseDown(e: MouseEvent) {
-  if (isResizing.value) return; // 如果正在调整尺寸，不处理拖动
-
-  // 通知选中
-  emit('select');
-
-  // 开始拖动
+  if (!props.selected) {
+    emit('select');
+  }
   isDragging.value = true;
   startPos.value = { x: e.clientX, y: e.clientY };
   startOffset.value = { x: props.x || 0, y: props.y || 0 };
-
-  // 添加全局事件监听
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
-}
-
-// 开始调整尺寸
-function startResize(handle: string, e: MouseEvent) {
-  if (isDragging.value) return; // 如果正在拖动，不处理尺寸调整
-
-  e.stopPropagation(); // 阻止事件冒泡
-  isResizing.value = true;
-  resizeHandle.value = handle;
-  startPos.value = { x: e.clientX, y: e.clientY };
-  startSize.value = {
-    width: props.width || 200,
+  
+  // 记录开始状态
+  startState = {
+    x: props.x || 0,
+    y: props.y || 0,
+    width: props.width || 100,
     height: props.height || 100
   };
-  startOffset.value = {
-    x: props.x || 0,
-    y: props.y || 0
-  };
-
-  // 添加全局事件监听
-  document.addEventListener('mousemove', handleResizeMove);
-  document.addEventListener('mouseup', handleResizeUp);
+  
+  window.addEventListener('mousemove', handleMouseMove);
+  window.addEventListener('mouseup', handleMouseUp);
 }
 
 // 处理鼠标移动
@@ -169,6 +148,57 @@ function handleMouseMove(e: MouseEvent) {
     x: startOffset.value.x + deltaX,
     y: startOffset.value.y + deltaY
   });
+}
+
+// 处理鼠标松开
+function handleMouseUp() {
+  if (isDragging.value) {
+    // 记录位置变更
+    const endState = {
+      x: props.x || 0,
+      y: props.y || 0,
+      width: props.width || 100,
+      height: props.height || 100
+    };
+    
+    if (endState.x !== startState.x || endState.y !== startState.y) {
+      history.addAction({
+        type: ActionType.UPDATE,
+        componentId: props.id,
+        data: {
+          before: { props: startState },
+          after: { props: endState }
+        }
+      });
+    }
+  }
+  
+  isDragging.value = false;
+  window.removeEventListener('mousemove', handleMouseMove);
+  window.removeEventListener('mouseup', handleMouseUp);
+}
+
+// 开始调整尺寸
+function startResize(handle: string, e: MouseEvent) {
+  e.stopPropagation();
+  isResizing.value = true;
+  resizeHandle.value = handle;
+  startPos.value = { x: e.clientX, y: e.clientY };
+  startSize.value = {
+    width: props.width || 100,
+    height: props.height || 100
+  };
+  
+  // 记录开始状态
+  startState = {
+    x: props.x || 0,
+    y: props.y || 0,
+    width: props.width || 100,
+    height: props.height || 100
+  };
+  
+  window.addEventListener('mousemove', handleResizeMove);
+  window.addEventListener('mouseup', handleResizeUp);
 }
 
 // 处理调整尺寸移动
@@ -226,17 +256,32 @@ function handleResizeMove(e: MouseEvent) {
 
 // 处理调整尺寸结束
 function handleResizeUp() {
+  if (isResizing.value) {
+    // 记录尺寸变更
+    const endState = {
+      x: props.x || 0,
+      y: props.y || 0,
+      width: props.width || 100,
+      height: props.height || 100
+    };
+    
+    if (endState.width !== startState.width || endState.height !== startState.height ||
+        endState.x !== startState.x || endState.y !== startState.y) {
+      history.addAction({
+        type: ActionType.UPDATE,
+        componentId: props.id,
+        data: {
+          before: { props: startState },
+          after: { props: endState }
+        }
+      });
+    }
+  }
+  
   isResizing.value = false;
   resizeHandle.value = null;
-  document.removeEventListener('mousemove', handleResizeMove);
-  document.removeEventListener('mouseup', handleResizeUp);
-}
-
-// 处理鼠标松开
-function handleMouseUp() {
-  isDragging.value = false;
-  document.removeEventListener('mousemove', handleMouseMove);
-  document.removeEventListener('mouseup', handleMouseUp);
+  window.removeEventListener('mousemove', handleResizeMove);
+  window.removeEventListener('mouseup', handleResizeUp);
 }
 </script>
 

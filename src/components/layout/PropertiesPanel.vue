@@ -95,11 +95,22 @@ const events = [
 
 // 更新属性
 function updateProps(updates: Record<string, any>) {
-  emit('update', {
-    props: {
-      ...props.component?.props,
-      ...updates
+  if (!props.component) return;
+  
+  // 处理数值类型的属性
+  const processedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+    if (typeof value === 'string' && !isNaN(Number(value))) {
+      acc[key] = Number(value);
+    } else {
+      acc[key] = value;
     }
+    return acc;
+  }, {} as Record<string, any>);
+
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    props: processedUpdates
   });
 }
 

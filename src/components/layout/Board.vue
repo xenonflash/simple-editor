@@ -1,10 +1,21 @@
 <template>
   <div class="board">
     <div class="toolbar">
+      <button @click="undo" :disabled="!canUndo">
+        <span class="icon">↩</span>
+        <span class="text">撤销</span>
+      </button>
+      <button @click="redo" :disabled="!canRedo">
+        <span class="icon">↪</span>
+        <span class="text">重做</span>
+      </button>
+      <div class="divider"></div>
       <button @click="zoomIn">放大</button>
       <button @click="zoomOut">缩小</button>
       <button @click="resetZoom">重置</button>
       <span>{{ Math.round(scale * 100) }}%</span>
+      <div class="divider"></div>
+      <button @click="deleteSelectedComponent" :disabled="!selectedId">删除</button>
     </div>
     <div class="main-content">
       <div class="canvas-container">
@@ -33,12 +44,14 @@
               <template v-for="comp in props.components"
                         :key="comp.id">
                 <Container v-if="comp.type === 'container'"
+                          :id="comp.id"
                           v-bind="comp.props"
                           :scale="scale"
                           :selected="selectedId === comp.id"
                           @select="handleSelect(comp.id)"
                           @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 <Text v-else-if="comp.type === 'text'"
+                      :id="comp.id"
                       v-bind="comp.props"
                       :scale="scale"
                       :selected="selectedId === comp.id"
@@ -52,9 +65,6 @@
           </div>
         </div>
       </div>
-      <PropertiesPanel 
-        :component="selectedComponent"
-        @update="handleComponentUpdate" />
     </div>
   </div>
 </template>
@@ -64,9 +74,9 @@ import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Ruler from './Ruler.vue';
-import PropertiesPanel from './PropertiesPanel.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
+import { history, ActionType } from '../../utils/history';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -81,6 +91,7 @@ const emit = defineEmits<{
   (e: 'select', id: string | null): void;
   (e: 'update', comp: Comp): void;
   (e: 'add', comp: Comp): void;
+  (e: 'delete', id: string): void;
 }>();
 
 // 调试模式
@@ -120,6 +131,18 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
     panState.spaceKeyPressed = true;
     document.body.style.cursor = 'grab';
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+    if (e.shiftKey) {
+      redo();
+    } else {
+      undo();
+    }
+    e.preventDefault();
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
+    deleteSelectedComponent();
+    e.preventDefault();
   }
 }
 
@@ -319,6 +342,15 @@ function handleDrop(e: DragEvent) {
   newComp.props.x = dropX;
   newComp.props.y = dropY;
 
+  // 记录添加操作
+  history.addAction({
+    type: ActionType.ADD,
+    componentId: newComp.id,
+    data: {
+      after: newComp
+    }
+  });
+  
   // 发出添加组件事件
   emit('add', newComp);
 }
@@ -334,23 +366,79 @@ onUnmounted(() => {
   window.removeEventListener('keyup', handleKeyUp);
 });
 
-// 选中的组件
-const selectedComponent = computed(() => {
-  if (!props.selectedId) return null;
-  return props.components.find(comp => comp.id === props.selectedId) || null;
-});
+// 撤销重做状态
+const canUndo = computed(() => history.canUndo());
+const canRedo = computed(() => history.canRedo());
 
-// 处理组件更新
-function handleComponentUpdate(updates: any) {
-  if (!props.selectedId) return;
-  
-  const comp = props.components.find(comp => comp.id === props.selectedId);
-  if (!comp) return;
-  
-  emit('update', {
-    ...comp,
-    ...updates
-  });
+// 删除选中的组件
+function deleteSelectedComponent() {
+  const comp = props.components.find(comp => comp.id === selectedId.value);
+  if (comp) {
+    // 记录删除操作
+    history.addAction({
+      type: ActionType.DELETE,
+      componentId: comp.id,
+      data: {
+        before: comp
+      }
+    });
+    
+    // 发出删除事件
+    emit('delete', comp.id);
+    selectedId.value = null;
+  }
+}
+
+// 撤销
+function undo() {
+  const action = history.undo();
+  if (action) {
+    switch (action.type) {
+      case ActionType.ADD:
+        emit('delete', action.componentId);
+        break;
+      case ActionType.DELETE:
+        if (action.data.before) {
+          emit('add', action.data.before as Comp);
+        }
+        break;
+      case ActionType.UPDATE:
+        const comp = props.components.find(comp => comp.id === action.componentId);
+        if (comp && action.data.before) {
+          emit('update', {
+            ...comp,
+            ...action.data.before
+          });
+        }
+        break;
+    }
+  }
+}
+
+// 重做
+function redo() {
+  const action = history.redo();
+  if (action) {
+    switch (action.type) {
+      case ActionType.ADD:
+        if (action.data.after) {
+          emit('add', action.data.after as Comp);
+        }
+        break;
+      case ActionType.DELETE:
+        emit('delete', action.componentId);
+        break;
+      case ActionType.UPDATE:
+        const comp = props.components.find(comp => comp.id === action.componentId);
+        if (comp && action.data.after) {
+          emit('update', {
+            ...comp,
+            ...action.data.after
+          });
+        }
+        break;
+    }
+  }
 }
 </script>
 
@@ -359,33 +447,54 @@ function handleComponentUpdate(updates: any) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: #f0f2f5;
+  height: 100%;
+  background: #f0f0f0;
+  position: relative;
 }
 
 .toolbar {
   height: 40px;
   padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #e5e5e5;
-  background: white;
-  user-select: none;
 }
 
 .toolbar button {
-  padding: 4px 8px;
-  border: 1px solid #d9d9d9;
+  padding: 4px 12px;
+  border: 1px solid #d0d0d0;
+  background: #fff;
   border-radius: 4px;
-  background: white;
   cursor: pointer;
-  transition: all 0.2s;
+  font-size: 14px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.toolbar button:hover {
-  border-color: #40a9ff;
-  color: #40a9ff;
+.toolbar button .icon {
+  font-size: 16px;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.toolbar button:hover:not(:disabled) {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
+.toolbar .divider {
+  width: 1px;
+  height: 20px;
+  background: #e0e0e0;
+  margin: 0 8px;
 }
 
 .main-content {

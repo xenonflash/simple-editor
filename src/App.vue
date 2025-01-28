@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import TopBar from './components/layout/TopBar.vue';
 import LeftPanel from './components/layout/LeftPanel.vue';
+import PropertiesPanel from './components/layout/PropertiesPanel.vue';
 import Board from './components/layout/Board.vue';
 import type { Comp } from './components/comps/base';
 
@@ -9,6 +10,12 @@ import type { Comp } from './components/comps/base';
 const components = ref<Comp[]>([]);
 const selectedId = ref<string | null>(null);
 const boardRef = ref<InstanceType<typeof Board> | null>(null);
+
+// 计算当前选中的组件
+const selectedComponent = computed(() => {
+  if (!selectedId.value) return null;
+  return components.value.find(comp => comp.id === selectedId.value) || null;
+});
 
 // 处理组件选中
 function handleSelect(id: string | null) {
@@ -20,7 +27,12 @@ function handleSelect(id: string | null) {
 function handleUpdate(comp: Comp) {
   const index = components.value.findIndex(c => c.id === comp.id);
   if (index > -1) {
-    components.value[index] = { ...comp };
+    // 使用数组的splice方法来确保Vue能够检测到变化
+    components.value.splice(index, 1, {
+      ...components.value[index],
+      ...comp,
+      props: { ...components.value[index].props, ...comp.props }
+    });
   }
 }
 
@@ -29,6 +41,18 @@ function handleAddComponent(comp: Comp) {
   console.log('Add component:', comp);
   components.value.push(comp);
   selectedId.value = comp.id;
+}
+
+// 处理删除组件
+function handleDeleteComponent(id: string) {
+  console.log('Delete component:', id);
+  const index = components.value.findIndex(c => c.id === id);
+  if (index > -1) {
+    components.value.splice(index, 1);
+    if (selectedId.value === id) {
+      selectedId.value = null;
+    }
+  }
 }
 </script>
 
@@ -42,7 +66,10 @@ function handleAddComponent(comp: Comp) {
              :selected-id="selectedId"
              @select="handleSelect"
              @update="handleUpdate"
-             @add="handleAddComponent" />
+             @add="handleAddComponent"
+             @delete="handleDeleteComponent" />
+      <PropertiesPanel :component="selectedComponent"
+                      @update="handleUpdate" />
     </div>
   </div>
 </template>

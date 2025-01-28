@@ -2,15 +2,27 @@
   <div class="text-comp" 
        :style="style"
        :class="{ selected }"
-       @mousedown.stop="handleMouseDown">
-    {{ props.content }}
+       @mousedown.stop="handleMouseDown"
+       @dblclick="startEditing">
+    <div v-if="isEditing" 
+         class="edit-wrapper"
+         @click.stop>
+      <textarea ref="textareaRef"
+                v-model="editingContent"
+                @blur="finishEditing"
+                @keydown.enter.exact.prevent="finishEditing"
+                @keydown.esc="cancelEditing"></textarea>
+    </div>
+    <div v-else>{{ props.content }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
+import { history, ActionType } from '../../utils/history';
 
 const props = defineProps<{
+  id: string;
   content: string;
   x: number;
   y: number;
@@ -44,6 +56,57 @@ const lastX = ref(0);  // 记录上一次的位置
 const lastY = ref(0);
 const currentX = ref(props.x);
 const currentY = ref(props.y);
+
+// 文本编辑状态
+const isEditing = ref(false);
+const editingContent = ref(props.content);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
+// 记录拖动开始时的状态
+let startState = {
+  x: 0,
+  y: 0,
+  content: ''
+};
+
+// 开始编辑
+function startEditing() {
+  if (props.selected) {
+    isEditing.value = true;
+    editingContent.value = props.content;
+    startState.content = props.content;
+    // 等待 DOM 更新后聚焦
+    nextTick(() => {
+      if (textareaRef.value) {
+        textareaRef.value.focus();
+      }
+    });
+  }
+}
+
+// 完成编辑
+function finishEditing() {
+  if (isEditing.value) {
+    isEditing.value = false;
+    if (editingContent.value !== startState.content) {
+      history.addAction({
+        type: ActionType.UPDATE,
+        componentId: props.id,
+        data: {
+          before: { props: { content: startState.content } },
+          after: { props: { content: editingContent.value } }
+        }
+      });
+      emit('update', { content: editingContent.value });
+    }
+  }
+}
+
+// 取消编辑
+function cancelEditing() {
+  isEditing.value = false;
+  editingContent.value = props.content;
+}
 
 // 监听属性变化
 watch(() => props.x, (newX) => {
@@ -98,16 +161,26 @@ const style = computed(() => {
 
 // 拖动处理
 function handleMouseDown(e: MouseEvent) {
-  emit('select');
-  
-  isDragging.value = true;
-  startX.value = e.clientX;
-  startY.value = e.clientY;
-  lastX.value = currentX.value;  // 记录开始拖动时的位置
-  lastY.value = currentY.value;
-
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', handleMouseUp);
+  if (!isEditing.value) {
+    if (!props.selected) {
+      emit('select');
+    }
+    isDragging.value = true;
+    startX.value = e.clientX;
+    startY.value = e.clientY;
+    lastX.value = currentX.value;  // 记录开始拖动时的位置
+    lastY.value = currentY.value;
+    
+    // 记录开始状态
+    startState = {
+      x: props.x,
+      y: props.y,
+      content: props.content
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }
 }
 
 function handleMouseMove(e: MouseEvent) {
@@ -122,21 +195,29 @@ function handleMouseMove(e: MouseEvent) {
 }
 
 function handleMouseUp() {
-  if (!isDragging.value) return;
-
-  isDragging.value = false;
-  lastX.value = currentX.value;  // 更新最后位置
-  lastY.value = currentY.value;
-  
-  emit('update', {
-    props: {
-      x: currentX.value,
-      y: currentY.value
+  if (isDragging.value) {
+    // 记录位置变更
+    const endState = {
+      x: props.x,
+      y: props.y,
+      content: props.content
+    };
+    
+    if (endState.x !== startState.x || endState.y !== startState.y) {
+      history.addAction({
+        type: ActionType.UPDATE,
+        componentId: props.id,
+        data: {
+          before: { props: startState },
+          after: { props: endState }
+        }
+      });
     }
-  });
-
-  document.removeEventListener('mousemove', handleMouseMove);
-  document.removeEventListener('mouseup', handleMouseUp);
+  }
+  
+  isDragging.value = false;
+  window.removeEventListener('mousemove', handleMouseMove);
+  window.removeEventListener('mouseup', handleMouseUp);
 }
 </script>
 
