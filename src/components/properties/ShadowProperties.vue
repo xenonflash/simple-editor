@@ -37,18 +37,34 @@
                  :value="shadowColor" 
                  @input="updateValue('shadowColor', $event)" />
         </div>
+        <div class="property-item full-width checkbox-item">
+          <label>
+            <input type="checkbox"
+                   :checked="shadowInset"
+                   @change="updateValue('shadowInset', $event)" />
+            内阴影
+          </label>
+        </div>
+        <!-- 预览效果 -->
+        <div class="property-item full-width">
+          <label>预览</label>
+          <div class="shadow-preview" :style="{ boxShadow: computedShadow }"></div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 interface Props {
   shadowX?: number
   shadowY?: number
   shadowBlur?: number
   shadowSpread?: number
   shadowColor?: string
+  shadowInset?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -56,17 +72,32 @@ const props = withDefaults(defineProps<Props>(), {
   shadowY: 0,
   shadowBlur: 0,
   shadowSpread: 0,
-  shadowColor: '#000000'
+  shadowColor: '#000000',
+  shadowInset: false
 })
 
 const emit = defineEmits<{
   (e: 'update', updates: Record<string, any>): void
 }>()
 
+// 计算阴影样式
+const computedShadow = computed(() => {
+  const inset = props.shadowInset ? 'inset ' : '';
+  return `${inset}${props.shadowX}px ${props.shadowY}px ${props.shadowBlur}px ${props.shadowSpread}px ${props.shadowColor}`;
+})
+
 const updateValue = (key: string, event: Event) => {
   const target = event.target as HTMLInputElement
-  const value = target.type === 'number' ? Number(target.value) : target.value
-  emit('update', { [key]: value })
+  const value = target.type === 'checkbox' 
+    ? target.checked 
+    : target.type === 'number' 
+      ? Number(target.value) 
+      : target.value
+  
+  emit('update', { 
+    [key]: value,
+    boxShadow: computedShadow.value // 同时发送计算后的 box-shadow 值
+  })
 }
 </script>
 
@@ -130,5 +161,31 @@ const updateValue = (key: string, event: Event) => {
 
 .property-item input[type="number"] {
   width: 100%;
+}
+
+.checkbox-item {
+  margin-top: 4px;
+}
+
+.checkbox-item label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.shadow-preview {
+  width: 100%;
+  height: 60px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  margin-top: 4px;
 }
 </style>

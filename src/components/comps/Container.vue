@@ -31,6 +31,7 @@ const props = defineProps<{
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
+  shadowInset?: boolean;
   backgroundColor?: string;
   paddingTop?: number;
   paddingRight?: number;
@@ -98,7 +99,8 @@ const containerStyle = computed(() => {
     const y = props.shadowY ?? 0;
     const blur = props.shadowBlur ?? 0;
     const spread = props.shadowSpread ?? 0;
-    style.boxShadow = `${x}px ${y}px ${blur}px ${spread}px ${props.shadowColor}`;
+    const inset = props.shadowInset ? 'inset ' : '';
+    style.boxShadow = `${inset}${x}px ${y}px ${blur}px ${spread}px ${props.shadowColor}`;
   }
 
   // 背景色
