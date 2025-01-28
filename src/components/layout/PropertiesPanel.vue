@@ -29,6 +29,9 @@
           <ShadowProperties v-bind="props.component.props"
                           @update="updateProps" />
 
+          <BackgroundProperties v-bind="props.component.props"
+                          @update="updateProps" />
+
           <!-- 文字属性 -->
           <TextProperties v-if="props.component.type === 'text'"
                          v-bind="props.component.props"
@@ -72,6 +75,7 @@ import LayoutProperties from '../properties/LayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
 import ShadowProperties from '../properties/ShadowProperties.vue';
+import BackgroundProperties from '../properties/BackgroundProperties.vue';
 
 const props = defineProps<{
   component: Comp | null;

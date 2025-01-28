@@ -29,6 +29,11 @@ const props = defineProps<{
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
+  backgroundColor?: string;
+  gradientType?: string;
+  gradientColor1?: string;
+  gradientColor2?: string;
+  backgroundImage?: string;
 }>();
 
 const emit = defineEmits<{
@@ -72,6 +77,16 @@ const containerStyle = computed(() => {
   const shadowColor = props.shadowColor || '#000000';
   const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
 
+  // 处理背景样式
+  let background = props.backgroundColor || 'transparent';
+  if (props.gradientType === 'linear') {
+    background = `linear-gradient(${props.gradientColor1}, ${props.gradientColor2})`;
+  } else if (props.gradientType === 'radial') {
+    background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
+  } else if (props.backgroundImage) {
+    background = `url(${props.backgroundImage})`;
+  }
+
   const style: Record<string, any> = {
     width: `${(props.width || 200) * scale}px`,
     height: `${(props.height || 100) * scale}px`,
@@ -81,7 +96,8 @@ const containerStyle = computed(() => {
     top: 0,
     cursor: isResizing.value ? getResizeCursor() : (isDragging.value ? 'grabbing' : 'grab'),
     border: borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none',
-    boxShadow
+    boxShadow,
+    background,
   };
 
   return style;
