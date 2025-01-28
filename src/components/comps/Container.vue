@@ -32,10 +32,14 @@ const props = defineProps<{
   shadowSpread?: number;
   shadowColor?: string;
   backgroundColor?: string;
-  gradientType?: string;
-  gradientColor1?: string;
-  gradientColor2?: string;
-  backgroundImage?: string;
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  marginTop?: number;
+  marginRight?: number;
+  marginBottom?: number;
+  marginLeft?: number;
 }>();
 
 const emit = defineEmits<{
@@ -72,23 +76,51 @@ let startState = {
 // 容器样式
 const containerStyle = computed(() => {
   const style: Record<string, string> = {
-    width: `${props.width || 100}px`,
-    height: `${props.height || 100}px`,
     transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
-    position: 'absolute',
-    border: props.borderWidth ? 
-      `${props.borderWidth}px ${props.borderStyle || 'solid'} ${props.borderColor || '#000'}` : 
-      undefined,
-    boxShadow: props.shadowX !== undefined ? 
-      `${props.shadowX}px ${props.shadowY}px ${props.shadowBlur}px ${props.shadowSpread}px ${props.shadowColor || '#000'}` : 
-      undefined,
-    backgroundColor: props.backgroundColor,
-    backgroundImage: props.gradientType && props.gradientColor1 && props.gradientColor2 ?
-      `${props.gradientType}-gradient(${props.gradientColor1}, ${props.gradientColor2})` :
-      props.backgroundImage ? `url(${props.backgroundImage})` : undefined,
-    backgroundSize: props.backgroundImage ? 'cover' : undefined,
-    cursor: isDragging.value ? 'move' : undefined
   };
+
+  // 设置宽高
+  if (props.width !== undefined) {
+    style.width = `${props.width}px`;
+  }
+  if (props.height !== undefined) {
+    style.height = `${props.height}px`;
+  }
+
+  // 边框样式
+  if (props.borderWidth !== undefined && props.borderStyle && props.borderColor) {
+    style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor}`;
+  }
+
+  // 阴影效果
+  if (props.shadowColor) {
+    const x = props.shadowX ?? 0;
+    const y = props.shadowY ?? 0;
+    const blur = props.shadowBlur ?? 0;
+    const spread = props.shadowSpread ?? 0;
+    style.boxShadow = `${x}px ${y}px ${blur}px ${spread}px ${props.shadowColor}`;
+  }
+
+  // 背景色
+  if (props.backgroundColor) {
+    style.backgroundColor = props.backgroundColor;
+  }
+
+  // 内边距
+  const padding = [];
+  padding[0] = props.paddingTop !== undefined ? `${props.paddingTop}px` : '0';
+  padding[1] = props.paddingRight !== undefined ? `${props.paddingRight}px` : '0';
+  padding[2] = props.paddingBottom !== undefined ? `${props.paddingBottom}px` : '0';
+  padding[3] = props.paddingLeft !== undefined ? `${props.paddingLeft}px` : '0';
+  style.padding = padding.join(' ');
+
+  // 外边距
+  const margin = [];
+  margin[0] = props.marginTop !== undefined ? `${props.marginTop}px` : '0';
+  margin[1] = props.marginRight !== undefined ? `${props.marginRight}px` : '0';
+  margin[2] = props.marginBottom !== undefined ? `${props.marginBottom}px` : '0';
+  margin[3] = props.marginLeft !== undefined ? `${props.marginLeft}px` : '0';
+  style.margin = margin.join(' ');
 
   // 移除所有 undefined 的属性
   Object.keys(style).forEach(key => {

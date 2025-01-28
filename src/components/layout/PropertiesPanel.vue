@@ -23,6 +23,9 @@
           <LayoutProperties v-bind="props.component.props"
                           @update="updateProps" />
 
+          <SpacingProperties v-bind="props.component.props"
+                           @update="updateProps" />
+
           <BorderProperties v-bind="props.component.props"
                           @update="updateProps" />
 
@@ -76,6 +79,7 @@ import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
 import ShadowProperties from '../properties/ShadowProperties.vue';
 import BackgroundProperties from '../properties/BackgroundProperties.vue';
+import SpacingProperties from '../properties/SpacingProperties.vue';
 
 const props = defineProps<{
   component: Comp | null;
