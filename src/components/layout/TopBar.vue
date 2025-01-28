@@ -2,7 +2,9 @@
   <div class="topbar">
     <div class="logo">低代码平台</div>
     <div class="actions">
-      <!-- 这里可以添加预览、保存等操作按钮 -->
+      <button class="action-btn">页面</button>
+      <button class="action-btn">流程</button>
+      <button class="action-btn">数据</button>
     </div>
   </div>
 </template>
@@ -28,6 +30,24 @@
 
 .actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
+}
+
+.action-btn {
+  padding: 6px 16px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.action-btn:active {
+  background-color: #e8e8e8;
 }
 </style>
