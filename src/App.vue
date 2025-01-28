@@ -24,15 +24,20 @@ function handleSelect(id: string | null) {
 }
 
 // 处理组件更新
-function handleUpdate(comp: Comp) {
-  const index = components.value.findIndex(c => c.id === comp.id);
-  if (index > -1) {
-    // 使用数组的splice方法来确保Vue能够检测到变化
-    components.value.splice(index, 1, {
-      ...components.value[index],
-      ...comp,
-      props: { ...components.value[index].props, ...comp.props }
-    });
+function handleUpdate(compOrComps: Comp | Comp[]) {
+  if (Array.isArray(compOrComps)) {
+    // 更新整个组件列表
+    components.value = compOrComps;
+  } else {
+    // 更新单个组件
+    const index = components.value.findIndex(c => c.id === compOrComps.id);
+    if (index > -1) {
+      components.value.splice(index, 1, {
+        ...components.value[index],
+        ...compOrComps,
+        props: { ...components.value[index].props, ...compOrComps.props }
+      });
+    }
   }
 }
 

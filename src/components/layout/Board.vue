@@ -36,6 +36,28 @@
         <span class="icon">🗑</span>
         <span class="text">删除</span>
       </button>
+
+      <div class="divider"></div>
+
+      <div class="button-group">
+        <button @click="handleExport" data-tooltip="导出到JSON">
+          <span class="icon">⬇</span>
+          <span class="text">导出</span>
+        </button>
+        <button @click="handleImport" data-tooltip="从JSON导入">
+          <span class="icon">⬆</span>
+          <span class="text">导入</span>
+        </button>
+      </div>
+
+      <!-- 隐藏的文件输入框 -->
+      <input
+        type="file"
+        ref="fileInput"
+        accept=".json"
+        style="display: none"
+        @change="handleFileSelect"
+      />
     </div>
     <div class="main-content">
       <div class="canvas-container">
@@ -105,10 +127,12 @@ import Ruler from './Ruler.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
+import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLElement | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const props = defineProps<{
   components: Comp[];
@@ -117,7 +141,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select', id: string | null): void;
-  (e: 'update', comp: Comp): void;
+  (e: 'update', compOrComps: Comp | Comp[]): void;
   (e: 'add', comp: Comp): void;
   (e: 'delete', id: string): void;
 }>();
@@ -323,13 +347,25 @@ function handleUpdatePosition(id: string, updates: { x?: number; y?: number; wid
   const comp = props.components.find(c => c.id === id);
   if (!comp) return;
 
-  emit('update', {
-    ...comp,
-    props: {
-      ...comp.props,
-      ...updates
+  const oldProps = { ...comp.props };
+  const newProps = { ...oldProps, ...updates };
+
+  // 记录更新操作
+  history.addAction({
+    type: ActionType.UPDATE,
+    componentId: id,
+    data: {
+      before: { props: oldProps },
+      after: { props: newProps }
     }
   });
+
+  // 更新组件
+  const updatedComp = {
+    ...comp,
+    props: newProps
+  };
+  emit('update', updatedComp);
 }
 
 // 处理拖拽
@@ -466,6 +502,54 @@ function redo() {
         }
         break;
     }
+  }
+}
+
+// 导出功能
+function handleExport() {
+  try {
+    const jsonStr = exportToJSON(props.components);
+    const filename = `layout_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.json`;
+    downloadJSON(jsonStr, filename);
+  } catch (error) {
+    console.error('导出失败:', error);
+    // 这里可以添加错误提示UI
+  }
+}
+
+// 导入功能
+function handleImport() {
+  fileInput.value?.click();
+}
+
+// 处理文件选择
+async function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  try {
+    const jsonStr = await readJSONFile(file);
+    const components = importFromJSON(jsonStr);
+    
+    // 记录导入操作
+    history.addAction({
+      type: ActionType.UPDATE,
+      componentId: 'import',
+      data: {
+        before: { components: props.components },
+        after: { components }
+      }
+    });
+
+    // 更新组件列表
+    emit('update', components);
+    
+    // 清除文件选择
+    input.value = '';
+  } catch (error) {
+    console.error('导入失败:', error);
+    // 这里可以添加错误提示UI
   }
 }
 </script>
@@ -611,71 +695,61 @@ function redo() {
 
 .main-content {
   flex: 1;
-  display: flex;
+  position: relative;
   overflow: hidden;
 }
 
 .canvas-container {
-  flex: 1;
-  position: relative;
-  display: grid;
-  grid-template: 24px 1fr / 24px 1fr;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  background: white;
-}
-
-.ruler-corner {
-  width: 24px;
-  height: 24px;
-  background: white;
-  border-right: 1px solid #e5e5e5;
-  border-bottom: 1px solid #e5e5e5;
-  z-index: 2;
 }
 
 .canvas-wrapper {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 40px 0 0 40px;
   overflow: hidden;
-  position: relative;
-  cursor: default;
-  grid-row: 2;
-  grid-column: 2;
-  background: #f5f5f5;
+  cursor: grab;
 }
 
-.canvas-wrapper.is-panning {
-  cursor: grab;
+.canvas-wrapper:active {
+  cursor: grabbing;
 }
 
 .canvas {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
+  background: white;
   transform-origin: 0 0;
 }
 
 .canvas-content {
   position: relative;
-  width: 100%;
-  height: 100%;
-  min-width: 3000px;
-  min-height: 3000px;
-  background-image: 
-    linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: center center;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .placeholder {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #999;
   font-size: 14px;
   pointer-events: none;
-  user-select: none;
+}
+
+/* 标尺角落 */
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  background: #f5f5f5;
+  border-right: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 2;
 }
 </style>

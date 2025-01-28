@@ -216,6 +216,7 @@ function startResize(handle: string, e: MouseEvent) {
   isResizing.value = true;
   resizeHandle.value = handle;
   startPos.value = { x: e.clientX, y: e.clientY };
+  startOffset.value = { x: props.x || 0, y: props.y || 0 };
   startSize.value = {
     width: props.width || 100,
     height: props.height || 100
@@ -231,6 +232,9 @@ function startResize(handle: string, e: MouseEvent) {
   
   window.addEventListener('mousemove', handleResizeMove);
   window.addEventListener('mouseup', handleResizeUp);
+  
+  // 添加禁止选择类
+  document.body.classList.add('resizing');
 }
 
 // 处理调整尺寸移动
@@ -244,46 +248,44 @@ function handleResizeMove(e: MouseEvent) {
 
   const updates: { x?: number; y?: number; width?: number; height?: number } = {};
 
+  // 计算新的尺寸和位置
+  let newWidth = startSize.value.width;
+  let newHeight = startSize.value.height;
+  let newX = startOffset.value.x;
+  let newY = startOffset.value.y;
+
   switch (resizeHandle.value) {
     case 'top-left':
-      updates.x = startOffset.value.x + deltaX;
-      updates.y = startOffset.value.y + deltaY;
-      updates.width = startSize.value.width - deltaX;
-      updates.height = startSize.value.height - deltaY;
+      newWidth = Math.max(50, startSize.value.width - deltaX);
+      newHeight = Math.max(50, startSize.value.height - deltaY);
+      newX = startOffset.value.x + startSize.value.width - newWidth;
+      newY = startOffset.value.y + startSize.value.height - newHeight;
       break;
     case 'top-right':
-      updates.y = startOffset.value.y + deltaY;
-      updates.width = startSize.value.width + deltaX;
-      updates.height = startSize.value.height - deltaY;
+      newWidth = Math.max(50, startSize.value.width + deltaX);
+      newHeight = Math.max(50, startSize.value.height - deltaY);
+      newY = startOffset.value.y + startSize.value.height - newHeight;
       break;
     case 'bottom-left':
-      updates.x = startOffset.value.x + deltaX;
-      updates.width = startSize.value.width - deltaX;
-      updates.height = startSize.value.height + deltaY;
+      newWidth = Math.max(50, startSize.value.width - deltaX);
+      newHeight = Math.max(50, startSize.value.height + deltaY);
+      newX = startOffset.value.x + startSize.value.width - newWidth;
       break;
     case 'bottom-right':
-      updates.width = startSize.value.width + deltaX;
-      updates.height = startSize.value.height + deltaY;
+      newWidth = Math.max(50, startSize.value.width + deltaX);
+      newHeight = Math.max(50, startSize.value.height + deltaY);
       break;
   }
 
-  // 确保尺寸不小于最小值
-  if (updates.width && updates.width < 50) {
-    updates.width = 50;
-    if (resizeHandle.value?.includes('left')) {
-      updates.x = startOffset.value.x + startSize.value.width - 50;
-    }
-  }
+  // 只有当位置或尺寸发生变化时才更新
+  if (newX !== props.x) updates.x = newX;
+  if (newY !== props.y) updates.y = newY;
+  if (newWidth !== props.width) updates.width = newWidth;
+  if (newHeight !== props.height) updates.height = newHeight;
 
-  if (updates.height && updates.height < 50) {
-    updates.height = 50;
-    if (resizeHandle.value?.includes('top')) {
-      updates.y = startOffset.value.y + startSize.value.height - 50;
-    }
+  if (Object.keys(updates).length > 0) {
+    emit('update', updates);
   }
-
-  // 只更新位置和尺寸，保持其他属性不变
-  emit('update', updates);
 }
 
 // 处理调整尺寸结束
@@ -314,21 +316,28 @@ function handleResizeUp() {
   resizeHandle.value = null;
   window.removeEventListener('mousemove', handleResizeMove);
   window.removeEventListener('mouseup', handleResizeUp);
+  
+  // 移除禁止选择类
+  document.body.classList.remove('resizing');
 }
 </script>
 
 <style scoped>
 .container {
+  position: absolute;
   background: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   user-select: none;
+  pointer-events: auto;
+  z-index: 1;
 }
 
 .container.is-selected {
-  position: relative;
+  position: absolute;
+  z-index: 2;
 }
 
 .container.is-selected::after {
@@ -342,39 +351,49 @@ function handleResizeUp() {
 
 .resize-handle {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   background: #fff;
   border: 2px solid #1890ff;
   border-radius: 50%;
-  z-index: 1;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .resize-handle:hover {
   background: #1890ff;
+  transform: scale(1.2);
+  transition: transform 0.2s;
 }
 
 .resize-handle.top-left {
-  top: -4px;
-  left: -4px;
+  top: -6px;
+  left: -6px;
   cursor: nw-resize;
 }
 
 .resize-handle.top-right {
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   cursor: ne-resize;
 }
 
 .resize-handle.bottom-left {
-  bottom: -4px;
-  left: -4px;
+  bottom: -6px;
+  left: -6px;
   cursor: sw-resize;
 }
 
 .resize-handle.bottom-right {
-  bottom: -4px;
-  right: -4px;
+  bottom: -6px;
+  right: -6px;
   cursor: se-resize;
+}
+
+/* 禁止选择文本 */
+:global(body.resizing) {
+  cursor: inherit;
+  user-select: none;
+  -webkit-user-select: none;
 }
 </style>
