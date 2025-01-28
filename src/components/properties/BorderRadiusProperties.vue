@@ -4,12 +4,21 @@
     <div class="section-header">
       <span>圆角</span>
       <div class="radius-controls">
-        <input type="number"
-               class="all-radius-input"
-               :value="commonRadius"
-               @input="updateAllRadius($event)"
-               min="0"
-               placeholder="0" />
+        <div class="slider-control">
+          <input type="range"
+                 class="radius-slider"
+                 :value="commonRadius"
+                 @input="updateAllRadius($event)"
+                 min="0"
+                 max="100"
+                 step="1" />
+          <input type="number"
+                 class="all-radius-input"
+                 :value="commonRadius"
+                 @input="updateAllRadius($event)"
+                 min="0"
+                 placeholder="0" />
+        </div>
         <button class="link-button" 
                 :class="{ active: isLinked }"
                 @click="toggleLink">
@@ -172,6 +181,43 @@ function toggleLink() {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.slider-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.radius-slider {
+  width: 80px;
+  height: 2px;
+  -webkit-appearance: none;
+  background: #e5e5e5;
+  outline: none;
+  border-radius: 1px;
+}
+
+.radius-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radius-slider::-webkit-slider-thumb:hover {
+  border-color: #40a9ff;
+  transform: scale(1.1);
+}
+
+.radius-slider::-webkit-slider-thumb:active {
+  border-color: #1890ff;
+  background: #e6f7ff;
 }
 
 .all-radius-input {

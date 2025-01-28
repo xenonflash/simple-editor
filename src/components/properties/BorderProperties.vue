@@ -5,21 +5,23 @@
       <span>边框</span>
     </div>
     <div class="section-content">
-      <div class="property-row">
-        <div class="property-item">
-          <label>粗细</label>
+      <div class="border-controls">
+        <!-- 边框宽度 -->
+        <div class="control-item">
           <input type="number" 
                  :value="borderWidth" 
                  @input="updateValue('borderWidth', $event)"
                  min="0"
-                 step="1" />
+                 step="1"
+                 class="width-input"
+                 placeholder="0" />
         </div>
-      </div>
-      <div class="property-row">
-        <div class="property-item">
-          <label>样式</label>
+
+        <!-- 边框样式 -->
+        <div class="control-item">
           <select :value="borderStyle || 'none'"
-                  @change="updateValue('borderStyle', $event)">
+                  @change="updateValue('borderStyle', $event)"
+                  class="style-select">
             <option value="none">无</option>
             <option value="solid">实线</option>
             <option value="dashed">虚线</option>
@@ -27,19 +29,18 @@
             <option value="double">双线</option>
           </select>
         </div>
-      </div>
-      <div class="property-row">
-        <div class="property-item">
-          <label>颜色</label>
-          <div class="color-input">
-            <input type="color" 
-                   :value="borderColor || '#000000'"
-                   @input="updateValue('borderColor', $event)" />
-            <input type="text"
-                   :value="borderColor || '#000000'"
-                   @input="updateValue('borderColor', $event)"
-                   placeholder="#000000" />
-          </div>
+
+        <!-- 边框颜色 -->
+        <div class="control-item color-control">
+          <input type="color" 
+                 :value="borderColor || '#000000'"
+                 @input="updateValue('borderColor', $event)"
+                 class="color-picker" />
+          <input type="text"
+                 :value="borderColor || '#000000'"
+                 @input="updateValue('borderColor', $event)"
+                 placeholder="#000000"
+                 class="color-input" />
         </div>
       </div>
     </div>
@@ -94,83 +95,117 @@ function updateValue(key: string, event: Event) {
 }
 
 .section-header span {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .section-content {
   padding: 8px;
 }
 
-.property-row {
-  margin-bottom: 8px;
-}
-
-.property-row:last-child {
-  margin-bottom: 0;
-}
-
-.property-item {
+.border-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.property-item label {
-  width: 32px;
-  font-size: 11px;
-  color: #333;
+.control-item {
+  display: flex;
+  align-items: center;
 }
 
-input[type="number"],
-input[type="text"],
-select {
-  flex: 1;
-  height: 24px;
-  padding: 0 6px;
-  border: 1px solid #e5e5e5;
+.width-input {
+  width: 36px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid #d9d9d9;
   border-radius: 2px;
   font-size: 11px;
-  font-family: inherit;
-  background: white;
-  outline: none;
+  text-align: center;
+  transition: all 0.2s;
 }
 
-.color-input {
-  flex: 1;
+.style-select {
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  font-size: 11px;
+  background: white;
+  min-width: 52px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-control {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1;
 }
 
-input[type="color"] {
-  width: 24px;
-  height: 24px;
-  padding: 2px;
-  border: 1px solid #e5e5e5;
+.color-picker {
+  width: 20px;
+  height: 20px;
+  padding: 1px;
+  border: 1px solid #d9d9d9;
   border-radius: 2px;
   cursor: pointer;
   background: white;
+  transition: all 0.2s;
 }
 
-input[type="color"]:hover,
-input[type="number"]:hover,
-input[type="text"]:hover,
-select:hover {
-  border-color: #d9d9d9;
+.color-input {
+  width: 58px;
+  height: 20px;
+  padding: 0 4px;
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: monospace;
+  transition: all 0.2s;
 }
 
-input[type="color"]:focus,
-input[type="number"]:focus,
-input[type="text"]:focus,
-select:focus {
-  border-color: #000;
+/* Hover 状态 */
+.width-input:hover,
+.style-select:hover,
+.color-picker:hover,
+.color-input:hover {
+  border-color: #40a9ff;
 }
 
+/* Focus 状态 */
+.width-input:focus,
+.style-select:focus,
+.color-picker:focus,
+.color-input:focus {
+  border-color: #1890ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+/* 禁用数字输入框的上下箭头 */
 ::-webkit-inner-spin-button {
   display: none;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* 自定义 select 箭头 */
+.style-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  background-size: 12px;
+  padding-right: 20px;
+}
+
+/* 优化 placeholder 样式 */
+::placeholder {
+  color: #bfbfbf;
 }
 </style>

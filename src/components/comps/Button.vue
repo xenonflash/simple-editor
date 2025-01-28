@@ -24,7 +24,10 @@ const props = defineProps<{
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
-  borderRadius?: number;
+  borderRadiusTopLeft?: number;
+  borderRadiusTopRight?: number;
+  borderRadiusBottomLeft?: number;
+  borderRadiusBottomRight?: number;
   fontSize?: number;
   fontWeight?: number | string;
   shadowX?: number;
@@ -49,10 +52,13 @@ const buttonStyle = computed(() => ({
   borderWidth: `${props.borderWidth || 0}px`,
   borderStyle: props.borderStyle || 'none',
   borderColor: props.borderColor || '#000000',
-  borderRadius: `${props.borderRadius || 4}px`,
+  borderTopLeftRadius: `${props.borderRadiusTopLeft || 4}px`,
+  borderTopRightRadius: `${props.borderRadiusTopRight || 4}px`,
+  borderBottomLeftRadius: `${props.borderRadiusBottomLeft || 4}px`,
+  borderBottomRightRadius: `${props.borderRadiusBottomRight || 4}px`,
   fontSize: props.fontSize ? `${props.fontSize}px` : '14px',
   fontWeight: props.fontWeight || 'normal',
-  boxShadow: `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor || 'rgba(0,0,0,0)'}`,
+  boxShadow: props.shadowColor ? `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 'none',
 }));
 
 // 拖动相关的状态

@@ -51,27 +51,41 @@ export interface Comp {
 
 // 组件属性定义
 export interface CompProps {
+  id: string;
+  type: CompType;
   x: number;
   y: number;
   width?: number;
   height?: number;
   content?: string;
   color?: string;
-  fontSize?: number;
-  fontWeight?: number | string;
-  fontFamily?: string;
-  textDecoration?: string;
-  fontStyle?: string;
+  backgroundColor?: string;
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
+  borderRadiusTopLeft?: number;
+  borderRadiusTopRight?: number;
+  borderRadiusBottomLeft?: number;
+  borderRadiusBottomRight?: number;
+  fontSize?: number;
+  fontWeight?: number | string;
+  fontStyle?: string;
+  textDecoration?: string;
+  fontFamily?: string;
   shadowX?: number;
   shadowY?: number;
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
-  backgroundColor?: string;
-  borderRadius?: number;
+  shadowInset?: boolean;
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  marginTop?: number;
+  marginRight?: number;
+  marginBottom?: number;
+  marginLeft?: number;
 }
 
 // 组件工厂函数
