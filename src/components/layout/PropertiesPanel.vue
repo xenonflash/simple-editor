@@ -26,6 +26,11 @@
           <SpacingProperties v-bind="props.component.props"
                            @update="updateProps" />
 
+                           <!-- 文字属性 -->
+          <TextProperties v-if="props.component.type === 'text' || props.component.type === 'button'"
+                         v-bind="props.component.props"
+                         @update="updateProps" />
+
           <BorderProperties v-bind="props.component.props"
                           @update="updateProps" />
 
@@ -38,10 +43,7 @@
           <BackgroundProperties v-bind="props.component.props"
                           @update="updateProps" />
 
-          <!-- 文字属性 -->
-          <TextProperties v-if="props.component.type === 'text'"
-                         v-bind="props.component.props"
-                         @update="updateProps" />
+          
         </div>
 
         <!-- 事件面板 -->
