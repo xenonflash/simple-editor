@@ -8,6 +8,7 @@
     </div>
     <div class="canvas-wrapper" 
          ref="wrapperRef"
+         @wheel="handleWheel"
          @mousedown="startPan"
          @mousemove="doPan"
          @mouseup="endPan"
@@ -40,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Container from '../comps/Container.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
@@ -72,16 +73,97 @@ const minScale = 0.1;
 const maxScale = 3;
 const scaleStep = 0.1;
 
+// 视口中心点
+const viewportCenter = ref({ x: 0, y: 0 });
+
+// 更新视口中心点
+function updateViewportCenter() {
+  if (wrapperRef.value) {
+    const rect = wrapperRef.value.getBoundingClientRect();
+    viewportCenter.value = {
+      x: rect.width / 2,
+      y: rect.height / 2
+    };
+  }
+}
+
+// 在组件挂载和窗口大小变化时更新视口中心点
+onMounted(() => {
+  updateViewportCenter();
+  window.addEventListener('resize', updateViewportCenter);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateViewportCenter);
+});
+
+// 缩放函数
 function zoomIn() {
-  scale.value = Math.min(scale.value + scaleStep, maxScale);
+  setScale(scale.value + scaleStep);
 }
 
 function zoomOut() {
-  scale.value = Math.max(scale.value - scaleStep, minScale);
+  setScale(scale.value - scaleStep);
 }
 
 function resetZoom() {
-  scale.value = 1;
+  setScale(1);
+}
+
+// 处理缩放，保持鼠标位置不变
+function setScale(newScale: number, center?: { x: number, y: number }) {
+  const oldScale = scale.value;
+  // 限制缩放范围并使缩放更平滑
+  newScale = Math.max(minScale, Math.min(maxScale, newScale));
+  
+  if (Math.abs(newScale - oldScale) < 0.00001) return;
+
+  // 如果没有指定缩放中心，使用视口中心
+  const zoomCenter = center || viewportCenter.value;
+  
+  // 计算缩放前后的偏移差
+  const scaleFactor = newScale / oldScale;
+  const dx = (zoomCenter.x - panOffset.value.x) * (1 - scaleFactor);
+  const dy = (zoomCenter.y - panOffset.value.y) * (1 - scaleFactor);
+  
+  // 更新缩放和偏移
+  scale.value = newScale;
+  panOffset.value = {
+    x: panOffset.value.x + dx,
+    y: panOffset.value.y + dy
+  };
+}
+
+// 处理触控板手势
+function handleWheel(e: WheelEvent) {
+  e.preventDefault();
+  
+  // 获取鼠标相对于视口的位置
+  const rect = wrapperRef.value?.getBoundingClientRect();
+  if (!rect) return;
+  
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // 检测是否是缩放手势（触控板双指捏合或 Command + 滚轮）
+  if (e.ctrlKey || e.metaKey) {
+    const delta = -e.deltaY;
+    // 调整缩放系数使触控板的缩放更加平滑
+    const zoomFactor = Math.pow(1.01, delta);
+    setScale(scale.value * zoomFactor, { x: mouseX, y: mouseY });
+    return;
+  }
+
+  // 处理平移
+  // 根据设备像素比调整平移速度
+  const pixelRatio = window.devicePixelRatio || 1;
+  const dx = e.deltaX / pixelRatio;
+  const dy = e.deltaY / pixelRatio;
+
+  panOffset.value = {
+    x: panOffset.value.x - dx,
+    y: panOffset.value.y - dy
+  };
 }
 
 // 画布样式
@@ -100,16 +182,20 @@ const startPanPos = ref({ x: 0, y: 0 });
 const panOffset = ref({ x: 0, y: 0 });
 
 function startPan(e: MouseEvent) {
-  if (e.button !== 1) return; // 只响应鼠标中键
-  isPanning.value = true;
-  startPanPos.value = {
-    x: e.clientX - panOffset.value.x,
-    y: e.clientY - panOffset.value.y
-  };
+  // 空格键 + 鼠标左键 或 鼠标中键可以平移
+  if ((e.button === 0 && e.getModifierState('Space')) || e.button === 1) {
+    e.preventDefault();
+    isPanning.value = true;
+    startPanPos.value = {
+      x: e.clientX - panOffset.value.x,
+      y: e.clientY - panOffset.value.y
+    };
+  }
 }
 
 function doPan(e: MouseEvent) {
   if (!isPanning.value) return;
+  e.preventDefault();
   panOffset.value = {
     x: e.clientX - startPanPos.value.x,
     y: e.clientY - startPanPos.value.y
@@ -122,7 +208,6 @@ function endPan() {
 
 // 处理画布点击
 function handleCanvasClick(e: MouseEvent) {
-  // 只处理直接点击画布的情况
   if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('canvas-content')) {
     emit('select', null);
     log('Canvas clicked, deselect component');
@@ -157,18 +242,25 @@ function handleDragOver(e: DragEvent) {
   }
 }
 
+// 从屏幕坐标转换为画布坐标
+function screenToCanvas(screenX: number, screenY: number): { x: number, y: number } {
+  const rect = canvasRef.value?.getBoundingClientRect();
+  if (!rect) return { x: 0, y: 0 };
+
+  // 考虑缩放和平移的影响
+  return {
+    x: (screenX - rect.left - panOffset.value.x) / scale.value,
+    y: (screenY - rect.top - panOffset.value.y) / scale.value
+  };
+}
+
 function handleDrop(e: DragEvent) {
   e.preventDefault();
   const compType = e.dataTransfer?.getData('component-type');
   if (!compType) return;
 
-  // 获取画布相对位置
-  const canvasRect = canvasRef.value?.getBoundingClientRect();
-  if (!canvasRect) return;
-
-  // 计算放置位置（考虑缩放和平移）
-  const x = (e.clientX - canvasRect.left - panOffset.value.x) / scale.value;
-  const y = (e.clientY - canvasRect.top - panOffset.value.y) / scale.value;
+  // 转换拖放位置到画布坐标
+  const { x, y } = screenToCanvas(e.clientX, e.clientY);
 
   // 创建新组件
   const newComp = createComp(compType as CompType, '新容器');
@@ -192,6 +284,7 @@ function handleDrop(e: DragEvent) {
   background: #f5f5f5;
   overflow: hidden;
   position: relative;
+  user-select: none;
 }
 
 .toolbar {
@@ -221,10 +314,14 @@ function handleDrop(e: DragEvent) {
   flex: 1;
   overflow: hidden;
   position: relative;
+  cursor: default;
+}
+
+.canvas-wrapper.is-panning {
   cursor: grab;
 }
 
-.canvas-wrapper:active {
+.canvas-wrapper.is-panning:active {
   cursor: grabbing;
 }
 
@@ -233,15 +330,16 @@ function handleDrop(e: DragEvent) {
   height: 100%;
   position: absolute;
   overflow: visible;
-  transition: transform 0.2s;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .canvas-content {
   width: 100%;
   height: 100%;
   position: relative;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .placeholder {
