@@ -24,6 +24,14 @@ const props = defineProps<{
   fontFamily?: string;
   textDecoration?: string;
   fontStyle?: string;
+  borderWidth?: number;
+  borderStyle?: string;
+  borderColor?: string;
+  shadowX?: number;
+  shadowY?: number;
+  shadowBlur?: number;
+  shadowSpread?: number;
+  shadowColor?: string;
 }>();
 
 const emit = defineEmits(['select', 'update']);
@@ -60,6 +68,19 @@ const style = computed(() => {
     textDeco = textDeco.split(' ').filter(Boolean).join(' ');
   }
 
+  // 处理边框样式
+  const borderStyle = props.borderStyle || 'none';
+  const borderWidth = props.borderWidth ? `${props.borderWidth}px` : '0';
+  const borderColor = props.borderColor || '#000';
+
+  // 处理阴影样式
+  const shadowX = props.shadowX || 0;
+  const shadowY = props.shadowY || 0;
+  const shadowBlur = props.shadowBlur || 0;
+  const shadowSpread = props.shadowSpread || 0;
+  const shadowColor = props.shadowColor || '#000000';
+  const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
+
   return {
     transform: `translate(${currentX.value}px, ${currentY.value}px) scale(${props.scale})`,
     color: props.color || '#333',
@@ -70,6 +91,8 @@ const style = computed(() => {
     fontStyle: props.fontStyle || 'normal',
     width: props.width ? `${props.width}px` : 'auto',
     height: props.height ? `${props.height}px` : 'auto',
+    border: borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none',
+    boxShadow
   };
 });
 

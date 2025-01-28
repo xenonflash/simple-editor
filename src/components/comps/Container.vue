@@ -23,12 +23,23 @@ const props = defineProps<{
   x?: number;
   y?: number;
   selected?: boolean;
-  scale?: number; // 添加缩放比例属性
+  scale?: number;
+  borderWidth?: number;
+  borderStyle?: string;
+  borderColor?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'select'): void;
-  (e: 'update', updates: { x?: number; y?: number; width?: number; height?: number }): void;
+  (e: 'update', updates: {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    borderWidth?: number;
+    borderStyle?: string;
+    borderColor?: string;
+  }): void;
 }>();
 
 // 拖动状态
@@ -42,15 +53,29 @@ const isResizing = ref(false);
 const resizeHandle = ref<string | null>(null);
 
 // 组件样式
-const containerStyle = computed(() => ({
-  width: `${props.width || 200}px`,
-  height: `${props.height || 100}px`,
-  transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
-  position: 'absolute',
-  left: 0,
-  top: 0,
-  cursor: isResizing.value ? getResizeCursor() : (isDragging.value ? 'grabbing' : 'grab'),
-}));
+const containerStyle = computed(() => {
+  // 处理边框样式
+  const borderStyle = props.borderStyle || 'none';
+  const borderWidth = props.borderWidth ?? 0;
+  const borderColor = props.borderColor || '#000000';
+
+  const style: Record<string, any> = {
+    width: `${props.width || 200}px`,
+    height: `${props.height || 100}px`,
+    transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    cursor: isResizing.value ? getResizeCursor() : (isDragging.value ? 'grabbing' : 'grab'),
+  };
+
+  // 只有当边框样式不是none时才添加边框
+  if (borderStyle !== 'none' && borderWidth > 0) {
+    style.border = `${borderWidth}px ${borderStyle} ${borderColor}`;
+  }
+
+  return style;
+});
 
 // 获取调整尺寸时的光标样式
 function getResizeCursor() {
@@ -105,11 +130,26 @@ function startResize(handle: string, e: MouseEvent) {
   document.addEventListener('mouseup', handleResizeUp);
 }
 
+// 处理鼠标移动
+function handleMouseMove(e: MouseEvent) {
+  if (!isDragging.value) return;
+
+  const scale = props.scale || 1;
+  const deltaX = (e.clientX - startPos.value.x) / scale;
+  const deltaY = (e.clientY - startPos.value.y) / scale;
+
+  // 只更新位置，保持其他属性不变
+  emit('update', {
+    x: startOffset.value.x + deltaX,
+    y: startOffset.value.y + deltaY
+  });
+}
+
 // 处理调整尺寸移动
 function handleResizeMove(e: MouseEvent) {
   if (!isResizing.value) return;
 
-  // 考虑画布缩放比例
+  e.preventDefault();
   const scale = props.scale || 1;
   const deltaX = (e.clientX - startPos.value.x) / scale;
   const deltaY = (e.clientY - startPos.value.y) / scale;
@@ -118,27 +158,43 @@ function handleResizeMove(e: MouseEvent) {
 
   switch (resizeHandle.value) {
     case 'top-left':
-      updates.width = Math.max(50, startSize.value.width - deltaX);
-      updates.height = Math.max(50, startSize.value.height - deltaY);
-      updates.x = startOffset.value.x + (startSize.value.width - updates.width);
-      updates.y = startOffset.value.y + (startSize.value.height - updates.height);
+      updates.x = startOffset.value.x + deltaX;
+      updates.y = startOffset.value.y + deltaY;
+      updates.width = startSize.value.width - deltaX;
+      updates.height = startSize.value.height - deltaY;
       break;
     case 'top-right':
-      updates.width = Math.max(50, startSize.value.width + deltaX);
-      updates.height = Math.max(50, startSize.value.height - deltaY);
-      updates.y = startOffset.value.y + (startSize.value.height - updates.height);
+      updates.y = startOffset.value.y + deltaY;
+      updates.width = startSize.value.width + deltaX;
+      updates.height = startSize.value.height - deltaY;
       break;
     case 'bottom-left':
-      updates.width = Math.max(50, startSize.value.width - deltaX);
-      updates.height = Math.max(50, startSize.value.height + deltaY);
-      updates.x = startOffset.value.x + (startSize.value.width - updates.width);
+      updates.x = startOffset.value.x + deltaX;
+      updates.width = startSize.value.width - deltaX;
+      updates.height = startSize.value.height + deltaY;
       break;
     case 'bottom-right':
-      updates.width = Math.max(50, startSize.value.width + deltaX);
-      updates.height = Math.max(50, startSize.value.height + deltaY);
+      updates.width = startSize.value.width + deltaX;
+      updates.height = startSize.value.height + deltaY;
       break;
   }
 
+  // 确保尺寸不小于最小值
+  if (updates.width && updates.width < 50) {
+    updates.width = 50;
+    if (resizeHandle.value?.includes('left')) {
+      updates.x = startOffset.value.x + startSize.value.width - 50;
+    }
+  }
+
+  if (updates.height && updates.height < 50) {
+    updates.height = 50;
+    if (resizeHandle.value?.includes('top')) {
+      updates.y = startOffset.value.y + startSize.value.height - 50;
+    }
+  }
+
+  // 只更新位置和尺寸，保持其他属性不变
   emit('update', updates);
 }
 
@@ -148,21 +204,6 @@ function handleResizeUp() {
   resizeHandle.value = null;
   document.removeEventListener('mousemove', handleResizeMove);
   document.removeEventListener('mouseup', handleResizeUp);
-}
-
-// 处理鼠标移动
-function handleMouseMove(e: MouseEvent) {
-  if (!isDragging.value || isResizing.value) return;
-
-  // 考虑画布缩放比例
-  const scale = props.scale || 1;
-  const deltaX = (e.clientX - startPos.value.x) / scale;
-  const deltaY = (e.clientY - startPos.value.y) / scale;
-
-  emit('update', {
-    x: startOffset.value.x + deltaX,
-    y: startOffset.value.y + deltaY
-  });
 }
 
 // 处理鼠标松开
@@ -176,33 +217,24 @@ function handleMouseUp() {
 <style scoped>
 .container {
   background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: border-color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   user-select: none;
 }
 
-.container::before {
+.container.is-selected {
+  position: relative;
+}
+
+.container.is-selected::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: border-color 0.2s;
-  pointer-events: none;
-}
-
-.container:hover::before {
-  border-color: #1890ff;
-}
-
-.container.is-selected::before {
+  inset: -2px;
   border: 2px solid #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .resize-handle {

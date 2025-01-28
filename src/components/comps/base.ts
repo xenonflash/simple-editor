@@ -55,7 +55,6 @@ export interface CompProps {
   y: number;
   width?: number;
   height?: number;
-  // 文字组件属性
   content?: string;
   color?: string;
   fontSize?: number;
@@ -63,26 +62,44 @@ export interface CompProps {
   fontFamily?: string;
   textDecoration?: string;
   fontStyle?: string;
+  borderWidth?: number;
+  borderStyle?: string;
+  borderColor?: string;
+  shadowX?: number;
+  shadowY?: number;
+  shadowBlur?: number;
+  shadowSpread?: number;
+  shadowColor?: string;
 }
 
 // 组件工厂函数
 export function createComp(type: CompType, name: string): Comp {
   const baseProps: CompProps = {
     x: 0,
-    y: 0
+    y: 0,
+    width: 200,
+    height: 100,
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderColor: '#000000',
+    shadowX: 0,
+    shadowY: 0,
+    shadowBlur: 0,
+    shadowSpread: 0,
+    shadowColor: '#000000'
   };
 
-  // 根据类型设置默认属性
   switch (type) {
     case CompType.CONTAINER:
       return {
         id: `${type}_${Date.now()}`,
-        type,
         name,
+        type,
         props: {
           ...baseProps,
           width: 200,
-          height: 200
+          height: 200,
+          isContainer: true
         },
         events: {},
         style: {},
@@ -91,7 +108,7 @@ export function createComp(type: CompType, name: string): Comp {
           height: 200
         },
         children: [],
-        isContainer: true,
+        isContainer: true
       };
     case CompType.BUTTON:
       return {
@@ -124,13 +141,15 @@ export function createComp(type: CompType, name: string): Comp {
           fontWeight: 'normal',
           fontFamily: 'Arial',
           textDecoration: 'none',
-          fontStyle: 'normal'
+          fontStyle: 'normal',
+          width: 100,
+          height: 40
         },
         events: {},
         style: {},
         size: {
           width: 100,
-          height: 20
+          height: 40
         },
         children: [],
       };
