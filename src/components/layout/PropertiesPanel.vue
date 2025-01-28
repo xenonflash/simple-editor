@@ -1,104 +1,132 @@
 <template>
   <div class="properties-panel">
     <div v-if="props.component" class="panel-content">
-      <!-- 布局部分 -->
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title">布局</div>
-          <div class="section-tools">
-            <button class="tool-button">
-              <span class="icon">⚡</span>
-            </button>
-          </div>
-        </div>
-        <div class="section-content">
-          <div class="property-grid">
-            <div class="property-item">
-              <label>X</label>
-              <input type="number" 
-                     v-model="x" 
-                     @input="updateProp('props.x', Number(x))" />
-            </div>
-            <div class="property-item">
-              <label>Y</label>
-              <input type="number" 
-                     v-model="y" 
-                     @input="updateProp('props.y', Number(y))" />
-            </div>
-            <div class="property-item">
-              <label>W</label>
-              <input type="number" 
-                     v-model="width" 
-                     @input="updateProp('props.width', Number(width))" />
-            </div>
-            <div class="property-item">
-              <label>H</label>
-              <input type="number" 
-                     v-model="height" 
-                     @input="updateProp('props.height', Number(height))" />
-            </div>
-          </div>
-        </div>
+      <!-- 标签页头部 -->
+      <div class="tabs">
+        <button class="tab-button" 
+                :class="{ active: activeTab === 'properties' }"
+                @click="activeTab = 'properties'">
+          属性
+        </button>
+        <button class="tab-button" 
+                :class="{ active: activeTab === 'events' }"
+                @click="activeTab = 'events'">
+          事件
+        </button>
       </div>
 
-      <!-- 文字样式部分 -->
-      <div v-if="props.component.type === 'text'" class="section">
-        <div class="section-header">
-          <div class="section-title">文字</div>
+      <!-- 标签页内容 -->
+      <div class="tab-content">
+        <!-- 属性面板 -->
+        <div v-show="activeTab === 'properties'">
+          <!-- 布局属性 -->
+          <div class="section">
+            <div class="section-header">
+              <span>布局</span>
+            </div>
+            <div class="section-content">
+              <div class="property-grid">
+                <div class="property-item">
+                  <label>X</label>
+                  <input type="number" 
+                         v-model="x" 
+                         @input="updateProp('props.x', Number(x))" />
+                </div>
+                <div class="property-item">
+                  <label>Y</label>
+                  <input type="number" 
+                         v-model="y" 
+                         @input="updateProp('props.y', Number(y))" />
+                </div>
+                <div class="property-item">
+                  <label>W</label>
+                  <input type="number" 
+                         v-model="width" 
+                         @input="updateProp('props.width', Number(width))" />
+                </div>
+                <div class="property-item">
+                  <label>H</label>
+                  <input type="number" 
+                         v-model="height" 
+                         @input="updateProp('props.height', Number(height))" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文字属性 -->
+          <div v-if="props.component.type === 'text'" class="section">
+            <div class="section-header">
+              <span>文字</span>
+            </div>
+            <div class="section-content">
+              <div class="property-row">
+                <input type="text" 
+                       v-model="content" 
+                       @input="updateProp('props.content', content)" 
+                       placeholder="输入文字内容..." />
+              </div>
+              <div class="property-row controls">
+                <select v-model="fontFamily" 
+                        @change="updateProp('props.fontFamily', fontFamily)">
+                  <option value="Arial">Arial</option>
+                  <option value="PingFang SC">PingFang SC</option>
+                  <option value="Microsoft YaHei">微软雅黑</option>
+                </select>
+                <input type="number" 
+                       v-model="fontSize" 
+                       @input="updateProp('props.fontSize', Number(fontSize))" />
+              </div>
+              <div class="property-row buttons">
+                <button :class="{ active: fontWeight === 'bold' }"
+                        @click="toggleStyle('fontWeight', 'bold', 'normal')">
+                  B
+                </button>
+                <button :class="{ active: fontStyle === 'italic' }"
+                        @click="toggleStyle('fontStyle', 'italic', 'normal')">
+                  I
+                </button>
+                <button :class="{ active: textDecoration.includes('underline') }"
+                        @click="toggleDecoration('underline')">
+                  U
+                </button>
+                <button :class="{ active: textDecoration.includes('line-through') }"
+                        @click="toggleDecoration('line-through')">
+                  S
+                </button>
+                <input type="color" 
+                       v-model="color" 
+                       @input="updateProp('props.color', color)" />
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="section-content">
-          <!-- 文字内容 -->
-          <div class="property-row">
-            <input type="text" 
-                   class="text-content"
-                   v-model="content" 
-                   @input="updateProp('props.content', content)" 
-                   placeholder="输入文字内容..." />
-          </div>
 
-          <!-- 字体控制 -->
-          <div class="property-row font-controls">
-            <select class="font-family" 
-                    v-model="fontFamily" 
-                    @change="updateProp('props.fontFamily', fontFamily)">
-              <option value="Arial">Arial</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="PingFang SC">PingFang SC</option>
-            </select>
-            <input type="number" 
-                   class="font-size"
-                   v-model="fontSize" 
-                   @input="updateProp('props.fontSize', Number(fontSize))" />
-          </div>
-
-          <!-- 文字样式按钮组 -->
-          <div class="property-row style-buttons">
-            <button :class="{ active: fontWeight === 'bold' }"
-                    @click="toggleStyle('fontWeight', 'bold', 'normal')">
-              B
-            </button>
-            <button :class="{ active: fontStyle === 'italic' }"
-                    @click="toggleStyle('fontStyle', 'italic', 'normal')">
-              I
-            </button>
-            <button :class="{ active: textDecoration.includes('underline') }"
-                    @click="toggleDecoration('underline')">
-              U
-            </button>
-            <button :class="{ active: textDecoration.includes('line-through') }"
-                    @click="toggleDecoration('line-through')">
-              S
-            </button>
-            <input type="color" 
-                   class="color-picker"
-                   v-model="color" 
-                   @input="updateProp('props.color', color)" />
+        <!-- 事件面板 -->
+        <div v-show="activeTab === 'events'">
+          <div class="section">
+            <div class="section-header">
+              <span>事件列表</span>
+            </div>
+            <div class="section-content">
+              <div class="event-list">
+                <div v-for="event in events" 
+                     :key="event.name" 
+                     class="event-item">
+                  <div class="event-header">
+                    <span>{{ event.label }}</span>
+                    <button class="add-button" @click="addEvent(event.name)">
+                      添加
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    <div v-else class="no-selection">
+    <div v-else class="empty-tip">
       在画布中选择一个对象以查看属性
     </div>
   </div>
@@ -114,7 +142,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['update']);
 
-// 表单数据
+// 标签页状态
+const activeTab = ref('properties');
+
+// 组件属性
 const x = ref(0);
 const y = ref(0);
 const width = ref(0);
@@ -127,22 +158,30 @@ const fontWeight = ref('normal');
 const fontStyle = ref('normal');
 const textDecoration = ref('none');
 
+// 事件列表
+const events = [
+  { name: 'click', label: '点击' },
+  { name: 'dblclick', label: '双击' },
+  { name: 'mouseover', label: '悬停' }
+];
+
 // 监听组件变化
-watch(() => props.component, (newComp) => {
-  if (newComp) {
-    x.value = newComp.props.x;
-    y.value = newComp.props.y;
-    width.value = newComp.props.width || 0;
-    height.value = newComp.props.height || 0;
-    content.value = newComp.props.content || '';
-    color.value = newComp.props.color || '#333333';
-    fontSize.value = newComp.props.fontSize || 14;
-    fontFamily.value = newComp.props.fontFamily || 'Arial';
-    fontWeight.value = newComp.props.fontWeight || 'normal';
-    fontStyle.value = newComp.props.fontStyle || 'normal';
-    textDecoration.value = newComp.props.textDecoration || 'none';
+watch(() => props.component, (comp) => {
+  if (comp) {
+    // 更新所有属性
+    x.value = comp.props.x || 0;
+    y.value = comp.props.y || 0;
+    width.value = comp.props.width || 0;
+    height.value = comp.props.height || 0;
+    content.value = comp.props.content || '';
+    color.value = comp.props.color || '#333333';
+    fontSize.value = comp.props.fontSize || 14;
+    fontFamily.value = comp.props.fontFamily || 'Arial';
+    fontWeight.value = comp.props.fontWeight || 'normal';
+    fontStyle.value = comp.props.fontStyle || 'normal';
+    textDecoration.value = comp.props.textDecoration || 'none';
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 // 更新属性
 function updateProp(path: string, value: any) {
@@ -159,13 +198,13 @@ function updateProp(path: string, value: any) {
   emit('update', updates);
 }
 
-// 切换文字样式
+// 切换样式
 function toggleStyle(key: string, value: string, defaultValue: string) {
   const newValue = props.component?.props[key] === value ? defaultValue : value;
   updateProp(`props.${key}`, newValue);
 }
 
-// 切换文字装饰
+// 切换装饰
 function toggleDecoration(value: string) {
   const current = props.component?.props.textDecoration || 'none';
   let newValue = 'none';
@@ -183,12 +222,18 @@ function toggleDecoration(value: string) {
   
   updateProp('props.textDecoration', newValue);
 }
+
+// 添加事件
+function addEvent(eventName: string) {
+  console.log('添加事件:', eventName);
+  // TODO: 实现事件添加逻辑
+}
 </script>
 
 <style scoped>
 .properties-panel {
   width: 240px;
-  background: white;
+  background: #ffffff;
   border-left: 1px solid #e5e5e5;
   display: flex;
   flex-direction: column;
@@ -197,9 +242,53 @@ function toggleDecoration(value: string) {
 
 .panel-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 标签页样式 */
+.tabs {
+  height: 36px;
+  display: flex;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 0 8px;
+}
+
+.tab-button {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: #333;
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tab-button.active {
+  color: #000;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #000;
+}
+
+.tab-content {
+  flex: 1;
   overflow-y: auto;
 }
 
+/* 区块样式 */
 .section {
   border-bottom: 1px solid #e5e5e5;
 }
@@ -213,135 +302,173 @@ function toggleDecoration(value: string) {
   background: #fafafa;
 }
 
-.section-title {
+.section-header span {
   font-size: 11px;
   font-weight: 600;
   color: #333;
   text-transform: uppercase;
-}
-
-.section-tools {
-  display: flex;
-  gap: 4px;
-}
-
-.tool-button {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: none;
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.tool-button:hover {
-  background: #e5e5e5;
+  letter-spacing: 0.5px;
 }
 
 .section-content {
   padding: 8px;
 }
 
+/* 属性样式 */
 .property-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.property-row {
-  margin-bottom: 8px;
-}
-
-.property-row:last-child {
-  margin-bottom: 0;
+  gap: 4px;
 }
 
 .property-item {
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 24px;
 }
 
 .property-item label {
-  width: 16px;
+  width: 14px;
   font-size: 11px;
   color: #333;
+  font-weight: 500;
+  text-align: center;
 }
 
-input[type="number"],
+.property-row {
+  margin-bottom: 4px;
+}
+
+.property-row:last-child {
+  margin-bottom: 0;
+}
+
+/* 输入框样式 */
 input[type="text"],
+input[type="number"],
 select {
   width: 100%;
   height: 24px;
-  padding: 0 4px;
+  padding: 0 6px;
   border: 1px solid #e5e5e5;
   border-radius: 2px;
   font-size: 11px;
+  font-family: inherit;
+  background: white;
   outline: none;
 }
 
-input[type="number"]:focus,
+input[type="text"]:hover,
+input[type="number"]:hover,
+select:hover {
+  border-color: #d9d9d9;
+}
+
 input[type="text"]:focus,
+input[type="number"]:focus,
 select:focus {
-  border-color: #1890ff;
+  border-color: #000;
 }
 
-.text-content {
-  width: 100%;
-}
-
-.font-controls {
+/* 控件组 */
+.controls {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 8px;
-}
-
-.style-buttons {
-  display: flex;
   gap: 4px;
 }
 
-.style-buttons button {
+.buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.buttons button {
   width: 24px;
   height: 24px;
   padding: 0;
   border: 1px solid #e5e5e5;
-  background: white;
   border-radius: 2px;
+  background: white;
   font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.style-buttons button:hover {
+.buttons button:hover {
+  border-color: #d9d9d9;
   background: #fafafa;
 }
 
-.style-buttons button.active {
-  background: #e6f7ff;
-  border-color: #1890ff;
-  color: #1890ff;
+.buttons button.active {
+  background: #000;
+  border-color: #000;
+  color: white;
 }
 
-.color-picker {
+input[type="color"] {
   width: 24px;
   height: 24px;
   padding: 2px;
   border: 1px solid #e5e5e5;
   border-radius: 2px;
   cursor: pointer;
+  background: white;
 }
 
-.no-selection {
+input[type="color"]:hover {
+  border-color: #d9d9d9;
+}
+
+/* 事件样式 */
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-item {
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  background: white;
+}
+
+.event-header {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.event-header span {
+  font-size: 11px;
+  color: #333;
+}
+
+.add-button {
+  padding: 2px 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  background: white;
+  font-size: 11px;
+  color: #333;
+  cursor: pointer;
+}
+
+.add-button:hover {
+  border-color: #000;
+  color: #000;
+}
+
+/* 空状态 */
+.empty-tip {
   padding: 16px;
   text-align: center;
+  font-size: 11px;
   color: #999;
-  font-size: 12px;
 }
 
 ::-webkit-inner-spin-button {
