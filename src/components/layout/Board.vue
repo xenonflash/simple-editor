@@ -33,10 +33,7 @@
               <template v-for="comp in props.components"
                         :key="comp.id">
                 <Container v-if="comp.type === 'container'"
-                          :width="comp.props.width"
-                          :height="comp.props.height"
-                          :x="comp.props.x"
-                          :y="comp.props.y"
+                          v-bind="comp.props"
                           :scale="scale"
                           :selected="selectedId === comp.id"
                           @select="handleSelect(comp.id)"

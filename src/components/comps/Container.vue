@@ -1,9 +1,6 @@
 <template>
-  <div class="container" 
-       :class="{ 'is-selected': selected }"
-       :style="containerStyle"
-       @mousedown.stop="handleMouseDown"
-       @click.stop>
+  <div class="container" :class="{ 'is-selected': selected }" :style="containerStyle" @mousedown.stop="handleMouseDown"
+    @click.stop>
     <slot></slot>
     <template v-if="selected">
       <div class="resize-handle top-left" @mousedown.stop="startResize('top-left', $event)"></div>
@@ -27,6 +24,11 @@ const props = defineProps<{
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
+  shadowX?: number;
+  shadowY?: number;
+  shadowBlur?: number;
+  shadowSpread?: number;
+  shadowColor?: string;
 }>();
 
 const emit = defineEmits<{
@@ -54,25 +56,33 @@ const resizeHandle = ref<string | null>(null);
 
 // 组件样式
 const containerStyle = computed(() => {
+
+  // 处理缩放比例
+  const scale = props.scale || 1;
   // 处理边框样式
   const borderStyle = props.borderStyle || 'none';
-  const borderWidth = props.borderWidth ?? 0;
-  const borderColor = props.borderColor || '#000000';
+  const borderWidth = props.borderWidth ? `${props.borderWidth}px` : '0';
+  const borderColor = props.borderColor || '#000';
+
+  // 处理阴影样式
+  const shadowX = props.shadowX || 0;
+  const shadowY = props.shadowY || 0;
+  const shadowBlur = props.shadowBlur || 0;
+  const shadowSpread = props.shadowSpread || 0;
+  const shadowColor = props.shadowColor || '#000000';
+  const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
 
   const style: Record<string, any> = {
-    width: `${props.width || 200}px`,
-    height: `${props.height || 100}px`,
-    transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
+    width: `${(props.width || 200) * scale}px`,
+    height: `${(props.height || 100) * scale}px`,
+    transform: `translate(${(props.x || 0) * scale}px, ${(props.y || 0) * scale}px)`,
     position: 'absolute',
     left: 0,
     top: 0,
     cursor: isResizing.value ? getResizeCursor() : (isDragging.value ? 'grabbing' : 'grab'),
+    border: borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none',
+    boxShadow
   };
-
-  // 只有当边框样式不是none时才添加边框
-  if (borderStyle !== 'none' && borderWidth > 0) {
-    style.border = `${borderWidth}px ${borderStyle} ${borderColor}`;
-  }
 
   return style;
 });
@@ -97,7 +107,7 @@ function handleMouseDown(e: MouseEvent) {
 
   // 通知选中
   emit('select');
-  
+
   // 开始拖动
   isDragging.value = true;
   startPos.value = { x: e.clientX, y: e.clientY };
@@ -116,13 +126,13 @@ function startResize(handle: string, e: MouseEvent) {
   isResizing.value = true;
   resizeHandle.value = handle;
   startPos.value = { x: e.clientX, y: e.clientY };
-  startSize.value = { 
-    width: props.width || 200, 
-    height: props.height || 100 
+  startSize.value = {
+    width: props.width || 200,
+    height: props.height || 100
   };
-  startOffset.value = { 
-    x: props.x || 0, 
-    y: props.y || 0 
+  startOffset.value = {
+    x: props.x || 0,
+    y: props.y || 0
   };
 
   // 添加全局事件监听
