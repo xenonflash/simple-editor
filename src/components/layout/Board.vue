@@ -240,12 +240,17 @@ function endPan() {
 
 // 画布样式
 const canvasStyle = computed(() => ({
-  transform: `scale(${scale.value})`,
+  transform: `scale3d(${scale.value}, ${scale.value}, 1)`,
   transformOrigin: '0 0',
+  position: 'absolute',
+  left: `${panOffset.value.x}px`,
+  top: `${panOffset.value.y}px`,
+  width: '100%',
+  height: '100%'
 }));
 
 const contentStyle = computed(() => ({
-  transform: `translate(${panOffset.value.x}px, ${panOffset.value.y}px)`,
+  transform: `translate(0, 0)`,
 }));
 
 // 处理画布点击

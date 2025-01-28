@@ -82,7 +82,7 @@ const style = computed(() => {
   const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
 
   return {
-    transform: `translate(${currentX.value}px, ${currentY.value}px) scale(${props.scale})`,
+    transform: `translate(${currentX.value}px, ${currentY.value}px)`,
     color: props.color || '#333',
     fontSize: `${props.fontSize || 14}px`,
     fontWeight: props.fontWeight || 'normal',

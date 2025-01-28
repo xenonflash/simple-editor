@@ -88,9 +88,9 @@ const containerStyle = computed(() => {
   }
 
   const style: Record<string, any> = {
-    width: `${(props.width || 200) * scale}px`,
-    height: `${(props.height || 100) * scale}px`,
-    transform: `translate(${(props.x || 0) * scale}px, ${(props.y || 0) * scale}px)`,
+    width: `${props.width || 200}px`,
+    height: `${props.height || 100}px`,
+    transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
     position: 'absolute',
     left: 0,
     top: 0,

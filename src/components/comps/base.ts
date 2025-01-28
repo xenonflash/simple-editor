@@ -99,7 +99,9 @@ export function createComp(type: CompType, name: string): Comp {
           ...baseProps,
           width: 200,
           height: 200,
-          isContainer: true
+          borderWidth: 1,
+          borderStyle: 'solid',
+          borderColor: '#aaa',
         },
         events: {},
         style: {},
