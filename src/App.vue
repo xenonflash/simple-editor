@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import TopBar from './components/layout/TopBar.vue';
 import LeftPanel from './components/layout/LeftPanel.vue';
 import Board from './components/layout/Board.vue';
-import RightPanel from './components/layout/RightPanel.vue';
 import type { Comp } from './components/comps/base';
 
 // 状态管理
@@ -44,9 +43,6 @@ function handleAddComponent(comp: Comp) {
              @select="handleSelect"
              @update="handleUpdate"
              @add="handleAddComponent" />
-      <RightPanel :components="components"
-                 :selected-id="selectedId"
-                 @update="handleUpdate" />
     </div>
   </div>
 </template>

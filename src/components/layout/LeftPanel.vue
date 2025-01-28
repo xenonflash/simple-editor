@@ -1,16 +1,18 @@
 <template>
   <div class="left-panel">
     <div class="panel-title">组件</div>
-    <div class="components-list">
+    <div class="component-list">
       <div class="component-item"
            draggable="true"
-           @dragstart="handleDragStart">
-        <div class="component-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
-          </svg>
-        </div>
-        <div class="component-name">容器</div>
+           @dragstart="handleDragStart('container')">
+        <div class="icon">□</div>
+        <div class="name">容器</div>
+      </div>
+      <div class="component-item"
+           draggable="true"
+           @dragstart="handleDragStart('text')">
+        <div class="icon">T</div>
+        <div class="name">文字</div>
       </div>
     </div>
   </div>
@@ -19,62 +21,62 @@
 <script setup lang="ts">
 import { CompType } from '../comps/base';
 
-function handleDragStart(e: DragEvent) {
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('component-type', CompType.CONTAINER);
+function handleDragStart(type: CompType) {
+  // 设置拖拽数据
+  const event = window.event as DragEvent;
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('componentType', type);
+    event.dataTransfer.effectAllowed = 'copy';
   }
 }
 </script>
 
 <style scoped>
 .left-panel {
-  width: 280px;
-  background: #fff;
+  width: 240px;
   border-right: 1px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
+  background: white;
 }
 
 .panel-title {
   padding: 16px;
   font-size: 16px;
-  font-weight: 500;
-  color: #333;
+  font-weight: bold;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.components-list {
+.component-list {
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .component-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  padding: 12px;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   cursor: move;
-  transition: all 0.2s;
+  user-select: none;
+  transition: all 0.3s;
 }
 
 .component-item:hover {
   border-color: #1890ff;
-  background: rgba(24, 144, 255, 0.04);
+  background: #e6f7ff;
 }
 
-.component-icon {
-  width: 24px;
-  height: 24px;
+.component-item .icon {
+  font-size: 24px;
+  margin-bottom: 8px;
   color: #666;
 }
 
-.component-name {
-  font-size: 14px;
-  color: #333;
+.component-item .name {
+  font-size: 12px;
+  color: #666;
 }
 </style>
