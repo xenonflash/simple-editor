@@ -77,6 +77,13 @@
                       :selected="selectedId === comp.id"
                       @select="handleSelect(comp.id)"
                       @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                <Button v-else-if="comp.type === 'button'"
+                      :id="comp.id"
+                      v-bind="comp.props"
+                      :scale="scale"
+                      :selected="selectedId === comp.id"
+                      @select="handleSelect(comp.id)"
+                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
               </template>
               <div class="placeholder" v-if="props.components.length === 0">
                 拖拽组件到此处开始设计
@@ -93,6 +100,7 @@
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
+import Button from '../comps/Button.vue';
 import Ruler from './Ruler.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';

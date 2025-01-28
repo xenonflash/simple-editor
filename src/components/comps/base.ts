@@ -70,6 +70,8 @@ export interface CompProps {
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
+  backgroundColor?: string;
+  borderRadius?: number;
 }
 
 // 组件工厂函数
@@ -101,34 +103,38 @@ export function createComp(type: CompType, name: string): Comp {
           height: 200,
           borderWidth: 1,
           borderStyle: 'solid',
-          borderColor: '#aaa',
+          borderColor: '#e0e0e0',
         },
         events: {},
         style: {},
-        size: {
-          width: 200,
-          height: 200
-        },
+        size: { width: 200, height: 200 },
         children: [],
-        isContainer: true
+        isContainer: true,
+        icon: '□',
+        description: '容器组件，可以包含其他组件',
       };
     case CompType.BUTTON:
       return {
         id: `${type}_${Date.now()}`,
-        type,
         name,
+        type,
         props: {
           ...baseProps,
-          width: 80,
-          height: 32
+          width: 100,
+          height: 40,
+          content: '按钮',
+          color: '#ffffff',
+          backgroundColor: '#1890ff',
+          borderRadius: 4,
+          fontSize: 14,
+          fontWeight: 'normal',
         },
         events: {},
         style: {},
-        size: {
-          width: 80,
-          height: 32
-        },
+        size: { width: 100, height: 40 },
         children: [],
+        icon: '⬜',
+        description: '可交互的按钮组件',
       };
     case CompType.TEXT:
       return {

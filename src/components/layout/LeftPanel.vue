@@ -14,6 +14,12 @@
         <div class="icon">T</div>
         <div class="name">文字</div>
       </div>
+      <div class="component-item"
+           draggable="true"
+           @dragstart="handleDragStart('button')">
+        <div class="icon">⬜</div>
+        <div class="name">按钮</div>
+      </div>
     </div>
   </div>
 </template>
