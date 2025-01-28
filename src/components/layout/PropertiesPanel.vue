@@ -29,6 +29,9 @@
           <BorderProperties v-bind="props.component.props"
                           @update="updateProps" />
 
+          <BorderRadiusProperties v-bind="props.component.props"
+                               @update="updateProps" />
+
           <ShadowProperties v-bind="props.component.props"
                           @update="updateProps" />
 
@@ -80,6 +83,7 @@ import BorderProperties from '../properties/BorderProperties.vue';
 import ShadowProperties from '../properties/ShadowProperties.vue';
 import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
+import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
 
 const props = defineProps<{
   component: Comp | null;

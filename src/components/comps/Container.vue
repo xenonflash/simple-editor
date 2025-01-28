@@ -26,6 +26,10 @@ const props = defineProps<{
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
+  borderRadiusTopLeft?: number;
+  borderRadiusTopRight?: number;
+  borderRadiusBottomLeft?: number;
+  borderRadiusBottomRight?: number;
   shadowX?: number;
   shadowY?: number;
   shadowBlur?: number;
@@ -92,6 +96,12 @@ const containerStyle = computed(() => {
   if (props.borderWidth !== undefined && props.borderStyle && props.borderColor) {
     style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor}`;
   }
+
+  // 圆角样式
+  style.borderTopLeftRadius = `${props.borderRadiusTopLeft || 0}px`;
+  style.borderTopRightRadius = `${props.borderRadiusTopRight || 0}px`;
+  style.borderBottomLeftRadius = `${props.borderRadiusBottomLeft || 0}px`;
+  style.borderBottomRightRadius = `${props.borderRadiusBottomRight || 0}px`;
 
   // 阴影效果
   if (props.shadowColor) {
