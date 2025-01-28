@@ -1,21 +1,41 @@
 <template>
   <div class="board">
     <div class="toolbar">
-      <button @click="undo" :disabled="!canUndo">
-        <span class="icon">↩</span>
-        <span class="text">撤销</span>
-      </button>
-      <button @click="redo" :disabled="!canRedo">
-        <span class="icon">↪</span>
-        <span class="text">重做</span>
-      </button>
+      <div class="button-group">
+        <button @click="undo" :disabled="!canUndo" data-tooltip="撤销 (⌘Z)">
+          <span class="icon">↩</span>
+          <span class="text">撤销</span>
+        </button>
+        <button @click="redo" :disabled="!canRedo" data-tooltip="重做 (⌘⇧Z)">
+          <span class="icon">↪</span>
+          <span class="text">重做</span>
+        </button>
+      </div>
+
       <div class="divider"></div>
-      <button @click="zoomIn">放大</button>
-      <button @click="zoomOut">缩小</button>
-      <button @click="resetZoom">重置</button>
-      <span>{{ Math.round(scale * 100) }}%</span>
+
+      <div class="zoom-controls">
+        <button @click="zoomOut" data-tooltip="缩小 (⌘-)">
+          <span class="icon">－</span>
+        </button>
+        <span class="zoom-value">{{ Math.round(scale * 100) }}%</span>
+        <button @click="zoomIn" data-tooltip="放大 (⌘+)">
+          <span class="icon">＋</span>
+        </button>
+        <button @click="resetZoom" data-tooltip="重置缩放 (⌘0)">
+          <span class="icon">↺</span>
+        </button>
+      </div>
+
       <div class="divider"></div>
-      <button @click="deleteSelectedComponent" :disabled="!selectedId">删除</button>
+
+      <button class="delete-button" 
+              @click="deleteSelectedComponent" 
+              :disabled="!selectedId"
+              data-tooltip="删除 (Delete)">
+        <span class="icon">🗑</span>
+        <span class="text">删除</span>
+      </button>
     </div>
     <div class="main-content">
       <div class="canvas-container">
@@ -450,51 +470,135 @@ function redo() {
   height: 100%;
   background: #f0f0f0;
   position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
 
 .toolbar {
   height: 40px;
   padding: 0 16px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e5e5;
   display: flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  user-select: none;
 }
 
 .toolbar button {
-  padding: 4px 12px;
-  border: 1px solid #d0d0d0;
-  background: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #1f1f1f;
+  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.toolbar button .icon {
-  font-size: 16px;
+.toolbar button:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.toolbar button:active:not(:disabled) {
+  background: #ebebeb;
+  transform: scale(0.98);
 }
 
 .toolbar button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #f5f5f5;
 }
 
-.toolbar button:hover:not(:disabled) {
-  background: #f5f5f5;
-  border-color: #999;
+.toolbar button .icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #666;
 }
 
 .toolbar .divider {
   width: 1px;
-  height: 20px;
-  background: #e0e0e0;
-  margin: 0 8px;
+  height: 24px;
+  background: #e5e5e5;
+  margin: 0 4px;
+}
+
+.toolbar span {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+/* 工具栏按钮组 */
+.toolbar .button-group {
+  display: flex;
+  gap: 4px;
+}
+
+/* 缩放控制组 */
+.toolbar .zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar .zoom-value {
+  min-width: 45px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 删除按钮特殊样式 */
+.toolbar button.delete-button {
+  color: #ff4d4f;
+}
+
+.toolbar button.delete-button:hover:not(:disabled) {
+  background: #fff1f0;
+  border-color: #ffa39e;
+}
+
+.toolbar button.delete-button:active:not(:disabled) {
+  background: #ffccc7;
+}
+
+/* 工具提示 */
+.toolbar button {
+  position: relative;
+}
+
+.toolbar button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.toolbar button:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) scale(1);
 }
 
 .main-content {
