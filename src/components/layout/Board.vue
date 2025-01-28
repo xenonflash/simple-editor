@@ -6,33 +6,42 @@
       <button @click="resetZoom">重置</button>
       <span>{{ Math.round(scale * 100) }}%</span>
     </div>
-    <div class="canvas-wrapper" 
-         ref="wrapperRef"
-         @wheel="handleWheel"
-         @mousedown="startPan"
-         @mousemove="doPan"
-         @mouseup="endPan"
-         @mouseleave="endPan">
-      <div class="canvas"
-           :style="canvasStyle" 
-           ref="canvasRef"
-           @dragover="handleDragOver"
-           @drop="handleDrop"
-           @mousedown.stop="handleCanvasClick">
-        <div class="canvas-content"
-             :style="contentStyle">
-          <Container v-for="comp in props.components"
-                    :key="comp.id"
-                    :width="comp.props.width"
-                    :height="comp.props.height"
-                    :x="comp.props.x"
-                    :y="comp.props.y"
-                    :scale="scale"
-                    :selected="selectedId === comp.id"
-                    @select="handleSelect(comp.id)"
-                    @update="(updates) => handleUpdatePosition(comp.id, updates)" />
-          <div class="placeholder" v-if="props.components.length === 0">
-            拖拽组件到此处开始设计
+    <div class="canvas-container">
+      <div class="ruler-corner"></div>
+      <Ruler type="horizontal" 
+             :scale="scale" 
+             :offset="panOffset" />
+      <Ruler type="vertical" 
+             :scale="scale" 
+             :offset="panOffset" />
+      <div class="canvas-wrapper" 
+           ref="wrapperRef"
+           @wheel="handleWheel"
+           @mousedown="startPan"
+           @mousemove="doPan"
+           @mouseup="endPan"
+           @mouseleave="endPan">
+        <div class="canvas"
+             :style="canvasStyle" 
+             ref="canvasRef"
+             @dragover="handleDragOver"
+             @drop="handleDrop"
+             @mousedown.stop="handleCanvasClick">
+          <div class="canvas-content"
+               :style="contentStyle">
+            <Container v-for="comp in props.components"
+                      :key="comp.id"
+                      :width="comp.props.width"
+                      :height="comp.props.height"
+                      :x="comp.props.x"
+                      :y="comp.props.y"
+                      :scale="scale"
+                      :selected="selectedId === comp.id"
+                      @select="handleSelect(comp.id)"
+                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+            <div class="placeholder" v-if="props.components.length === 0">
+              拖拽组件到此处开始设计
+            </div>
           </div>
         </div>
       </div>
@@ -41,8 +50,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import Container from '../comps/Container.vue';
+import Ruler from './Ruler.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 
@@ -73,29 +83,40 @@ const minScale = 0.1;
 const maxScale = 3;
 const scaleStep = 0.1;
 
-// 视口中心点
-const viewportCenter = ref({ x: 0, y: 0 });
+// 缓存视口中心点计算
+const viewportCenter = computed(() => {
+  const rect = wrapperRef.value?.getBoundingClientRect();
+  return rect ? {
+    x: rect.width / 2,
+    y: rect.height / 2
+  } : { x: 0, y: 0 };
+});
 
-// 更新视口中心点
-function updateViewportCenter() {
-  if (wrapperRef.value) {
-    const rect = wrapperRef.value.getBoundingClientRect();
-    viewportCenter.value = {
-      x: rect.width / 2,
-      y: rect.height / 2
-    };
+// 视口中心点
+const panState = reactive({
+  isPanning: false,
+  lastX: 0,
+  lastY: 0,
+  spaceKeyPressed: false
+});
+
+// 画布偏移
+const panOffset = ref({ x: 0, y: 0 });
+
+// 处理空格键
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
+    panState.spaceKeyPressed = true;
+    document.body.style.cursor = 'grab';
   }
 }
 
-// 在组件挂载和窗口大小变化时更新视口中心点
-onMounted(() => {
-  updateViewportCenter();
-  window.addEventListener('resize', updateViewportCenter);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateViewportCenter);
-});
+function handleKeyUp(e: KeyboardEvent) {
+  if (e.code === 'Space') {
+    panState.spaceKeyPressed = false;
+    document.body.style.cursor = '';
+  }
+}
 
 // 缩放函数
 function zoomIn() {
@@ -138,7 +159,6 @@ function setScale(newScale: number, center?: { x: number, y: number }) {
 function handleWheel(e: WheelEvent) {
   e.preventDefault();
   
-  // 获取鼠标相对于视口的位置
   const rect = wrapperRef.value?.getBoundingClientRect();
   if (!rect) return;
   
@@ -148,22 +168,62 @@ function handleWheel(e: WheelEvent) {
   // 检测是否是缩放手势（触控板双指捏合或 Command + 滚轮）
   if (e.ctrlKey || e.metaKey) {
     const delta = -e.deltaY;
-    // 调整缩放系数使触控板的缩放更加平滑
     const zoomFactor = Math.pow(1.01, delta);
-    setScale(scale.value * zoomFactor, { x: mouseX, y: mouseY });
+    
+    // 限制缩放范围
+    const newScale = Math.max(0.1, Math.min(3, scale.value * zoomFactor));
+    if (newScale !== scale.value) {
+      const scaleFactor = newScale / scale.value;
+      
+      // 计算新的偏移，保持鼠标位置不变
+      panOffset.value = {
+        x: panOffset.value.x + (mouseX - panOffset.value.x) * (1 - scaleFactor),
+        y: panOffset.value.y + (mouseY - panOffset.value.y) * (1 - scaleFactor)
+      };
+      
+      scale.value = newScale;
+    }
     return;
   }
 
-  // 处理平移
-  // 根据设备像素比调整平移速度
+  // 处理平移，考虑设备像素比
   const pixelRatio = window.devicePixelRatio || 1;
-  const dx = e.deltaX / pixelRatio;
-  const dy = e.deltaY / pixelRatio;
+  panOffset.value = {
+    x: panOffset.value.x - e.deltaX / pixelRatio,
+    y: panOffset.value.y - e.deltaY / pixelRatio
+  };
+}
+
+// 优化平移处理
+function startPan(e: MouseEvent) {
+  if (e.button === 1 || (e.button === 0 && panState.spaceKeyPressed)) {
+    panState.isPanning = true;
+    panState.lastX = e.clientX;
+    panState.lastY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+  }
+}
+
+function doPan(e: MouseEvent) {
+  if (!panState.isPanning) return;
+
+  const dx = e.clientX - panState.lastX;
+  const dy = e.clientY - panState.lastY;
 
   panOffset.value = {
-    x: panOffset.value.x - dx,
-    y: panOffset.value.y - dy
+    x: panOffset.value.x + dx,
+    y: panOffset.value.y + dy
   };
+
+  panState.lastX = e.clientX;
+  panState.lastY = e.clientY;
+}
+
+function endPan() {
+  if (panState.isPanning) {
+    panState.isPanning = false;
+    document.body.style.cursor = panState.spaceKeyPressed ? 'grab' : '';
+  }
 }
 
 // 画布样式
@@ -175,36 +235,6 @@ const canvasStyle = computed(() => ({
 const contentStyle = computed(() => ({
   transform: `translate(${panOffset.value.x}px, ${panOffset.value.y}px)`,
 }));
-
-// 画布拖动
-const isPanning = ref(false);
-const startPanPos = ref({ x: 0, y: 0 });
-const panOffset = ref({ x: 0, y: 0 });
-
-function startPan(e: MouseEvent) {
-  // 空格键 + 鼠标左键 或 鼠标中键可以平移
-  if ((e.button === 0 && e.getModifierState('Space')) || e.button === 1) {
-    e.preventDefault();
-    isPanning.value = true;
-    startPanPos.value = {
-      x: e.clientX - panOffset.value.x,
-      y: e.clientY - panOffset.value.y
-    };
-  }
-}
-
-function doPan(e: MouseEvent) {
-  if (!isPanning.value) return;
-  e.preventDefault();
-  panOffset.value = {
-    x: e.clientX - startPanPos.value.x,
-    y: e.clientY - startPanPos.value.y
-  };
-}
-
-function endPan() {
-  isPanning.value = false;
-}
 
 // 处理画布点击
 function handleCanvasClick(e: MouseEvent) {
@@ -274,6 +304,17 @@ function handleDrop(e: DragEvent) {
   emit('add', newComp);
   log('Drop component:', newComp);
 }
+
+// 生命周期钩子
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
+});
 </script>
 
 <style scoped>
@@ -285,6 +326,23 @@ function handleDrop(e: DragEvent) {
   overflow: hidden;
   position: relative;
   user-select: none;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  display: grid;
+  grid-template: 24px 1fr / 24px 1fr;
+  overflow: hidden;
+}
+
+.ruler-corner {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  z-index: 2;
 }
 
 .toolbar {
@@ -315,6 +373,8 @@ function handleDrop(e: DragEvent) {
   overflow: hidden;
   position: relative;
   cursor: default;
+  grid-row: 2;
+  grid-column: 2;
 }
 
 .canvas-wrapper.is-panning {
