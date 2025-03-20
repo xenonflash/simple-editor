@@ -1,6 +1,6 @@
 <template>
   <div class="topbar">
-    <div class="logo">低代码平台</div>
+    <div class="logo">Hello</div>
     <div class="actions">
       <button class="action-btn">页面</button>
       <button class="action-btn">流程</button>
