@@ -18,7 +18,37 @@ const RULER_SIZE = 24; // 标尺宽度/高度
 const FONT_SIZE = 10;
 const MAJOR_TICK_SIZE = 10; // 主刻度长度
 const MINOR_TICK_SIZE = 5;  // 次刻度长度
-const UNIT = 50;           // 每个主刻度代表的像素值
+const BASE_UNIT = 50;      // 基础刻度单位（像素值）
+
+// 根据缩放比例计算合适的刻度单位
+function getOptimalUnit(scale: number): { unit: number; step: number; minorStep: number } {
+  // 定义不同的刻度级别，基于缩放比例
+  // 缩放比例越小，使用越大的刻度单位，避免密集显示
+  const levels = [
+    { minScale: 4.0, unit: 10, step: 2, minorStep: 1 },       // 高缩放：10px主刻度
+    { minScale: 2.0, unit: 25, step: 5, minorStep: 2.5 },     // 较高缩放：25px主刻度
+    { minScale: 1.0, unit: 50, step: 10, minorStep: 5 },      // 标准缩放1:1：50px主刻度
+    { minScale: 0.5, unit: 100, step: 25, minorStep: 10 },    // 中等缩放：100px主刻度
+    { minScale: 0.25, unit: 200, step: 50, minorStep: 25 },   // 较小缩放：200px主刻度
+    { minScale: 0.125, unit: 500, step: 100, minorStep: 50 }, // 小缩放：500px主刻度
+    { minScale: 0.0625, unit: 1000, step: 200, minorStep: 100 }, // 很小缩放：1000px主刻度
+    { minScale: 0, unit: 2000, step: 500, minorStep: 200 }    // 极小缩放：2000px主刻度
+  ];
+  
+  // 选择合适的刻度级别
+  for (const level of levels) {
+    if (scale >= level.minScale) {
+      return {
+        unit: level.unit,
+        step: level.step,
+        minorStep: level.minorStep
+      };
+    }
+  }
+  
+  // 默认返回最大级别
+  return { unit: 2000, step: 500, minorStep: 200 };
+}
 
 // 使用 requestAnimationFrame 优化渲染
 let rafId: number | null = null;
@@ -76,17 +106,29 @@ function drawRuler() {
     
     const offset = isHorizontal ? props.offset.x : props.offset.y;
     const size = isHorizontal ? rect.width : rect.height;
-    const scaledUnit = UNIT * props.scale;
+    
+    // 获取当前缩放比例下的最优刻度单位
+    const { unit, step, minorStep } = getOptimalUnit(props.scale);
+    const scaledUnit = unit * props.scale;
 
     // 计算可见区域的刻度范围
-    const start = Math.floor(-offset / scaledUnit - 1) * UNIT; // 多显示一个单位，避免边缘问题
-    const end = Math.ceil((size - offset) / scaledUnit + 1) * UNIT;
-    const step = UNIT / 4;
+    const start = Math.floor(-offset / scaledUnit - 1) * unit;
+    const end = Math.ceil((size - offset) / scaledUnit + 1) * unit;
 
-    // 批量绘制刻度线
-    for (let i = start; i <= end; i += step) {
-      const pos = Math.round(i * props.scale + offset); // 取整避免小数点导致的模糊
-      const isMajor = i % UNIT === 0;
+    // 批量绘制刻度线（包括主刻度和次刻度）
+    // 使用更精确的步长计算，避免浮点数精度问题
+    const stepCount = Math.round((end - start) / minorStep);
+    for (let j = 0; j <= stepCount; j++) {
+      const i = start + j * minorStep;
+      const pos = Math.round(i * props.scale + offset);
+      
+      // 使用更精确的模运算判断，避免浮点数精度问题
+      const isMajor = Math.abs(i % unit) < 0.001;
+      const isMinor = Math.abs(i % step) < 0.001;
+      
+      // 跳过不需要显示的刻度
+      if (!isMajor && !isMinor) continue;
+      
       const tickSize = isMajor ? MAJOR_TICK_SIZE : MINOR_TICK_SIZE;
 
       if (isHorizontal) {
@@ -108,16 +150,29 @@ function drawRuler() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
-    // 只绘制主刻度的数值
-    for (let i = start - (start % UNIT); i <= end; i += UNIT) {
-      const pos = Math.round(i * props.scale + offset);
+    // 只绘制主刻度的数值，并确保数字不会重叠
+    const labelStep = unit;
+    const labelStart = Math.ceil(start / labelStep) * labelStep;
+    const labelEnd = Math.floor(end / labelStep) * labelStep;
+    
+    for (let i = labelStart; i <= labelEnd; i += labelStep) {
+      // 避免浮点数精度问题
+      const roundedI = Math.round(i * 100) / 100;
+      const pos = Math.round(roundedI * props.scale + offset);
+      
+      // 检查标签是否在可见区域内
+      if (pos < -20 || pos > (isHorizontal ? rect.width : rect.height) + 20) continue;
+      
+      // 格式化数字显示，避免小数点
+      const labelText = Math.abs(Math.round(roundedI)).toString();
+      
       if (isHorizontal) {
-        ctx.fillText(Math.abs(i).toString(), pos, 2);
+        ctx.fillText(labelText, pos, 2);
       } else {
         ctx.save();
         ctx.translate(14, pos);
         ctx.rotate(-Math.PI / 2);
-        ctx.fillText(Math.abs(i).toString(), 0, 0);
+        ctx.fillText(labelText, 0, 0);
         ctx.restore();
       }
     }
