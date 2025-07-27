@@ -89,19 +89,55 @@
                           :id="comp.id"
                           v-bind="comp.props"
                           :scale="scale"
-                          :selected="selectedId === comp.id"
+                          :selected="props.selectedId === comp.id"
                           @select="handleSelect(comp.id)"
                           @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 <Text v-else-if="comp.type === 'text'"
                       :id="comp.id"
-                      v-bind="comp.props"
+                      :content="comp.props.content || ''"
+                      :x="comp.props.x || 0"
+                      :y="comp.props.y || 0"
+                      :width="comp.props.width"
+                      :height="comp.props.height"
+                      :color="comp.props.color"
+                      :fontSize="comp.props.fontSize"
+                      :fontWeight="comp.props.fontWeight"
+                      :fontFamily="comp.props.fontFamily"
+                      :textDecoration="comp.props.textDecoration"
+                      :fontStyle="comp.props.fontStyle"
+                      :borderWidth="comp.props.borderWidth"
+                      :borderStyle="comp.props.borderStyle"
+                      :borderColor="comp.props.borderColor"
+                      :shadowX="comp.props.shadowX"
+                      :shadowY="comp.props.shadowY"
+                      :shadowBlur="comp.props.shadowBlur"
+                      :shadowSpread="comp.props.shadowSpread"
+                      :shadowColor="comp.props.shadowColor"
                       :scale="scale"
                       :selected="props.selectedId === comp.id"
                       @select="handleSelect(comp.id)"
                       @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 <Button v-else-if="comp.type === 'button'"
                       :id="comp.id"
-                      v-bind="comp.props"
+                      :content="comp.props.content"
+                      :x="comp.props.x || 0"
+                      :y="comp.props.y || 0"
+                      :width="comp.props.width"
+                      :height="comp.props.height"
+                      :backgroundColor="comp.props.backgroundColor"
+                      :color="comp.props.color"
+                      :fontSize="comp.props.fontSize"
+                      :fontWeight="comp.props.fontWeight"
+                      :fontFamily="comp.props.fontFamily"
+                      :borderRadius="comp.props.borderRadius"
+                      :borderWidth="comp.props.borderWidth"
+                      :borderStyle="comp.props.borderStyle"
+                      :borderColor="comp.props.borderColor"
+                      :shadowX="comp.props.shadowX"
+                      :shadowY="comp.props.shadowY"
+                      :shadowBlur="comp.props.shadowBlur"
+                      :shadowSpread="comp.props.shadowSpread"
+                      :shadowColor="comp.props.shadowColor"
                       :scale="scale"
                       :selected="props.selectedId === comp.id"
                       @select="handleSelect(comp.id)"
@@ -152,6 +188,10 @@ function log(...args: any[]) {
   if (DEBUG) console.log('[Board]', ...args);
 }
 
+// 画布尺寸常量
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
+
 // 缩放相关
 const scale = ref(1);
 const minScale = 0.1;
@@ -175,7 +215,7 @@ const panState = reactive({
   spaceKeyPressed: false
 });
 
-// 画布偏移
+// 画布偏移（画布左上角相对于wrapper的位置）
 const panOffset = ref({ x: 0, y: 0 });
 
 // 处理空格键
@@ -320,8 +360,10 @@ const canvasStyle = computed(() => ({
   position: 'absolute' as const,
   left: `${panOffset.value.x}px`,
   top: `${panOffset.value.y}px`,
-  width: '100%',
-  height: '100%'
+  width: `${CANVAS_WIDTH}px`,
+  height: `${CANVAS_HEIGHT}px`,
+  background: 'white',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
 }));
 
 const contentStyle = computed(() => ({
@@ -378,13 +420,17 @@ function handleDragOver(e: DragEvent) {
 
 // 从屏幕坐标转换为画布坐标
 function screenToCanvas(screenX: number, screenY: number): { x: number, y: number } {
-  const rect = canvasRef.value?.getBoundingClientRect();
-  if (!rect) return { x: 0, y: 0 };
+  const wrapperRect = wrapperRef.value?.getBoundingClientRect();
+  if (!wrapperRect) return { x: 0, y: 0 };
 
-  // 考虑缩放和平移的影响
+  // 计算相对于wrapper的坐标
+  const wrapperX = screenX - wrapperRect.left;
+  const wrapperY = screenY - wrapperRect.top;
+  
+  // 转换为画布坐标（考虑缩放和平移）
   return {
-    x: (screenX - rect.left - panOffset.value.x) / scale.value,
-    y: (screenY - rect.top - panOffset.value.y) / scale.value
+    x: (wrapperX - panOffset.value.x) / scale.value,
+    y: (wrapperY - panOffset.value.y) / scale.value
   };
 }
 
@@ -393,18 +439,13 @@ function handleDrop(e: DragEvent) {
   const componentType = e.dataTransfer?.getData('componentType') as CompType;
   if (!componentType) return;
 
-  // 获取相对于画布的放置位置
-  const rect = canvasRef.value?.getBoundingClientRect();
-  if (!rect) return;
-
-  // 计算放置位置（考虑缩放和平移）
-  const dropX = (e.clientX - rect.left - panOffset.value.x) / scale.value;
-  const dropY = (e.clientY - rect.top - panOffset.value.y) / scale.value;
+  // 使用统一的坐标转换函数
+  const canvasPos = screenToCanvas(e.clientX, e.clientY);
 
   // 创建新组件
   const newComp = createComp(componentType, `新建${componentType}`);
-  newComp.props.x = dropX;
-  newComp.props.y = dropY;
+  newComp.props.x = canvasPos.x;
+  newComp.props.y = canvasPos.y;
 
   // 记录添加操作
   history.addAction({
@@ -419,10 +460,58 @@ function handleDrop(e: DragEvent) {
   emit('add', newComp);
 }
 
+// 初始化画布居中
+function initializeCanvas() {
+  if (!wrapperRef.value) return;
+  
+  const rect = wrapperRef.value.getBoundingClientRect();
+  
+  // 计算适合视口的缩放比例，留出边距
+  const padding = 80; // 边距
+  const availableWidth = rect.width - padding * 2;
+  const availableHeight = rect.height - padding * 2;
+  
+  const scaleX = availableWidth / CANVAS_WIDTH;
+  const scaleY = availableHeight / CANVAS_HEIGHT;
+  const fitScale = Math.min(scaleX, scaleY, 1); // 最大不超过100%
+  
+  // 设置缩放
+  scale.value = fitScale;
+  
+  // 计算缩放后的画布尺寸
+  const scaledWidth = CANVAS_WIDTH * fitScale;
+  const scaledHeight = CANVAS_HEIGHT * fitScale;
+  
+  // 计算居中位置（画布左上角的位置）
+  const centerX = (rect.width - scaledWidth) / 2;
+  const centerY = (rect.height - scaledHeight) / 2;
+  
+  // 调试信息
+  if (DEBUG) {
+    console.log('[Board] Canvas initialization:', {
+      wrapperSize: { width: rect.width, height: rect.height },
+      canvasSize: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      scaledSize: { width: scaledWidth, height: scaledHeight },
+      scale: fitScale,
+      centerPosition: { x: centerX, y: centerY }
+    });
+  }
+  
+  panOffset.value = {
+    x: centerX,
+    y: centerY
+  };
+}
+
 // 生命周期钩子
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', handleKeyUp);
+  
+  // 等待DOM渲染完成后初始化画布位置
+  setTimeout(() => {
+    initializeCanvas();
+  }, 0);
 });
 
 onUnmounted(() => {
@@ -709,10 +798,9 @@ async function handleFileSelect(event: Event) {
 }
 
 .canvas {
-  position: absolute;
-  inset: 0;
-  background: white;
   transform-origin: 0 0;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .canvas-content {
