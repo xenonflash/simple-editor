@@ -4,50 +4,33 @@
     <div class="page-tabs">
       <div class="tabs-container" ref="tabsContainer">
         <div 
-          v-for="(page, index) in pages" 
+          v-for="page in pages" 
           :key="page.id"
           class="page-tab"
-          :class="{ 
-            active: page.id === currentPageId,
-            'is-divider': page.isDivider,
-            'dragging': dragState.isDragging && dragState.dragIndex === index
-          }"
-          :draggable="!page.isDivider"
-          @click="!page.isDivider && switchPage(page.id)"
-          @contextmenu.prevent="!page.isDivider && showContextMenu($event, page)"
-          @dragstart="handleDragStart($event, index)"
-          @dragover.prevent="handleDragOver($event, index)"
-          @drop="handleDrop($event, index)"
-          @dragend="handleDragEnd"
+          :class="{ active: page.id === currentPageId }"
+          @click="switchPage(page.id)"
+          @contextmenu.prevent="showContextMenu($event, page)"
         >
-          <span v-if="page.isDivider" class="divider-line">{{ page.name }}</span>
-          <template v-else>
-            <span class="tab-name">{{ page.name }}</span>
-            <div class="tab-indicators">
-              <span v-if="page.components.length > 0" class="component-count" :title="`${page.components.length} 个组件`">
-                {{ page.components.length }}
-              </span>
-              <span v-if="hasUnsavedChanges(page)" class="unsaved-indicator" title="有未保存的更改">●</span>
-            </div>
-            <button 
-              v-if="pages.filter(p => !p.isDivider).length > 1"
-              class="tab-close"
-              @click.stop="deletePage(page.id)"
-              title="删除页面"
-            >
-              ×
-            </button>
-          </template>
+          <span class="tab-name">{{ page.name }}</span>
+          <div class="tab-indicators">
+            <span v-if="page.components.length > 0" class="component-count" :title="`${page.components.length} 个组件`">
+              {{ page.components.length }}
+            </span>
+            <span v-if="hasUnsavedChanges(page)" class="unsaved-indicator" title="有未保存的更改">●</span>
+          </div>
+          <button 
+            v-if="pages.length > 1"
+            class="tab-close"
+            @click.stop="deletePage(page.id)"
+            title="删除页面"
+          >
+            ×
+          </button>
         </div>
         
         <!-- 添加页面按钮 -->
         <button class="add-page-btn" @click="addNewPage" title="添加页面 (Ctrl+T)">
           <span class="icon">+</span>
-        </button>
-        
-        <!-- 添加分隔符按钮 -->
-        <button class="add-divider-btn" @click="addDivider" title="添加分隔符">
-          <span class="icon">|</span>
         </button>
       </div>
       
@@ -202,20 +185,9 @@ const contextMenu = ref({
 // 重命名状态
 const renaming = ref({
   show: false,
-  pageId: '',
-  name: ''
+  name: '',
+  pageId: ''
 });
-const renameInput = ref<HTMLInputElement | null>(null);
-
-// 拖拽状态
-const dragState = ref({
-  isDragging: false,
-  dragIndex: -1,
-  dropIndex: -1
-});
-
-// 引用
-const tabsContainer = ref<HTMLElement | null>(null);
 
 // 监听当前页面变化，更新编辑状态
 watch(currentPage, (newPage) => {
@@ -226,55 +198,46 @@ watch(currentPage, (newPage) => {
 }, { immediate: true });
 
 // 页面操作方法
-function addNewPage() {
-  const pageCount = pages.value.length;
-  const newPage = pageStore.addPage(`页面 ${pageCount + 1}`, '');
-  pageStore.switchPage(newPage.id);
-}
-
 function switchPage(pageId: string) {
   pageStore.switchPage(pageId);
 }
 
+function addNewPage() {
+  const newPage = pageStore.addPage();
+  pageStore.switchPage(newPage.id);
+}
+
 function deletePage(pageId: string) {
   if (pages.value.length <= 1) return;
-  
-  if (confirm('确定要删除这个页面吗？删除后无法恢复。')) {
-    pageStore.deletePage(pageId);
-  }
-}
-
-function updatePageName() {
-  if (currentPage.value && editingPageName.value.trim()) {
-    pageStore.updatePage(currentPage.value.id, { name: editingPageName.value.trim() });
-  }
-}
-
-function updatePageDescription() {
-  if (currentPage.value) {
-    pageStore.updatePage(currentPage.value.id, { description: editingPageDescription.value });
-  }
-}
-
-function duplicateCurrentPage() {
-  if (currentPage.value) {
-    const newPage = pageStore.duplicatePage(currentPage.value.id);
-    if (newPage) {
-      pageStore.switchPage(newPage.id);
-    }
-  }
+  pageStore.deletePage(pageId);
 }
 
 function deleteCurrentPage() {
-  if (currentPage.value && pages.value.length > 1) {
-    if (confirm('确定要删除当前页面吗？删除后无法恢复。')) {
-      pageStore.deletePage(currentPage.value.id);
-      showPageSettings.value = false;
-    }
+  if (!currentPage.value || pages.value.length <= 1) return;
+  pageStore.deletePage(currentPage.value.id);
+  showPageSettings.value = false;
+}
+
+function duplicateCurrentPage() {
+  if (!currentPage.value) return;
+  const newPage = pageStore.duplicatePage(currentPage.value.id);
+  if (newPage) {
+    pageStore.switchPage(newPage.id);
   }
 }
 
-// 右键菜单方法
+// 页面设置更新
+function updatePageName() {
+  if (!currentPage.value) return;
+  pageStore.updatePage(currentPage.value.id, { name: editingPageName.value });
+}
+
+function updatePageDescription() {
+  if (!currentPage.value) return;
+  pageStore.updatePage(currentPage.value.id, { description: editingPageDescription.value });
+}
+
+// 右键菜单
 function showContextMenu(event: MouseEvent, page: Page) {
   contextMenu.value = {
     show: true,
@@ -282,9 +245,6 @@ function showContextMenu(event: MouseEvent, page: Page) {
     y: event.clientY,
     page
   };
-  
-  // 点击其他地方隐藏菜单
-  document.addEventListener('click', hideContextMenu, { once: true });
 }
 
 function hideContextMenu() {
@@ -292,90 +252,55 @@ function hideContextMenu() {
 }
 
 function renamePageInMenu() {
-  if (contextMenu.value.page) {
-    renaming.value = {
-      show: true,
-      pageId: contextMenu.value.page.id,
-      name: contextMenu.value.page.name
-    };
-    
-    nextTick(() => {
-      renameInput.value?.focus();
-      renameInput.value?.select();
-    });
-  }
+  if (!contextMenu.value.page) return;
+  
+  renaming.value = {
+    show: true,
+    name: contextMenu.value.page.name,
+    pageId: contextMenu.value.page.id
+  };
+  
   hideContextMenu();
+  
+  nextTick(() => {
+    const input = document.querySelector('.rename-dialog input') as HTMLInputElement;
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  });
 }
 
 function duplicatePageInMenu() {
-  if (contextMenu.value.page) {
-    const newPage = pageStore.duplicatePage(contextMenu.value.page.id);
-    if (newPage) {
-      pageStore.switchPage(newPage.id);
-    }
+  if (!contextMenu.value.page) return;
+  
+  const newPage = pageStore.duplicatePage(contextMenu.value.page.id);
+  if (newPage) {
+    pageStore.switchPage(newPage.id);
   }
+  
   hideContextMenu();
 }
 
 function deletePageInMenu() {
-  if (contextMenu.value.page && pages.value.length > 1) {
-    if (confirm('确定要删除这个页面吗？删除后无法恢复。')) {
-      pageStore.deletePage(contextMenu.value.page.id);
-    }
-  }
+  if (!contextMenu.value.page || pages.value.length <= 1) return;
+  
+  pageStore.deletePage(contextMenu.value.page.id);
   hideContextMenu();
 }
 
-// 重命名方法
+// 重命名操作
 function confirmRename() {
-  if (renaming.value.name.trim()) {
-    pageStore.updatePage(renaming.value.pageId, { name: renaming.value.name.trim() });
-  }
+  if (!renaming.value.name.trim()) return;
+  
+  pageStore.updatePage(renaming.value.pageId, { name: renaming.value.name.trim() });
   cancelRename();
 }
 
 function cancelRename() {
   renaming.value.show = false;
-}
-
-// 拖拽方法
-function handleDragStart(event: DragEvent, index: number) {
-  dragState.value.isDragging = true;
-  dragState.value.dragIndex = index;
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', index.toString());
-  }
-}
-
-function handleDragOver(event: DragEvent, index: number) {
-  event.preventDefault();
-  dragState.value.dropIndex = index;
-}
-
-function handleDrop(event: DragEvent, dropIndex: number) {
-  event.preventDefault();
-  const dragIndex = dragState.value.dragIndex;
-  
-  if (dragIndex !== -1 && dragIndex !== dropIndex) {
-    pageStore.reorderPages(dragIndex, dropIndex);
-  }
-  
-  handleDragEnd();
-}
-
-function handleDragEnd() {
-  dragState.value.isDragging = false;
-  dragState.value.dragIndex = -1;
-  dragState.value.dropIndex = -1;
-}
-
-// 添加分隔符
-function addDivider() {
-  const dividerName = prompt('请输入分隔符名称:', '---');
-  if (dividerName !== null) {
-    pageStore.addDivider(dividerName.trim() || '---');
-  }
+  renaming.value.name = '';
+  renaming.value.pageId = '';
 }
 
 // 检查是否有未保存的更改
@@ -468,6 +393,27 @@ document.addEventListener('click', (e) => {
   text-overflow: ellipsis;
 }
 
+.tab-indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.component-count {
+  background: #1890ff;
+  color: white;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.unsaved-indicator {
+  color: #ff4d4f;
+  font-size: 12px;
+}
+
 .tab-close {
   width: 16px;
   height: 16px;
@@ -548,9 +494,9 @@ document.addEventListener('click', (e) => {
   right: 12px;
   width: 300px;
   background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
 }
 
@@ -565,7 +511,7 @@ document.addEventListener('click', (e) => {
 .settings-header h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: #333;
 }
 
@@ -595,47 +541,58 @@ document.addEventListener('click', (e) => {
   margin-bottom: 16px;
 }
 
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
 .form-group label {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: #333;
+  color: #666;
 }
 
-.form-input,
-.form-textarea {
+.form-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e0e0e0;
+  padding: 6px 8px;
+  border: 1px solid #d9d9d9;
   border-radius: 4px;
   font-size: 13px;
-  font-family: inherit;
-  outline: none;
   transition: border-color 0.2s ease;
-  box-sizing: border-box;
 }
 
-.form-input:focus,
-.form-textarea:focus {
+.form-input:focus {
+  outline: none;
   border-color: #1890ff;
 }
 
 .form-textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
   resize: vertical;
   min-height: 60px;
+  transition: border-color 0.2s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #1890ff;
 }
 
 .page-info {
   background: #f9f9f9;
+  padding: 8px;
   border-radius: 4px;
-  padding: 12px;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   font-size: 12px;
 }
 
@@ -655,21 +612,36 @@ document.addEventListener('click', (e) => {
 .form-actions {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
 }
 
 .btn {
   padding: 6px 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #d9d9d9;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: white;
 }
 
-.btn:hover:not(:disabled) {
-  border-color: #d0d0d0;
+.btn-secondary {
+  background: white;
+  color: #666;
+}
+
+.btn-secondary:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.btn-danger {
+  background: #ff4d4f;
+  color: white;
+  border-color: #ff4d4f;
+}
+
+.btn-danger:hover {
+  background: #ff7875;
+  border-color: #ff7875;
 }
 
 .btn:disabled {
@@ -677,44 +649,15 @@ document.addEventListener('click', (e) => {
   cursor: not-allowed;
 }
 
-.btn-primary {
-  background: #1890ff;
-  border-color: #1890ff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #40a9ff;
-  border-color: #40a9ff;
-}
-
-.btn-secondary {
-  background: #f5f5f5;
-  border-color: #d0d0d0;
-  color: #333;
-}
-
-.btn-danger {
-  background: #ff4d4f;
-  border-color: #ff4d4f;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #ff7875;
-  border-color: #ff7875;
-}
-
 /* 右键菜单 */
 .context-menu {
   position: fixed;
   background: white;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #e5e5e5;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 2000;
   min-width: 120px;
-  overflow: hidden;
 }
 
 .menu-item {
@@ -723,12 +666,11 @@ document.addEventListener('click', (e) => {
   gap: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  color: #333;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
-.menu-item:hover:not(.disabled) {
+.menu-item:hover {
   background: #f5f5f5;
 }
 
@@ -741,10 +683,6 @@ document.addEventListener('click', (e) => {
   cursor: not-allowed;
 }
 
-.menu-item .icon {
-  font-size: 14px;
-}
-
 .menu-divider {
   height: 1px;
   background: #f0f0f0;
@@ -754,7 +692,10 @@ document.addEventListener('click', (e) => {
 /* 重命名对话框 */
 .rename-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -764,14 +705,14 @@ document.addEventListener('click', (e) => {
 
 .rename-dialog {
   background: white;
-  border-radius: 8px;
   padding: 20px;
-  width: 300px;
+  border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  min-width: 300px;
 }
 
 .rename-dialog h4 {
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   font-size: 16px;
   color: #333;
 }
@@ -779,7 +720,18 @@ document.addEventListener('click', (e) => {
 .dialog-actions {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
   justify-content: flex-end;
-  margin-top: 16px;
+}
+
+.btn-primary {
+  background: #1890ff;
+  color: white;
+  border-color: #1890ff;
+}
+
+.btn-primary:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
 }
 </style>
