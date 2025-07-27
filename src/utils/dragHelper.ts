@@ -11,7 +11,7 @@ interface DragState {
 }
 
 interface DragOptions {
-  scale?: number;
+  scale?: Ref<number> | number;
   onDragStart?: () => void;
   onDragEnd?: () => void;
   onUpdate?: (updates: Partial<CompProps>) => void;
@@ -45,7 +45,7 @@ export function useDraggable(options: DragOptions = {}) {
   function handleMouseMove(e: MouseEvent) {
     if (!dragState.value.isDragging) return;
 
-    const scale = options.scale || 1;
+    const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1;
     const deltaX = (e.clientX - dragState.value.startX) / scale;
     const deltaY = (e.clientY - dragState.value.startY) / scale;
 
@@ -86,7 +86,7 @@ interface ResizeState {
 }
 
 interface ResizeOptions {
-  scale?: number;
+  scale?: Ref<number> | number;
   minWidth?: number;
   minHeight?: number;
   onResizeStart?: () => void;
@@ -130,7 +130,7 @@ export function useResizable(options: ResizeOptions = {}) {
   function handleResize(e: MouseEvent) {
     if (!resizeState.value.isResizing) return;
 
-    const scale = options.scale || 1;
+    const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1;
     const deltaX = (e.clientX - resizeState.value.startX) / scale;
     const deltaY = (e.clientY - resizeState.value.startY) / scale;
     const minWidth = options.minWidth || 50;
@@ -183,4 +183,4 @@ export function useResizable(options: ResizeOptions = {}) {
     handleResize,
     endResize
   };
-} 
+}

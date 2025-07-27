@@ -64,7 +64,7 @@ const buttonStyle = computed(() => ({
 
 // 使用拖拽工具函数
 const { handleMouseDown: startDrag } = useDraggable({
-  scale: props.scale,
+  scale: computed(() => props.scale || 1),
   onDragStart: () => emit('select', props.id),
   onUpdate: (updates) => emit('update', updates)
 });

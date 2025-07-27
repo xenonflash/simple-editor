@@ -114,14 +114,14 @@ const containerStyle = computed(() => {
 
 // 使用拖拽工具函数
 const { handleMouseDown: startDrag } = useDraggable({
-  scale: props.scale,
+  scale: computed(() => props.scale || 1),
   onDragStart: () => emit('select'),
   onUpdate: (updates) => emit('update', updates)
 });
 
 // 使用调整大小工具函数
 const { startResize } = useResizable({
-  scale: props.scale,
+  scale: computed(() => props.scale || 1),
   minWidth: 50,
   minHeight: 50,
   onResizeStart: () => emit('select'),

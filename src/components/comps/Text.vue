@@ -189,30 +189,23 @@ function handleMouseMove(e: MouseEvent) {
   const deltaX = e.clientX - startX.value;
   const deltaY = e.clientY - startY.value;
 
+  // 考虑缩放因子的影响
+  const scale = props.scale || 1;
+  const scaledDeltaX = deltaX / scale;
+  const scaledDeltaY = deltaY / scale;
+
   // 基于上一次的位置计算新位置
-  currentX.value = lastX.value + deltaX;
-  currentY.value = lastY.value + deltaY;
+  currentX.value = lastX.value + scaledDeltaX;
+  currentY.value = lastY.value + scaledDeltaY;
 }
 
 function handleMouseUp() {
   if (isDragging.value) {
-    // 记录位置变更
-    const endState = {
-      x: props.x,
-      y: props.y,
-      content: props.content
-    };
-    
-    if (endState.x !== startState.x || endState.y !== startState.y) {
-      history.addAction({
-        type: ActionType.UPDATE,
-        componentId: props.id,
-        data: {
-          before: { props: startState },
-          after: { props: endState }
-        }
-      });
-    }
+    // 发送更新事件，让父组件处理位置更新
+    emit('update', {
+      x: currentX.value,
+      y: currentY.value
+    });
   }
   
   isDragging.value = false;
