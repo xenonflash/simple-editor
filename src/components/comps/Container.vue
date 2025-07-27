@@ -39,6 +39,10 @@ const props = defineProps<{
   shadowInset?: boolean;
   backgroundColor?: string;
   backgroundImage?: string;
+  gradientType?: string;
+  gradientColor1?: string;
+  gradientColor2?: string;
+  gradientDirection?: string;
   paddingTop?: number;
   paddingRight?: number;
   paddingBottom?: number;
@@ -89,12 +93,21 @@ const containerStyle = computed(() => {
     style.boxShadow = `${inset}${x}px ${y}px ${blur}px ${spread}px ${props.shadowColor}`;
   }
 
-  // 背景色
-  if (props.backgroundColor) {
+  // 背景处理
+  if (props.gradientType && props.gradientType !== 'none' && props.gradientColor1 && props.gradientColor2) {
+    // 渐变背景
+    if (props.gradientType === 'linear') {
+      const direction = props.gradientDirection || '135deg';
+      style.background = `linear-gradient(${direction}, ${props.gradientColor1}, ${props.gradientColor2})`;
+    } else if (props.gradientType === 'radial') {
+      style.background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
+    }
+  } else if (props.backgroundColor) {
+    // 纯色背景
     style.backgroundColor = props.backgroundColor;
   }
 
-  // 背景图片
+  // 背景图片（优先级最高）
   if (props.backgroundImage) {
     style.backgroundImage = `url(${props.backgroundImage})`;
     style.backgroundSize = 'cover';

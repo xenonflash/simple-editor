@@ -61,6 +61,10 @@ export interface CompProps {
   color?: string;
   backgroundColor?: string;
   backgroundImage?: string;
+  gradientType?: string;
+  gradientColor1?: string;
+  gradientColor2?: string;
+  gradientDirection?: string;
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
