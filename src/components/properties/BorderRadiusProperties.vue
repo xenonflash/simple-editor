@@ -243,8 +243,8 @@ function toggleLink() {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   padding: 4px;
 }
 
