@@ -2,29 +2,52 @@
   <div class="page-manager">
     <!-- 页面标签栏 -->
     <div class="page-tabs">
-      <div class="tabs-container">
+      <div class="tabs-container" ref="tabsContainer">
         <div 
-          v-for="page in pages" 
+          v-for="(page, index) in pages" 
           :key="page.id"
           class="page-tab"
-          :class="{ active: page.id === currentPageId }"
-          @click="switchPage(page.id)"
-          @contextmenu.prevent="showContextMenu($event, page)"
+          :class="{ 
+            active: page.id === currentPageId,
+            'is-divider': page.isDivider,
+            'dragging': dragState.isDragging && dragState.dragIndex === index
+          }"
+          :draggable="!page.isDivider"
+          @click="!page.isDivider && switchPage(page.id)"
+          @contextmenu.prevent="!page.isDivider && showContextMenu($event, page)"
+          @dragstart="handleDragStart($event, index)"
+          @dragover.prevent="handleDragOver($event, index)"
+          @drop="handleDrop($event, index)"
+          @dragend="handleDragEnd"
         >
-          <span class="tab-name">{{ page.name }}</span>
-          <button 
-            v-if="pages.length > 1"
-            class="tab-close"
-            @click.stop="deletePage(page.id)"
-            title="删除页面"
-          >
-            ×
-          </button>
+          <span v-if="page.isDivider" class="divider-line">{{ page.name }}</span>
+          <template v-else>
+            <span class="tab-name">{{ page.name }}</span>
+            <div class="tab-indicators">
+              <span v-if="page.components.length > 0" class="component-count" :title="`${page.components.length} 个组件`">
+                {{ page.components.length }}
+              </span>
+              <span v-if="hasUnsavedChanges(page)" class="unsaved-indicator" title="有未保存的更改">●</span>
+            </div>
+            <button 
+              v-if="pages.filter(p => !p.isDivider).length > 1"
+              class="tab-close"
+              @click.stop="deletePage(page.id)"
+              title="删除页面"
+            >
+              ×
+            </button>
+          </template>
         </div>
         
         <!-- 添加页面按钮 -->
-        <button class="add-page-btn" @click="addNewPage" title="添加页面">
+        <button class="add-page-btn" @click="addNewPage" title="添加页面 (Ctrl+T)">
           <span class="icon">+</span>
+        </button>
+        
+        <!-- 添加分隔符按钮 -->
+        <button class="add-divider-btn" @click="addDivider" title="添加分隔符">
+          <span class="icon">|</span>
         </button>
       </div>
       
@@ -184,6 +207,16 @@ const renaming = ref({
 });
 const renameInput = ref<HTMLInputElement | null>(null);
 
+// 拖拽状态
+const dragState = ref({
+  isDragging: false,
+  dragIndex: -1,
+  dropIndex: -1
+});
+
+// 引用
+const tabsContainer = ref<HTMLElement | null>(null);
+
 // 监听当前页面变化，更新编辑状态
 watch(currentPage, (newPage) => {
   if (newPage) {
@@ -303,6 +336,53 @@ function confirmRename() {
 
 function cancelRename() {
   renaming.value.show = false;
+}
+
+// 拖拽方法
+function handleDragStart(event: DragEvent, index: number) {
+  dragState.value.isDragging = true;
+  dragState.value.dragIndex = index;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', index.toString());
+  }
+}
+
+function handleDragOver(event: DragEvent, index: number) {
+  event.preventDefault();
+  dragState.value.dropIndex = index;
+}
+
+function handleDrop(event: DragEvent, dropIndex: number) {
+  event.preventDefault();
+  const dragIndex = dragState.value.dragIndex;
+  
+  if (dragIndex !== -1 && dragIndex !== dropIndex) {
+    pageStore.reorderPages(dragIndex, dropIndex);
+  }
+  
+  handleDragEnd();
+}
+
+function handleDragEnd() {
+  dragState.value.isDragging = false;
+  dragState.value.dragIndex = -1;
+  dragState.value.dropIndex = -1;
+}
+
+// 添加分隔符
+function addDivider() {
+  const dividerName = prompt('请输入分隔符名称:', '---');
+  if (dividerName !== null) {
+    pageStore.addDivider(dividerName.trim() || '---');
+  }
+}
+
+// 检查是否有未保存的更改
+function hasUnsavedChanges(page: Page): boolean {
+  // 这里可以根据实际需求实现未保存更改的检测逻辑
+  // 目前返回false，后续可以扩展
+  return false;
 }
 
 // 工具方法

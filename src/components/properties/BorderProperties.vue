@@ -222,14 +222,14 @@ function updateValue(key: string, event: Event) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   cursor: pointer;
   padding: 3px;
   border: 1px solid #e5e5e5;
   border-radius: 4px;
   background: white;
   transition: all 0.2s;
-  min-width: 20px;
+  min-width: 30px;
 }
 
 .style-option:hover {
