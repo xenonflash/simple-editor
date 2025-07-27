@@ -96,14 +96,14 @@
                       :id="comp.id"
                       v-bind="comp.props"
                       :scale="scale"
-                      :selected="selectedId === comp.id"
+                      :selected="props.selectedId === comp.id"
                       @select="handleSelect(comp.id)"
                       @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 <Button v-else-if="comp.type === 'button'"
                       :id="comp.id"
                       v-bind="comp.props"
                       :scale="scale"
-                      :selected="selectedId === comp.id"
+                      :selected="props.selectedId === comp.id"
                       @select="handleSelect(comp.id)"
                       @update="(updates) => handleUpdatePosition(comp.id, updates)" />
               </template>
@@ -192,7 +192,7 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     e.preventDefault();
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && props.selectedId) {
     deleteSelectedComponent();
     e.preventDefault();
   }
@@ -317,7 +317,7 @@ function endPan() {
 const canvasStyle = computed(() => ({
   transform: `scale3d(${scale.value}, ${scale.value}, 1)`,
   transformOrigin: '0 0',
-  position: 'absolute',
+  position: 'absolute' as const,
   left: `${panOffset.value.x}px`,
   top: `${panOffset.value.y}px`,
   width: '100%',
@@ -436,7 +436,7 @@ const canRedo = computed(() => history.canRedo());
 
 // 删除选中的组件
 function deleteSelectedComponent() {
-  const comp = props.components.find(comp => comp.id === selectedId.value);
+  const comp = props.components.find(comp => comp.id === props.selectedId);
   if (comp) {
     // 记录删除操作
     history.addAction({
@@ -449,7 +449,6 @@ function deleteSelectedComponent() {
     
     // 发出删除事件
     emit('delete', comp.id);
-    selectedId.value = null;
   }
 }
 
@@ -532,15 +531,8 @@ async function handleFileSelect(event: Event) {
     const jsonStr = await readJSONFile(file);
     const components = importFromJSON(jsonStr);
     
-    // 记录导入操作
-    history.addAction({
-      type: ActionType.UPDATE,
-      componentId: 'import',
-      data: {
-        before: { components: props.components },
-        after: { components }
-      }
-    });
+    // 记录导入操作 - 这里不记录历史，因为导入是一个完整的替换操作
+    // 如果需要撤销导入，可以考虑添加专门的导入操作类型
 
     // 更新组件列表
     emit('update', components);

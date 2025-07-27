@@ -1,7 +1,7 @@
 <template>
   <div class="text-comp" 
        :style="style"
-       :class="{ selected }"
+       :class="{ selected: props.selected }"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">
     <div v-if="isEditing" 
@@ -144,19 +144,25 @@ const style = computed(() => {
   const shadowColor = props.shadowColor || '#000000';
   const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
 
-  return {
+  const styleObj: Record<string, string> = {
     transform: `translate(${currentX.value}px, ${currentY.value}px)`,
     color: props.color || '#333',
     fontSize: `${props.fontSize || 14}px`,
-    fontWeight: props.fontWeight || 'normal',
+    fontWeight: String(props.fontWeight || 'normal'),
     fontFamily: props.fontFamily || 'Arial',
     textDecoration: textDeco,
     fontStyle: props.fontStyle || 'normal',
     width: props.width ? `${props.width}px` : 'auto',
     height: props.height ? `${props.height}px` : 'auto',
-    border: borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none',
     boxShadow
   };
+
+  // 只有在未选中状态下才应用props中的边框样式
+  if (!props.selected) {
+    styleObj.border = borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none';
+  }
+
+  return styleObj;
 });
 
 // 拖动处理

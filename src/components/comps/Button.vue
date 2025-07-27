@@ -84,7 +84,6 @@ function handleMouseDown(e: MouseEvent) {
   padding: 4px 15px;
   cursor: move;
   user-select: none;
-  transition: all 0.2s;
 }
 
 .button-comp:hover {
