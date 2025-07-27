@@ -154,12 +154,10 @@ function handleResize(handle: string, e: MouseEvent) {
   justify-content: center;
   user-select: none;
   pointer-events: auto;
-  z-index: 1;
 }
 
 .container.is-selected {
   position: absolute;
-  z-index: 2;
 }
 
 .container.is-selected::after {

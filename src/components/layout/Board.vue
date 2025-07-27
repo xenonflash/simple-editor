@@ -40,6 +40,31 @@
       <div class="divider"></div>
 
       <div class="button-group">
+        <button @click="bringSelectedToFront" 
+                :disabled="!selectedId"
+                data-tooltip="置于顶层">
+          <span class="icon">⬆</span>
+        </button>
+        <button @click="bringSelectedForward" 
+                :disabled="!selectedId"
+                data-tooltip="上移一层">
+          <span class="icon">↑</span>
+        </button>
+        <button @click="sendSelectedBackward" 
+                :disabled="!selectedId"
+                data-tooltip="下移一层">
+          <span class="icon">↓</span>
+        </button>
+        <button @click="sendSelectedToBack" 
+                :disabled="!selectedId"
+                data-tooltip="置于底层">
+          <span class="icon">⬇</span>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="button-group">
         <button @click="handleExport" data-tooltip="导出到JSON">
           <span class="icon">⬇</span>
           <span class="text">导出</span>
@@ -83,65 +108,69 @@
                @mousedown.stop="handleCanvasClick">
             <div class="canvas-content"
                  :style="contentStyle">
-              <template v-for="comp in props.components"
+              <template v-for="(comp, index) in props.components"
                         :key="comp.id">
-                <Container v-if="comp.type === 'container'"
-                          :id="comp.id"
-                          v-bind="comp.props"
-                          :scale="scale"
-                          :selected="props.selectedId === comp.id"
-                          @select="handleSelect(comp.id)"
-                          @update="(updates) => handleUpdatePosition(comp.id, updates)" />
-                <Text v-else-if="comp.type === 'text'"
-                      :id="comp.id"
-                      :content="comp.props.content || ''"
-                      :x="comp.props.x || 0"
-                      :y="comp.props.y || 0"
-                      :width="comp.props.width"
-                      :height="comp.props.height"
-                      :color="comp.props.color"
-                      :fontSize="comp.props.fontSize"
-                      :fontWeight="comp.props.fontWeight"
-                      :fontFamily="comp.props.fontFamily"
-                      :textDecoration="comp.props.textDecoration"
-                      :fontStyle="comp.props.fontStyle"
-                      :borderWidth="comp.props.borderWidth"
-                      :borderStyle="comp.props.borderStyle"
-                      :borderColor="comp.props.borderColor"
-                      :shadowX="comp.props.shadowX"
-                      :shadowY="comp.props.shadowY"
-                      :shadowBlur="comp.props.shadowBlur"
-                      :shadowSpread="comp.props.shadowSpread"
-                      :shadowColor="comp.props.shadowColor"
-                      :scale="scale"
-                      :selected="props.selectedId === comp.id"
-                      @select="handleSelect(comp.id)"
-                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
-                <Button v-else-if="comp.type === 'button'"
-                      :id="comp.id"
-                      :content="comp.props.content"
-                      :x="comp.props.x || 0"
-                      :y="comp.props.y || 0"
-                      :width="comp.props.width"
-                      :height="comp.props.height"
-                      :backgroundColor="comp.props.backgroundColor"
-                      :color="comp.props.color"
-                      :fontSize="comp.props.fontSize"
-                      :fontWeight="comp.props.fontWeight"
-                      :fontFamily="comp.props.fontFamily"
-                      :borderRadius="comp.props.borderRadius"
-                      :borderWidth="comp.props.borderWidth"
-                      :borderStyle="comp.props.borderStyle"
-                      :borderColor="comp.props.borderColor"
-                      :shadowX="comp.props.shadowX"
-                      :shadowY="comp.props.shadowY"
-                      :shadowBlur="comp.props.shadowBlur"
-                      :shadowSpread="comp.props.shadowSpread"
-                      :shadowColor="comp.props.shadowColor"
-                      :scale="scale"
-                      :selected="props.selectedId === comp.id"
-                      @select="handleSelect(comp.id)"
-                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                <div class="component-wrapper"
+                     :style="{ zIndex: comp.props.zIndex || index + 1 }"
+                     @contextmenu.prevent="showContextMenu($event, comp)">
+                  <Container v-if="comp.type === 'container'"
+                            :id="comp.id"
+                            v-bind="comp.props"
+                            :scale="scale"
+                            :selected="props.selectedId === comp.id"
+                            @select="handleSelect(comp.id)"
+                            @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                  <Text v-else-if="comp.type === 'text'"
+                        :id="comp.id"
+                        :content="comp.props.content || ''"
+                        :x="comp.props.x || 0"
+                        :y="comp.props.y || 0"
+                        :width="comp.props.width"
+                        :height="comp.props.height"
+                        :color="comp.props.color"
+                        :fontSize="comp.props.fontSize"
+                        :fontWeight="comp.props.fontWeight"
+                        :fontFamily="comp.props.fontFamily"
+                        :textDecoration="comp.props.textDecoration"
+                        :fontStyle="comp.props.fontStyle"
+                        :borderWidth="comp.props.borderWidth"
+                        :borderStyle="comp.props.borderStyle"
+                        :borderColor="comp.props.borderColor"
+                        :shadowX="comp.props.shadowX"
+                        :shadowY="comp.props.shadowY"
+                        :shadowBlur="comp.props.shadowBlur"
+                        :shadowSpread="comp.props.shadowSpread"
+                        :shadowColor="comp.props.shadowColor"
+                        :scale="scale"
+                        :selected="props.selectedId === comp.id"
+                        @select="handleSelect(comp.id)"
+                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                  <Button v-else-if="comp.type === 'button'"
+                        :id="comp.id"
+                        :content="comp.props.content"
+                        :x="comp.props.x || 0"
+                        :y="comp.props.y || 0"
+                        :width="comp.props.width"
+                        :height="comp.props.height"
+                        :backgroundColor="comp.props.backgroundColor"
+                        :color="comp.props.color"
+                        :fontSize="comp.props.fontSize"
+                        :fontWeight="comp.props.fontWeight"
+                        :fontFamily="comp.props.fontFamily"
+                        :borderRadius="comp.props.borderRadius"
+                        :borderWidth="comp.props.borderWidth"
+                        :borderStyle="comp.props.borderStyle"
+                        :borderColor="comp.props.borderColor"
+                        :shadowX="comp.props.shadowX"
+                        :shadowY="comp.props.shadowY"
+                        :shadowBlur="comp.props.shadowBlur"
+                        :shadowSpread="comp.props.shadowSpread"
+                        :shadowColor="comp.props.shadowColor"
+                        :scale="scale"
+                        :selected="props.selectedId === comp.id"
+                        @select="handleSelect(comp.id)"
+                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                </div>
               </template>
               <div class="placeholder" v-if="props.components.length === 0">
                 拖拽组件到此处开始设计
@@ -149,6 +178,41 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- 右键菜单 -->
+    <div 
+      v-if="contextMenu.show"
+      class="context-menu"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <div class="menu-item" @click="duplicateComponent">
+        <span class="icon">📋</span>
+        <span class="text">复制</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" @click="bringToFront">
+        <span class="icon">⬆</span>
+        <span class="text">置于顶层</span>
+      </div>
+      <div class="menu-item" @click="bringForward">
+        <span class="icon">↑</span>
+        <span class="text">上移一层</span>
+      </div>
+      <div class="menu-item" @click="sendBackward">
+        <span class="icon">↓</span>
+        <span class="text">下移一层</span>
+      </div>
+      <div class="menu-item" @click="sendToBack">
+        <span class="icon">⬇</span>
+        <span class="text">置于底层</span>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-item danger" @click="deleteComponentFromMenu">
+        <span class="icon">🗑</span>
+        <span class="text">删除</span>
       </div>
     </div>
   </div>
@@ -217,6 +281,14 @@ const panState = reactive({
 
 // 画布偏移（画布左上角相对于wrapper的位置）
 const panOffset = ref({ x: 0, y: 0 });
+
+// 右键菜单状态
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  component: null as Comp | null
+});
 
 // 处理空格键
 function handleKeyDown(e: KeyboardEvent) {
@@ -418,6 +490,13 @@ function handleDragOver(e: DragEvent) {
   }
 }
 
+// 获取下一个可用的zIndex
+function getNextZIndex(): number {
+  if (props.components.length === 0) return 1;
+  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 1));
+  return maxZIndex + 1;
+}
+
 // 从屏幕坐标转换为画布坐标
 function screenToCanvas(screenX: number, screenY: number): { x: number, y: number } {
   const wrapperRect = wrapperRef.value?.getBoundingClientRect();
@@ -446,6 +525,7 @@ function handleDrop(e: DragEvent) {
   const newComp = createComp(componentType, `新建${componentType}`);
   newComp.props.x = canvasPos.x;
   newComp.props.y = canvasPos.y;
+  newComp.props.zIndex = getNextZIndex(); // 确保新组件有正确的zIndex
 
   // 记录添加操作
   history.addAction({
@@ -632,6 +712,352 @@ async function handleFileSelect(event: Event) {
     console.error('导入失败:', error);
     // 这里可以添加错误提示UI
   }
+}
+
+// 右键菜单方法
+function showContextMenu(event: MouseEvent, component: Comp) {
+  event.preventDefault();
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    component
+  };
+  
+  // 选中组件
+  emit('select', component.id);
+  
+  // 点击其他地方隐藏菜单
+  document.addEventListener('click', hideContextMenu, { once: true });
+}
+
+function hideContextMenu() {
+  contextMenu.value.show = false;
+}
+
+// 复制组件
+function duplicateComponent() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  const newComp = createComp(comp.type, `${comp.name} 副本`);
+  
+  // 复制属性并偏移位置
+  newComp.props = {
+    ...comp.props,
+    x: (comp.props.x || 0) + 20,
+    y: (comp.props.y || 0) + 20
+  };
+  
+  // 记录添加操作
+  history.addAction({
+    type: ActionType.ADD,
+    componentId: newComp.id,
+    data: { after: newComp }
+  });
+  
+  emit('add', newComp);
+  hideContextMenu();
+}
+
+// 组件层级调整
+function bringToFront() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 0));
+  const newZIndex = maxZIndex + 1;
+  
+  console.log('[Board] bringToFront:', {
+    componentId: comp.id,
+    currentZIndex: comp.props.zIndex || 0,
+    maxZIndex,
+    newZIndex
+  });
+  
+  const updatedComp = {
+    ...comp,
+    props: {
+      ...comp.props,
+      zIndex: newZIndex
+    }
+  };
+  
+  emit('update', updatedComp);
+  hideContextMenu();
+}
+
+function sendToBack() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  const currentZIndex = comp.props.zIndex || 1;
+  
+  // 如果只有一个组件，则不需要操作
+  const otherComponents = props.components.filter(c => c.id !== comp.id);
+  if (otherComponents.length === 0) {
+    console.log('[Board] sendToBack: only one component');
+    hideContextMenu();
+    return;
+  }
+  
+  const minZIndex = Math.min(...otherComponents.map(c => c.props.zIndex || 1));
+  
+  // 如果当前组件已经是最底层，则不需要操作
+  if (currentZIndex <= minZIndex) {
+    console.log('[Board] sendToBack: already at bottom');
+    hideContextMenu();
+    return;
+  }
+  
+  console.log('[Board] sendToBack:', {
+    componentId: comp.id,
+    currentZIndex,
+    minZIndex,
+    action: 'moving to bottom'
+  });
+  
+  // 将目标组件设为zIndex=1，其他所有组件zIndex+1
+  const updatedComp = {
+    ...comp,
+    props: {
+      ...comp.props,
+      zIndex: 1
+    }
+  };
+  
+  // 更新目标组件
+  emit('update', updatedComp);
+  
+  // 将其他所有组件的zIndex增加1
+  otherComponents.forEach(otherComp => {
+    const updatedOtherComp = {
+      ...otherComp,
+      props: {
+        ...otherComp.props,
+        zIndex: (otherComp.props.zIndex || 1) + 1
+      }
+    };
+    emit('update', updatedOtherComp);
+  });
+  
+  hideContextMenu();
+}
+
+function bringForward() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  const currentZIndex = comp.props.zIndex || 1;
+  const higherComponents = props.components.filter(c => (c.props.zIndex || 1) > currentZIndex);
+  
+  if (higherComponents.length > 0) {
+    const nextZIndex = Math.min(...higherComponents.map(c => c.props.zIndex || 1));
+    const newZIndex = nextZIndex + 1;
+    
+    console.log('[Board] bringForward:', {
+      componentId: comp.id,
+      currentZIndex,
+      nextZIndex,
+      newZIndex,
+      higherComponentsCount: higherComponents.length
+    });
+    
+    const updatedComp = {
+      ...comp,
+      props: {
+        ...comp.props,
+        zIndex: newZIndex
+      }
+    };
+    
+    emit('update', updatedComp);
+  } else {
+    console.log('[Board] bringForward: already at top');
+  }
+  
+  hideContextMenu();
+}
+
+function sendBackward() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  const currentZIndex = comp.props.zIndex || 1;
+  const lowerComponents = props.components.filter(c => (c.props.zIndex || 1) < currentZIndex);
+  
+  if (lowerComponents.length > 0) {
+    const nextZIndex = Math.max(...lowerComponents.map(c => c.props.zIndex || 1));
+    const newZIndex = nextZIndex - 1;
+    
+    console.log('[Board] sendBackward:', {
+      componentId: comp.id,
+      currentZIndex,
+      nextZIndex,
+      newZIndex,
+      lowerComponentsCount: lowerComponents.length
+    });
+    
+    const updatedComp = {
+      ...comp,
+      props: {
+        ...comp.props,
+        zIndex: Math.max(1, newZIndex)
+      }
+    };
+    
+    emit('update', updatedComp);
+  } else {
+    console.log('[Board] sendBackward: already at bottom');
+  }
+  
+  hideContextMenu();
+}
+
+// 删除组件（从右键菜单）
+function deleteComponentFromMenu() {
+  if (!contextMenu.value.component) return;
+  
+  const comp = contextMenu.value.component;
+  
+  // 记录删除操作
+  history.addAction({
+    type: ActionType.DELETE,
+    componentId: comp.id,
+    data: { before: comp }
+  });
+  
+  emit('delete', comp.id);
+  hideContextMenu();
+}
+
+// 选中组件的层级调整方法
+function bringSelectedToFront() {
+  if (!props.selectedId) return;
+  const comp = props.components.find(c => c.id === props.selectedId);
+  if (!comp) return;
+  
+  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 1));
+  const newZIndex = maxZIndex + 1;
+  
+  console.log('[Board] bringSelectedToFront:', {
+    componentId: comp.id,
+    currentZIndex: comp.props.zIndex || 1,
+    maxZIndex,
+    newZIndex
+  });
+  
+  const updatedComp = {
+    ...comp,
+    props: {
+      ...comp.props,
+      zIndex: newZIndex
+    }
+  };
+  
+  emit('update', updatedComp);
+}
+
+function bringSelectedForward() {
+  if (!props.selectedId) return;
+  const comp = props.components.find(c => c.id === props.selectedId);
+  if (!comp) return;
+  
+  const currentZIndex = comp.props.zIndex || 1;
+  const higherComponents = props.components.filter(c => (c.props.zIndex || 1) > currentZIndex);
+  
+  if (higherComponents.length > 0) {
+    const nextZIndex = Math.min(...higherComponents.map(c => c.props.zIndex || 1));
+    const newZIndex = nextZIndex + 1;
+    
+    const updatedComp = {
+      ...comp,
+      props: {
+        ...comp.props,
+        zIndex: newZIndex
+      }
+    };
+    
+    emit('update', updatedComp);
+  }
+}
+
+function sendSelectedBackward() {
+  if (!props.selectedId) return;
+  const comp = props.components.find(c => c.id === props.selectedId);
+  if (!comp) return;
+  
+  const currentZIndex = comp.props.zIndex || 1;
+  const lowerComponents = props.components.filter(c => (c.props.zIndex || 1) < currentZIndex);
+  
+  if (lowerComponents.length > 0) {
+    const nextZIndex = Math.max(...lowerComponents.map(c => c.props.zIndex || 1));
+    const newZIndex = nextZIndex - 1;
+    
+    const updatedComp = {
+      ...comp,
+      props: {
+        ...comp.props,
+        zIndex: Math.max(1, newZIndex)
+      }
+    };
+    
+    emit('update', updatedComp);
+  }
+}
+
+function sendSelectedToBack() {
+  if (!props.selectedId) return;
+  const comp = props.components.find(c => c.id === props.selectedId);
+  if (!comp) return;
+  
+  const currentZIndex = comp.props.zIndex || 1;
+  
+  // 如果只有一个组件，则不需要操作
+  const otherComponents = props.components.filter(c => c.id !== comp.id);
+  if (otherComponents.length === 0) {
+    console.log('[Board] sendSelectedToBack: only one component');
+    return;
+  }
+  
+  const minZIndex = Math.min(...otherComponents.map(c => c.props.zIndex || 1));
+  
+  // 如果当前组件已经是最底层，则不需要操作
+  if (currentZIndex <= minZIndex) {
+    console.log('[Board] sendSelectedToBack: already at bottom');
+    return;
+  }
+  
+  console.log('[Board] sendSelectedToBack:', {
+    componentId: comp.id,
+    currentZIndex,
+    minZIndex,
+    action: 'moving to bottom'
+  });
+  
+  // 将目标组件设为zIndex=1，其他所有组件zIndex+1
+  const updatedComp = {
+    ...comp,
+    props: {
+      ...comp.props,
+      zIndex: 1
+    }
+  };
+  
+  // 更新目标组件
+  emit('update', updatedComp);
+  
+  // 将其他所有组件的zIndex增加1
+  otherComponents.forEach(otherComp => {
+    const updatedOtherComp = {
+      ...otherComp,
+      props: {
+        ...otherComp.props,
+        zIndex: (otherComp.props.zIndex || 1) + 1
+      }
+    };
+    emit('update', updatedOtherComp);
+  });
 }
 </script>
 
@@ -831,5 +1257,64 @@ async function handleFileSelect(event: Event) {
   border-right: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
   z-index: 2;
+}
+
+/* 组件包装器 */
+.component-wrapper {
+  position: relative;
+}
+
+/* 右键菜单 */
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  min-width: 140px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.menu-item:hover {
+  background: #f5f5f5;
+}
+
+.menu-item.danger {
+  color: #ff4d4f;
+}
+
+.menu-item.danger:hover {
+  background: #fff1f0;
+}
+
+.menu-item .icon {
+  font-size: 14px;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-item .text {
+  flex: 1;
+}
+
+.menu-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 4px 0;
 }
 </style>

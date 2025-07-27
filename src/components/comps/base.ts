@@ -86,6 +86,7 @@ export interface CompProps {
   marginRight?: number;
   marginBottom?: number;
   marginLeft?: number;
+  zIndex?: number;
 }
 
 // 基础属性接口（不包含id和type）
@@ -102,6 +103,7 @@ interface BaseProps {
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
+  zIndex?: number;
 }
 
 // 组件工厂函数
@@ -118,7 +120,8 @@ export function createComp(type: CompType, name: string): Comp {
     shadowY: 0,
     shadowBlur: 0,
     shadowSpread: 0,
-    shadowColor: '#000000'
+    shadowColor: '#000000',
+    zIndex: 1
   };
 
   switch (type) {
