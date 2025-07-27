@@ -2,9 +2,9 @@
   <div class="topbar">
     <div class="logo">Hello</div>
     <div class="actions">
-      <button class="action-btn">页面</button>
-      <button class="action-btn">流程</button>
-      <button class="action-btn">数据</button>
+      <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
+      <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">流程</router-link>
+      <router-link to="/about" class="action-btn" :class="{ active: $route.path === '/about' }">数据</router-link>
     </div>
   </div>
 </template>
@@ -41,6 +41,9 @@
   font-size: 14px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  text-decoration: none;
+  color: inherit;
+  display: inline-block;
 }
 
 .action-btn:hover {
@@ -49,5 +52,14 @@
 
 .action-btn:active {
   background-color: #e8e8e8;
+}
+
+.action-btn.active {
+  background-color: #1890ff;
+  color: white;
+}
+
+.action-btn.active:hover {
+  background-color: #40a9ff;
 }
 </style>

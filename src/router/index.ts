@@ -10,6 +10,12 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/flow',
+      name: 'flow',
+      // 流程图编辑页面
+      component: () => import('../views/FlowView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting
