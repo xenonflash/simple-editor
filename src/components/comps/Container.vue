@@ -38,6 +38,7 @@ const props = defineProps<{
   shadowColor?: string;
   shadowInset?: boolean;
   backgroundColor?: string;
+  backgroundImage?: string;
   paddingTop?: number;
   paddingRight?: number;
   paddingBottom?: number;
@@ -91,6 +92,14 @@ const containerStyle = computed(() => {
   // 背景色
   if (props.backgroundColor) {
     style.backgroundColor = props.backgroundColor;
+  }
+
+  // 背景图片
+  if (props.backgroundImage) {
+    style.backgroundImage = `url(${props.backgroundImage})`;
+    style.backgroundSize = 'cover';
+    style.backgroundPosition = 'center';
+    style.backgroundRepeat = 'no-repeat';
   }
 
   // 内边距

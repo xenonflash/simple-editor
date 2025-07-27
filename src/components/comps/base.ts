@@ -60,6 +60,7 @@ export interface CompProps {
   content?: string;
   color?: string;
   backgroundColor?: string;
+  backgroundImage?: string;
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
