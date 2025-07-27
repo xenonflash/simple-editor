@@ -5,9 +5,10 @@
       <span>边框</span>
     </div>
     <div class="section-content">
-      <div class="border-controls">
-        <!-- 边框宽度 -->
-        <div class="control-item">
+      <!-- 第一行：宽度和颜色 -->
+      <div class="row-controls">
+        <div class="width-group">
+          <label class="control-label">宽度</label>
           <input type="number" 
                  :value="borderWidth" 
                  @input="updateValue('borderWidth', $event)"
@@ -16,31 +17,39 @@
                  class="width-input"
                  placeholder="0" />
         </div>
-
-        <!-- 边框样式 -->
-        <div class="control-item">
-          <select :value="borderStyle || 'none'"
-                  @change="updateValue('borderStyle', $event)"
-                  class="style-select">
-            <option value="none">无</option>
-            <option value="solid">实线</option>
-            <option value="dashed">虚线</option>
-            <option value="dotted">点线</option>
-            <option value="double">双线</option>
-          </select>
+        <div class="color-group">
+          <label class="control-label">颜色</label>
+          <div class="color-controls">
+            <input type="color" 
+                   :value="borderColor || '#000000'"
+                   @input="updateValue('borderColor', $event)"
+                   class="color-picker" />
+            <input type="text"
+                   :value="borderColor || '#000000'"
+                   @input="updateValue('borderColor', $event)"
+                   placeholder="#000000"
+                   class="color-input" />
+          </div>
         </div>
-
-        <!-- 边框颜色 -->
-        <div class="control-item color-control">
-          <input type="color" 
-                 :value="borderColor || '#000000'"
-                 @input="updateValue('borderColor', $event)"
-                 class="color-picker" />
-          <input type="text"
-                 :value="borderColor || '#000000'"
-                 @input="updateValue('borderColor', $event)"
-                 placeholder="#000000"
-                 class="color-input" />
+      </div>
+      
+      <!-- 第二行：类型选择 -->
+      <div class="row-controls">
+        <div class="style-group">
+          <label class="control-label">类型</label>
+          <div class="style-options">
+            <label class="style-option" v-for="style in borderStyles" :key="style.value">
+              <input type="radio" 
+                     :value="style.value"
+                     :checked="(borderStyle || 'none') === style.value"
+                     @change="updateValue('borderStyle', $event)"
+                     class="style-radio" />
+              <div class="style-preview" :class="style.value">
+                <div class="style-line" :style="getStylePreview(style.value)"></div>
+              </div>
+              <span class="style-name">{{ style.name }}</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -58,10 +67,29 @@ const props = defineProps<{
 
 const emit = defineEmits(['update']);
 
+// 边框样式选项
+const borderStyles = [
+  { value: 'none', name: '无' },
+  { value: 'solid', name: '实线' },
+  { value: 'dashed', name: '虚线' },
+  { value: 'dotted', name: '点线' },
+  { value: 'double', name: '双线' }
+];
+
 // 确保默认值
 const defaultBorderWidth = computed(() => props.borderWidth ?? 0);
 const defaultBorderStyle = computed(() => props.borderStyle ?? 'none');
 const defaultBorderColor = computed(() => props.borderColor ?? '#000000');
+
+// 获取样式预览
+function getStylePreview(styleValue: string) {
+  if (styleValue === 'none') {
+    return { border: 'none' };
+  }
+  return {
+    borderTop: `2px ${styleValue} #666`
+  };
+}
 
 function updateValue(key: string, event: Event) {
   const target = event.target as HTMLInputElement;
@@ -102,82 +130,152 @@ function updateValue(key: string, event: Event) {
 
 .section-content {
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.border-controls {
+/* 行布局 */
+.row-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* 通用标签样式 */
+.control-label {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 4px;
+  display: block;
+  font-weight: 500;
+}
+
+/* 宽度组 */
+.width-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 60px;
+}
+
+.width-input {
+  width: 50px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 3px;
+  font-size: 12px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+/* 颜色组 */
+.color-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.color-controls {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.control-item {
-  display: flex;
-  align-items: center;
-}
-
-.width-input {
-  width: 36px;
-  height: 20px;
-  padding: 0 4px;
-  border: 1px solid #d9d9d9;
-  border-radius: 2px;
-  font-size: 11px;
-  text-align: center;
-  transition: all 0.2s;
-}
-
-.style-select {
-  height: 20px;
-  padding: 0 4px;
-  border: 1px solid #d9d9d9;
-  border-radius: 2px;
-  font-size: 11px;
-  background: white;
-  min-width: 52px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.color-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-
 .color-picker {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 1px;
   border: 1px solid #d9d9d9;
-  border-radius: 2px;
+  border-radius: 3px;
   cursor: pointer;
   background: white;
   transition: all 0.2s;
 }
 
 .color-input {
-  width: 58px;
-  height: 20px;
-  padding: 0 4px;
+  flex: 1;
+  height: 24px;
+  padding: 0 6px;
   border: 1px solid #d9d9d9;
-  border-radius: 2px;
+  border-radius: 3px;
   font-size: 11px;
   font-family: monospace;
   transition: all 0.2s;
+  min-width: 60px;
 }
 
-/* Hover 状态 */
+/* 样式组 */
+.style-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.style-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.style-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 3px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  background: white;
+  transition: all 0.2s;
+  min-width: 20px;
+}
+
+.style-option:hover {
+  border-color: #40a9ff;
+  background: #f8fcff;
+}
+
+.style-option:has(.style-radio:checked) {
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+
+.style-radio {
+  display: none;
+}
+
+.style-preview {
+  width: 24px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  border-radius: 2px;
+}
+
+.style-line {
+  width: 20px;
+  height: 2px;
+}
+
+.style-name {
+  font-size: 10px;
+  color: #666;
+  text-align: center;
+  line-height: 1;
+}
+
+/* Hover 和 Focus 状态 */
 .width-input:hover,
-.style-select:hover,
 .color-picker:hover,
 .color-input:hover {
   border-color: #40a9ff;
 }
 
-/* Focus 状态 */
 .width-input:focus,
-.style-select:focus,
 .color-picker:focus,
 .color-input:focus {
   border-color: #1890ff;
@@ -186,26 +284,32 @@ function updateValue(key: string, event: Event) {
 }
 
 /* 禁用数字输入框的上下箭头 */
-::-webkit-inner-spin-button {
-  display: none;
+.width-input::-webkit-inner-spin-button,
+.width-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-input[type="number"] {
+.width-input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* 自定义 select 箭头 */
-.style-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 4px center;
-  background-size: 12px;
-  padding-right: 20px;
+/* 优化 placeholder 样式 */
+.width-input::placeholder,
+.color-input::placeholder {
+  color: #bfbfbf;
+  font-size: 11px;
 }
 
-/* 优化 placeholder 样式 */
-::placeholder {
-  color: #bfbfbf;
+/* 响应式调整 */
+@media (max-width: 280px) {
+  .row-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .style-options {
+    justify-content: center;
+  }
 }
 </style>

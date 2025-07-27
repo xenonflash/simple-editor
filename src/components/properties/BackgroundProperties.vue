@@ -296,14 +296,14 @@ watch(props, (newProps) => {
 }
 
 .direction-group {
-  display: grid;
+  display: flex;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
 }
 
 .direction-btn {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
