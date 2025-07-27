@@ -88,9 +88,25 @@ export interface CompProps {
   marginLeft?: number;
 }
 
+// 基础属性接口（不包含id和type）
+interface BaseProps {
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  borderWidth?: number;
+  borderStyle?: string;
+  borderColor?: string;
+  shadowX?: number;
+  shadowY?: number;
+  shadowBlur?: number;
+  shadowSpread?: number;
+  shadowColor?: string;
+}
+
 // 组件工厂函数
 export function createComp(type: CompType, name: string): Comp {
-  const baseProps: CompProps = {
+  const baseProps: BaseProps = {
     x: 0,
     y: 0,
     width: 200,

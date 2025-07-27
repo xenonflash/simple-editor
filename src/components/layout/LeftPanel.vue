@@ -4,19 +4,19 @@
     <div class="component-list">
       <div class="component-item"
            draggable="true"
-           @dragstart="handleDragStart('container')">
+           @dragstart="handleDragStart(CompType.CONTAINER)">
         <div class="icon">□</div>
         <div class="name">容器</div>
       </div>
       <div class="component-item"
            draggable="true"
-           @dragstart="handleDragStart('text')">
+           @dragstart="handleDragStart(CompType.TEXT)">
         <div class="icon">T</div>
         <div class="name">文字</div>
       </div>
       <div class="component-item"
            draggable="true"
-           @dragstart="handleDragStart('button')">
+           @dragstart="handleDragStart(CompType.BUTTON)">
         <div class="icon">⬜</div>
         <div class="name">按钮</div>
       </div>

@@ -20,15 +20,25 @@
         <!-- 属性面板 -->
         <div v-show="activeTab === 'properties'">
           <!-- 布局属性 -->
-          <LayoutProperties v-bind="props.component.props"
-                          @update="updateProps" />
+          <LayoutProperties 
+            :x="props.component.props.x || 0"
+            :y="props.component.props.y || 0"
+            :width="props.component.props.width"
+            :height="props.component.props.height"
+            @update="updateProps" />
 
           <SpacingProperties v-bind="props.component.props"
                            @update="updateProps" />
 
-                           <!-- 文字属性 -->
+          <!-- 文字属性 -->
           <TextProperties v-if="props.component.type === 'text' || props.component.type === 'button'"
-                         v-bind="props.component.props"
+                         :content="props.component.props.content || ''"
+                         :color="props.component.props.color"
+                         :fontSize="props.component.props.fontSize"
+                         :fontWeight="props.component.props.fontWeight"
+                         :fontFamily="props.component.props.fontFamily"
+                         :textDecoration="props.component.props.textDecoration"
+                         :fontStyle="props.component.props.fontStyle"
                          @update="updateProps" />
 
           <BorderProperties v-bind="props.component.props"

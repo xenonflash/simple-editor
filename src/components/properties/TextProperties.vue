@@ -66,8 +66,9 @@ function updateValue(key: string, event: Event) {
   emit('update', { [key]: value });
 }
 
-function toggleStyle(key: string, value: string, defaultValue: string) {
-  const newValue = props[key] === value ? defaultValue : value;
+function toggleStyle(key: keyof typeof props, value: string, defaultValue: string) {
+  const currentValue = props[key];
+  const newValue = currentValue === value ? defaultValue : value;
   emit('update', { [key]: newValue });
 }
 
