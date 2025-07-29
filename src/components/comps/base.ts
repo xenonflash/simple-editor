@@ -92,6 +92,9 @@ export interface CompProps {
   marginBottom?: number;
   marginLeft?: number;
   zIndex?: number;
+  // 新增文字组件专用属性
+  widthMode?: 'auto' | 'fixed'; // 宽度模式：自动撑满或固定宽度
+  autoHeight?: boolean; // 是否自动高度
 }
 
 // 基础属性接口（不包含id和type）
@@ -195,7 +198,12 @@ export function createComp(type: CompType, name: string): Comp {
           textDecoration: 'none',
           fontStyle: 'normal',
           width: 100,
-          height: 40
+          height: 40,
+          // 新增文字组件默认属性
+          widthMode: 'auto', // 默认自动宽度
+          autoHeight: true, // 默认自动高度
+          minWidth: 20,
+          maxWidth: 500
         },
         events: {},
         style: {},

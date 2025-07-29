@@ -39,6 +39,10 @@
                          :fontFamily="props.component.props.fontFamily"
                          :textDecoration="props.component.props.textDecoration"
                          :fontStyle="props.component.props.fontStyle"
+                         :width="props.component.props.width"
+                         :height="props.component.props.height"
+                         :widthMode="props.component.props.widthMode"
+                         :autoHeight="props.component.props.autoHeight"
                          @update="updateProps" />
 
           <BorderProperties v-bind="props.component.props"

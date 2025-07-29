@@ -141,6 +141,8 @@
                         :shadowBlur="comp.props.shadowBlur"
                         :shadowSpread="comp.props.shadowSpread"
                         :shadowColor="comp.props.shadowColor"
+                        :widthMode="comp.props.widthMode"
+                        :autoHeight="comp.props.autoHeight"
                         :scale="scale"
                         :selected="props.selectedId === comp.id"
                         @select="handleSelect(comp.id)"
