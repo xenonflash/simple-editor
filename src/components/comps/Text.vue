@@ -1,7 +1,7 @@
 <template>
   <div class="text-comp" 
        :style="style"
-       :class="{ selected: props.selected }"
+       :class="{ selected: isSelected }"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">
     <div v-if="isEditing" 
@@ -13,12 +13,12 @@
                 @keydown.enter.exact.prevent="finishEditing"
                 @keydown.esc="cancelEditing"
                 @keydown.delete.stop
-                @keydown.backspace.stop></textarea>
+                @keydown.backspace.stop"></textarea>
     </div>
     <div v-else class="text-content">{{ props.content }}</div>
     
     <!-- 调整手柄 -->
-    <div v-if="props.selected && !isEditing" class="resize-handles">
+    <div v-if="isSelected && !isEditing" class="resize-handles">
       <!-- 右下角调整手柄 -->
       <div class="resize-handle resize-se" 
            @mousedown.stop="startResize('se', $event)"></div>
@@ -37,6 +37,9 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
 import { history, ActionType } from '../../utils/history';
+import { useDraggable } from '../../utils/dragHelper';
+import { usePageStore } from '../../stores/page'; // 新增
+import type { CompProps } from './base';
 
 const props = defineProps<{
   id: string;
@@ -46,7 +49,7 @@ const props = defineProps<{
   width?: number;
   height?: number;
   scale: number;
-  selected: boolean;
+  // 移除 selected 属性
   color?: string;
   fontSize?: number;
   fontWeight?: number | string;
@@ -61,24 +64,23 @@ const props = defineProps<{
   shadowBlur?: number;
   shadowSpread?: number;
   shadowColor?: string;
-  // 新增属性
   widthMode?: 'auto' | 'fixed';
   autoHeight?: boolean;
-  // 移除以下两行
-  // minWidth?: number;
-  // maxWidth?: number;
 }>();
 
-const emit = defineEmits(['select', 'update']);
+const emit = defineEmits(['update']); // 移除 select 事件
 
-// 本地状态
-const isDragging = ref(false);
+// 使用 page store
+const pageStore = usePageStore();
+
+// 计算是否选中
+const isSelected = computed(() => {
+  return pageStore.isComponentSelected(props.id);
+});
+
+// 其他状态变量保持不变
 const isResizing = ref(false);
 const resizeDirection = ref('');
-const startX = ref(0);
-const startY = ref(0);
-const lastX = ref(0);
-const lastY = ref(0);
 const currentX = ref(props.x);
 const currentY = ref(props.y);
 const currentWidth = ref(props.width || 100);
@@ -89,7 +91,42 @@ const isEditing = ref(false);
 const editingContent = ref(props.content);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
-// 记录开始状态
+// 计算组件尺寸
+const componentSize = computed(() => {
+  const width = props.widthMode === 'auto' ? calculateTextWidth(props.content) : (props.width || 100)
+  const height = props.autoHeight ? calculateTextHeight(props.content, width) : (props.height || 40)
+  return { width, height }
+})
+
+// 使用统一的拖拽系统
+const { handleMouseDown: dragMouseDown } = useDraggable({
+  scale: computed(() => props.scale || 1),
+  componentId: props.id,
+  componentSize: componentSize,
+  onDragStart: () => {
+    // 选中当前组件（支持多选）
+    const event = window.event as MouseEvent;
+    const multiSelect = event?.ctrlKey || event?.metaKey;
+    pageStore.selectComponent(props.id, multiSelect);
+  },
+  onUpdate: (updates) => {
+    // 更新当前位置用于实时显示
+    if (updates.x !== undefined) currentX.value = updates.x
+    if (updates.y !== undefined) currentY.value = updates.y
+    // 发送更新事件
+    emit('update', updates)
+  }
+})
+
+// 统一的鼠标按下处理
+function handleMouseDown(e: MouseEvent) {
+  if (!isEditing.value && !isResizing.value) {
+    // 使用新的拖拽系统
+    dragMouseDown(e, props.x, props.y)
+  }
+}
+
+// 记录开始状态（用于调整大小）
 let startState = {
   x: 0,
   y: 0,
@@ -106,10 +143,9 @@ function calculateTextWidth(text: string): number {
   
   context.font = `${props.fontWeight || 'normal'} ${props.fontSize || 14}px ${props.fontFamily || 'Arial'}`;
   const metrics = context.measureText(text || '新建文本');
-  const width = metrics.width + 8; // 加上padding
+  const width = metrics.width + 8;
   
-  // 移除最小最大宽度限制
-  return Math.max(20, width); // 只保留基本的最小宽度20px
+  return Math.max(20, width);
 }
 
 // 计算文字实际高度
@@ -121,10 +157,10 @@ function calculateTextHeight(text: string, width: number): number {
     white-space: pre-wrap;
     word-break: break-word;
     font-size: ${props.fontSize || 14}px;
-    font-family: ${props.fontFamily || 'Arial'};
     font-weight: ${props.fontWeight || 'normal'};
-    font-style: ${props.fontStyle || 'normal'};
+    font-family: ${props.fontFamily || 'Arial'};
     width: ${width}px;
+    padding: 4px;
   `;
   tempDiv.textContent = text || '新建文本';
   document.body.appendChild(tempDiv);
@@ -134,277 +170,195 @@ function calculateTextHeight(text: string, width: number): number {
   return Math.max(20, height);
 }
 
-// 开始编辑
-function startEditing() {
-  if (props.selected) {
-    isEditing.value = true;
-    editingContent.value = props.content;
-    startState.content = props.content;
-    nextTick(() => {
-      if (textareaRef.value) {
-        textareaRef.value.focus();
-        textareaRef.value.select();
-      }
-    });
-  }
-}
-
-// 完成编辑
-function finishEditing() {
-  if (isEditing.value) {
-    isEditing.value = false;
-    if (editingContent.value !== startState.content) {
-      const updates: any = { content: editingContent.value };
-      
-      // 如果是自动宽度模式，重新计算宽度
-      if (props.widthMode === 'auto') {
-        updates.width = calculateTextWidth(editingContent.value);
-      }
-      
-      // 如果是自动高度模式，重新计算高度
-      if (props.autoHeight) {
-        const width = props.widthMode === 'auto' ? updates.width : (props.width || 100);
-        updates.height = calculateTextHeight(editingContent.value, width);
-      }
-      
-      history.addAction({
-        type: ActionType.UPDATE,
-        componentId: props.id,
-        data: {
-          before: { props: { content: startState.content } },
-          after: { props: updates }
-        }
-      });
-      
-      emit('update', updates);
-    }
-  }
-}
-
-// 取消编辑
-function cancelEditing() {
-  isEditing.value = false;
-  editingContent.value = props.content;
-}
-
-// 开始调整大小
+// 调整大小相关函数保持不变
 function startResize(direction: string, e: MouseEvent) {
   isResizing.value = true;
   resizeDirection.value = direction;
-  startX.value = e.clientX;
-  startY.value = e.clientY;
   
   startState = {
-    x: currentX.value,
-    y: currentY.value,
+    x: props.x,
+    y: props.y,
     width: currentWidth.value,
     height: currentHeight.value,
     content: props.content
   };
   
-  window.addEventListener('mousemove', handleResizeMove);
-  window.addEventListener('mouseup', handleResizeUp);
+  window.addEventListener('mousemove', handleResize);
+  window.addEventListener('mouseup', stopResize);
+  e.preventDefault();
 }
 
-// 调整大小移动
-function handleResizeMove(e: MouseEvent) {
+function handleResize(e: MouseEvent) {
   if (!isResizing.value) return;
   
-  const deltaX = e.clientX - startX.value;
-  const deltaY = e.clientY - startY.value;
   const scale = props.scale || 1;
-  const scaledDeltaX = deltaX / scale;
-  const scaledDeltaY = deltaY / scale;
+  const deltaX = e.movementX / scale;
+  const deltaY = e.movementY / scale;
   
-  if (resizeDirection.value.includes('e') && props.widthMode === 'fixed') {
-    // 移除最大宽度限制，只保留最小宽度20px
-    const newWidth = Math.max(20, startState.width + scaledDeltaX);
-    currentWidth.value = newWidth;
-  }
-  
-  if (resizeDirection.value.includes('s') && !props.autoHeight) {
-    currentHeight.value = Math.max(20, startState.height + scaledDeltaY);
+  switch (resizeDirection.value) {
+    case 'se': // 右下角
+      currentWidth.value = Math.max(20, currentWidth.value + deltaX);
+      if (!props.autoHeight) {
+        currentHeight.value = Math.max(20, currentHeight.value + deltaY);
+      }
+      break;
+    case 'e': // 右侧
+      currentWidth.value = Math.max(20, currentWidth.value + deltaX);
+      break;
+    case 's': // 底部
+      if (!props.autoHeight) {
+        currentHeight.value = Math.max(20, currentHeight.value + deltaY);
+      }
+      break;
   }
 }
 
-// 调整大小结束
-function handleResizeUp() {
+function stopResize() {
   if (isResizing.value) {
-    const updates: any = {};
+    isResizing.value = false;
     
-    if (currentWidth.value !== startState.width && props.widthMode === 'fixed') {
-      updates.width = currentWidth.value;
-    }
+    // 记录调整大小操作到历史
+    history.addAction({
+      type: ActionType.UPDATE,
+      componentId: props.id,
+      data: {
+        before: { 
+          props: {
+            x: startState.x,
+            y: startState.y,
+            width: startState.width,
+            height: startState.height
+          }
+        },
+        after: { 
+          props: {
+            x: props.x,
+            y: props.y,
+            width: currentWidth.value,
+            height: currentHeight.value
+          }
+        }
+      }
+    });
     
-    if (currentHeight.value !== startState.height && !props.autoHeight) {
-      updates.height = currentHeight.value;
-    }
+    emit('update', {
+      width: currentWidth.value,
+      height: currentHeight.value
+    });
     
-    if (Object.keys(updates).length > 0) {
-      emit('update', updates);
-    }
+    window.removeEventListener('mousemove', handleResize);
+    window.removeEventListener('mouseup', stopResize);
   }
-  
-  isResizing.value = false;
-  resizeDirection.value = '';
-  window.removeEventListener('mousemove', handleResizeMove);
-  window.removeEventListener('mouseup', handleResizeUp);
 }
 
-// 监听属性变化
-watch(() => props.x, (newX) => {
-  if (!isDragging.value && !isResizing.value) {
-    currentX.value = newX;
-    lastX.value = newX;
+// 文本编辑相关函数保持不变
+function startEditing() {
+  if (!isSelected.value) return; // 修改：使用 isSelected.value 而不是 props.selected
+  
+  isEditing.value = true;
+  editingContent.value = props.content;
+  
+  nextTick(() => {
+    if (textareaRef.value) {
+      textareaRef.value.focus();
+      textareaRef.value.select();
+    }
+  });
+}
+
+function finishEditing() {
+  if (editingContent.value !== props.content) {
+    history.addAction({
+      type: ActionType.UPDATE,
+      componentId: props.id,
+      data: {
+        before: { props: { content: props.content } },
+        after: { props: { content: editingContent.value } }
+      }
+    });
+    
+    emit('update', { content: editingContent.value });
   }
+  
+  isEditing.value = false;
+}
+
+function cancelEditing() {
+  editingContent.value = props.content;
+  isEditing.value = false;
+}
+
+// 样式计算
+const style = computed(() => {
+  const styleObj: any = {
+    transform: `translate(${currentX.value}px, ${currentY.value}px)`,
+    color: props.color || '#000000',
+    fontSize: props.fontSize ? `${props.fontSize}px` : '14px',
+    fontWeight: props.fontWeight || 'normal',
+    fontFamily: props.fontFamily || 'Arial',
+    textDecoration: props.textDecoration || 'none',
+    fontStyle: props.fontStyle || 'normal',
+    borderWidth: `${props.borderWidth || 0}px`,
+    borderStyle: props.borderStyle || 'none',
+    borderColor: props.borderColor || '#000000',
+    boxShadow: props.shadowColor ? `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 'none',
+  };
+  
+  // 宽度处理
+  if (props.widthMode === 'auto') {
+    styleObj.width = 'auto';
+    styleObj.minWidth = '20px';
+  } else {
+    styleObj.width = `${currentWidth.value}px`;
+  }
+  
+  // 高度处理
+  if (props.autoHeight) {
+    styleObj.height = 'auto';
+    styleObj.minHeight = '20px';
+  } else {
+    styleObj.height = `${currentHeight.value}px`;
+  }
+  
+  return styleObj;
+});
+
+// 监听props变化，同步到本地状态
+watch(() => props.x, (newX) => {
+  currentX.value = newX;
 });
 
 watch(() => props.y, (newY) => {
-  if (!isDragging.value && !isResizing.value) {
-    currentY.value = newY;
-    lastY.value = newY;
-  }
+  currentY.value = newY;
 });
 
 watch(() => props.width, (newWidth) => {
-  if (!isResizing.value) {
-    currentWidth.value = newWidth || 100;
+  if (newWidth !== undefined) {
+    currentWidth.value = newWidth;
   }
 });
 
 watch(() => props.height, (newHeight) => {
-  if (!isResizing.value) {
-    currentHeight.value = newHeight || 40;
+  if (newHeight !== undefined) {
+    currentHeight.value = newHeight;
   }
 });
-
-// 计算样式
-const style = computed(() => {
-  // 处理文字装饰样式
-  let textDeco = props.textDecoration || 'none';
-  if (textDeco !== 'none' && !textDeco.includes(' ')) {
-    textDeco = textDeco.split(' ').filter(Boolean).join(' ');
-  }
-
-  // 处理边框样式
-  const borderStyle = props.borderStyle || 'none';
-  const borderWidth = props.borderWidth ? `${props.borderWidth}px` : '0';
-  const borderColor = props.borderColor || '#000';
-
-  // 处理阴影样式
-  const shadowX = props.shadowX || 0;
-  const shadowY = props.shadowY || 0;
-  const shadowBlur = props.shadowBlur || 0;
-  const shadowSpread = props.shadowSpread || 0;
-  const shadowColor = props.shadowColor || '#000000';
-  const boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`;
-
-  // 计算宽度和高度
-  let width: string;
-  let height: string;
-  
-  if (props.widthMode === 'auto') {
-    width = `${calculateTextWidth(props.content)}px`;
-  } else {
-    width = `${currentWidth.value}px`;
-  }
-  
-  if (props.autoHeight) {
-    const textWidth = props.widthMode === 'auto' ? calculateTextWidth(props.content) : currentWidth.value;
-    height = `${calculateTextHeight(props.content, textWidth)}px`;
-  } else {
-    height = `${currentHeight.value}px`;
-  }
-
-  const styleObj: Record<string, string> = {
-    transform: `translate(${currentX.value}px, ${currentY.value}px)`,
-    color: props.color || '#333',
-    fontSize: `${props.fontSize || 14}px`,
-    fontWeight: String(props.fontWeight || 'normal'),
-    fontFamily: props.fontFamily || 'Arial',
-    textDecoration: textDeco,
-    fontStyle: props.fontStyle || 'normal',
-    width,
-    height,
-    boxShadow,
-    // 移除以下两行
-    // minWidth: `${props.minWidth || 20}px`,
-    // maxWidth: `${props.maxWidth || 500}px`
-  };
-
-  // 只有在未选中状态下才应用props中的边框样式
-  if (!props.selected) {
-    styleObj.border = borderStyle !== 'none' ? `${borderWidth} ${borderStyle} ${borderColor}` : 'none';
-  }
-
-  return styleObj;
-});
-
-// 拖动处理
-function handleMouseDown(e: MouseEvent) {
-  if (!isEditing.value && !isResizing.value) {
-    if (!props.selected) {
-      emit('select');
-    }
-    isDragging.value = true;
-    startX.value = e.clientX;
-    startY.value = e.clientY;
-    lastX.value = currentX.value;
-    lastY.value = currentY.value;
-    
-    startState = {
-      x: props.x,
-      y: props.y,
-      width: props.width || 100,
-      height: props.height || 40,
-      content: props.content
-    };
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  }
-}
-
-function handleMouseMove(e: MouseEvent) {
-  if (!isDragging.value) return;
-
-  const deltaX = e.clientX - startX.value;
-  const deltaY = e.clientY - startY.value;
-
-  const scale = props.scale || 1;
-  const scaledDeltaX = deltaX / scale;
-  const scaledDeltaY = deltaY / scale;
-
-  currentX.value = lastX.value + scaledDeltaX;
-  currentY.value = lastY.value + scaledDeltaY;
-}
-
-function handleMouseUp() {
-  if (isDragging.value) {
-    emit('update', {
-      x: currentX.value,
-      y: currentY.value
-    });
-  }
-  
-  isDragging.value = false;
-  window.removeEventListener('mousemove', handleMouseMove);
-  window.removeEventListener('mouseup', handleMouseUp);
-}
 </script>
 
 <style scoped>
 .text-comp {
   position: absolute;
   cursor: move;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: none;
+  transition: border-color 0.2s ease;
 }
 
 .text-comp.selected {
   border-color: #1890ff;
+  box-shadow: 0 0 0 1px #1890ff;
 }
 
 .text-content {

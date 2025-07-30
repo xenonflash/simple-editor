@@ -1,8 +1,11 @@
 <template>
-  <div class="container" :class="{ 'is-selected': selected }" :style="containerStyle" @mousedown.stop="handleMouseDown"
-    @click.stop>
+  <div class="container" 
+       :class="{ 'is-selected': isSelected }" 
+       :style="containerStyle" 
+       @mousedown.stop="handleMouseDown"
+       @click.stop>
     <slot></slot>
-    <template v-if="selected">
+    <template v-if="isSelected">
       <div class="resize-handle top-left" @mousedown.stop="(e) => handleResize('top-left', e)"></div>
       <div class="resize-handle top-right" @mousedown.stop="(e) => handleResize('top-right', e)"></div>
       <div class="resize-handle bottom-left" @mousedown.stop="(e) => handleResize('bottom-left', e)"></div>
@@ -12,134 +15,73 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { CompProps } from './base';
-import { useDraggable, useResizable } from '../../utils/dragHelper';
+import { computed } from 'vue'
+import type { CompProps } from './base'
+import { useDraggable, useResizable } from '../../utils/dragHelper'
+import { usePageStore } from '../../stores/page' // 新增
 
 const props = defineProps<{
-  id: string;
-  width?: number;
-  height?: number;
-  x?: number;
-  y?: number;
-  selected?: boolean;
-  scale?: number;
-  borderWidth?: number;
-  borderStyle?: string;
-  borderColor?: string;
-  borderRadiusTopLeft?: number;
-  borderRadiusTopRight?: number;
-  borderRadiusBottomLeft?: number;
-  borderRadiusBottomRight?: number;
-  shadowX?: number;
-  shadowY?: number;
-  shadowBlur?: number;
-  shadowSpread?: number;
-  shadowColor?: string;
-  shadowInset?: boolean;
-  backgroundColor?: string;
-  backgroundImage?: string;
-  gradientType?: string;
-  gradientColor1?: string;
-  gradientColor2?: string;
-  gradientDirection?: string;
-  paddingTop?: number;
-  paddingRight?: number;
-  paddingBottom?: number;
-  paddingLeft?: number;
-  marginTop?: number;
-  marginRight?: number;
-  marginBottom?: number;
-  marginLeft?: number;
-}>();
+  id: string
+  width?: number
+  height?: number
+  x?: number
+  y?: number
+  scale?: number
+  borderWidth?: number
+  borderStyle?: string
+  borderColor?: string
+  borderRadiusTopLeft?: number
+  borderRadiusTopRight?: number
+  borderRadiusBottomLeft?: number
+  borderRadiusBottomRight?: number
+  shadowX?: number
+  shadowY?: number
+  shadowBlur?: number
+  shadowSpread?: number
+  shadowColor?: string
+  shadowInset?: boolean
+  background?: string
+  paddingTop?: number
+  paddingRight?: number
+  paddingBottom?: number
+  paddingLeft?: number
+  marginTop?: number
+  marginRight?: number
+  marginBottom?: number
+  marginLeft?: number
+}>()
 
 const emit = defineEmits<{
-  (e: 'select'): void;
-  (e: 'update', updates: Partial<CompProps>): void;
-}>();
+  (e: 'update', updates: Partial<CompProps>): void
+}>()
 
-// 容器样式
-const containerStyle = computed(() => {
-  const style: Record<string, string> = {
-    transform: `translate(${props.x || 0}px, ${props.y || 0}px)`,
-  };
+// 使用 page store
+const pageStore = usePageStore()
 
-  // 设置宽高
-  if (props.width !== undefined) {
-    style.width = `${props.width}px`;
-  }
-  if (props.height !== undefined) {
-    style.height = `${props.height}px`;
-  }
+// 计算是否选中
+const isSelected = computed(() => {
+  return pageStore.isComponentSelected(props.id)
+})
 
-  // 边框样式
-  if (props.borderWidth !== undefined && props.borderStyle && props.borderColor) {
-    style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor}`;
-  }
+// 修复 componentSize 的计算
+const componentSize = computed(() => {
+  const width = props.width || 100
+  const height = props.height || 100
+  return { width, height }
+})
 
-  // 圆角样式
-  style.borderTopLeftRadius = `${props.borderRadiusTopLeft || 0}px`;
-  style.borderTopRightRadius = `${props.borderRadiusTopRight || 0}px`;
-  style.borderBottomLeftRadius = `${props.borderRadiusBottomLeft || 0}px`;
-  style.borderBottomRightRadius = `${props.borderRadiusBottomRight || 0}px`;
-
-  // 阴影效果
-  if (props.shadowColor) {
-    const x = props.shadowX ?? 0;
-    const y = props.shadowY ?? 0;
-    const blur = props.shadowBlur ?? 0;
-    const spread = props.shadowSpread ?? 0;
-    const inset = props.shadowInset ? 'inset ' : '';
-    style.boxShadow = `${inset}${x}px ${y}px ${blur}px ${spread}px ${props.shadowColor}`;
-  }
-
-  // 背景处理
-  if (props.gradientType && props.gradientType !== 'none' && props.gradientColor1 && props.gradientColor2) {
-    // 渐变背景
-    if (props.gradientType === 'linear') {
-      const direction = props.gradientDirection || '135deg';
-      style.background = `linear-gradient(${direction}, ${props.gradientColor1}, ${props.gradientColor2})`;
-    } else if (props.gradientType === 'radial') {
-      style.background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
-    }
-  } else if (props.backgroundColor) {
-    // 纯色背景
-    style.backgroundColor = props.backgroundColor;
-  }
-
-  // 背景图片（优先级最高）
-  if (props.backgroundImage) {
-    style.backgroundImage = `url(${props.backgroundImage})`;
-    style.backgroundSize = 'cover';
-    style.backgroundPosition = 'center';
-    style.backgroundRepeat = 'no-repeat';
-  }
-
-  // 内边距
-  const padding = [];
-  padding[0] = props.paddingTop !== undefined ? `${props.paddingTop}px` : '0';
-  padding[1] = props.paddingRight !== undefined ? `${props.paddingRight}px` : '0';
-  padding[2] = props.paddingBottom !== undefined ? `${props.paddingBottom}px` : '0';
-  padding[3] = props.paddingLeft !== undefined ? `${props.paddingLeft}px` : '0';
-  style.padding = padding.join(' ');
-
-  // 外边距
-  const margin = [];
-  margin[0] = props.marginTop !== undefined ? `${props.marginTop}px` : '0';
-  margin[1] = props.marginRight !== undefined ? `${props.marginRight}px` : '0';
-  margin[2] = props.marginBottom !== undefined ? `${props.marginBottom}px` : '0';
-  margin[3] = props.marginLeft !== undefined ? `${props.marginLeft}px` : '0';
-  style.margin = margin.join(' ');
-
-  return style;
-});
-
-// 使用拖拽工具函数
-const { handleMouseDown: startDrag } = useDraggable({
+// 使用拖拽功能
+const { handleMouseDown } = useDraggable({
   scale: computed(() => props.scale || 1),
-  onDragStart: () => emit('select'),
+  componentId: props.id,
+  componentSize: componentSize,
+  onDragStart: () => {
+    const event = window.event as MouseEvent
+    const multiSelect = event?.ctrlKey || event?.metaKey
+    pageStore.selectComponent(props.id, multiSelect)
+  },
   onUpdate: (updates) => emit('update', updates)
-});
+})
 
 // 使用调整大小工具函数
 const { startResize } = useResizable({
@@ -150,11 +92,6 @@ const { startResize } = useResizable({
   onUpdate: (updates) => emit('update', updates)
 });
 
-// 处理鼠标按下事件
-function handleMouseDown(e: MouseEvent) {
-  startDrag(e, props.x || 0, props.y || 0);
-}
-
 // 处理调整大小
 function handleResize(handle: string, e: MouseEvent) {
   startResize(handle, e, {
@@ -164,13 +101,72 @@ function handleResize(handle: string, e: MouseEvent) {
     height: props.height || 100
   });
 }
+
+// 计算容器样式
+const containerStyle = computed(() => {
+  const style: Record<string, string> = {
+    left: `${props.x || 0}px`,
+    top: `${props.y || 0}px`,
+    width: `${props.width || 100}px`,
+    height: `${props.height || 100}px`
+  };
+
+  // 边框样式
+  if (props.borderWidth && props.borderStyle && props.borderStyle !== 'none') {
+    style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor || '#000'}`;
+  }
+
+  // 边框圆角
+  if (props.borderRadiusTopLeft || props.borderRadiusTopRight || props.borderRadiusBottomLeft || props.borderRadiusBottomRight) {
+    style.borderRadius = `${props.borderRadiusTopLeft || 0}px ${props.borderRadiusTopRight || 0}px ${props.borderRadiusBottomRight || 0}px ${props.borderRadiusBottomLeft || 0}px`;
+  }
+
+  // 阴影
+  if (props.shadowX || props.shadowY || props.shadowBlur || props.shadowSpread) {
+    const shadowInset = props.shadowInset ? 'inset ' : '';
+    style.boxShadow = `${shadowInset}${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor || '#000000'}`;
+  }
+
+  // 背景色
+  if (props.backgroundColor) {
+    style.backgroundColor = props.backgroundColor;
+  }
+
+  // 渐变背景
+  if (props.gradientType && props.gradientColor1 && props.gradientColor2) {
+    const direction = props.gradientDirection || 'to right';
+    if (props.gradientType === 'linear') {
+      style.background = `linear-gradient(${direction}, ${props.gradientColor1}, ${props.gradientColor2})`;
+    } else if (props.gradientType === 'radial') {
+      style.background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
+    }
+  }
+
+  // 背景图片
+  if (props.backgroundImage) {
+    style.backgroundImage = `url(${props.backgroundImage})`;
+    style.backgroundSize = 'cover';
+    style.backgroundPosition = 'center';
+  }
+
+  // 内边距
+  if (props.paddingTop || props.paddingRight || props.paddingBottom || props.paddingLeft) {
+    style.padding = `${props.paddingTop || 0}px ${props.paddingRight || 0}px ${props.paddingBottom || 0}px ${props.paddingLeft || 0}px`;
+  }
+
+  // 外边距
+  if (props.marginTop || props.marginRight || props.marginBottom || props.marginLeft) {
+    style.margin = `${props.marginTop || 0}px ${props.marginRight || 0}px ${props.marginBottom || 0}px ${props.marginLeft || 0}px`;
+  }
+
+  return style;
+});
 </script>
 
 <style scoped>
 .container {
   position: absolute;
   background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;

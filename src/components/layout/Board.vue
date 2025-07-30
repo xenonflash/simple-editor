@@ -32,63 +32,26 @@
                             :id="comp.id"
                             v-bind="comp.props"
                             :scale="scale"
-                            :selected="props.selectedId === comp.id"
-                            @select="handleSelect(comp.id)"
                             @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Text v-else-if="comp.type === 'text'"
                         :id="comp.id"
-                        :content="comp.props.content || ''"
-                        :x="comp.props.x || 0"
-                        :y="comp.props.y || 0"
-                        :width="comp.props.width"
-                        :height="comp.props.height"
-                        :color="comp.props.color"
-                        :fontSize="comp.props.fontSize"
-                        :fontWeight="comp.props.fontWeight"
-                        :fontFamily="comp.props.fontFamily"
-                        :textDecoration="comp.props.textDecoration"
-                        :fontStyle="comp.props.fontStyle"
-                        :borderWidth="comp.props.borderWidth"
-                        :borderStyle="comp.props.borderStyle"
-                        :borderColor="comp.props.borderColor"
-                        :shadowX="comp.props.shadowX"
-                        :shadowY="comp.props.shadowY"
-                        :shadowBlur="comp.props.shadowBlur"
-                        :shadowSpread="comp.props.shadowSpread"
-                        :shadowColor="comp.props.shadowColor"
-                        :widthMode="comp.props.widthMode"
-                        :autoHeight="comp.props.autoHeight"
+                        v-bind="comp.props"
                         :scale="scale"
-                        :selected="props.selectedId === comp.id"
-                        @select="handleSelect(comp.id)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Button v-else-if="comp.type === 'button'"
                         :id="comp.id"
-                        :content="comp.props.content"
-                        :x="comp.props.x || 0"
-                        :y="comp.props.y || 0"
-                        :width="comp.props.width"
-                        :height="comp.props.height"
-                        :backgroundColor="comp.props.backgroundColor"
-                        :color="comp.props.color"
-                        :fontSize="comp.props.fontSize"
-                        :fontWeight="comp.props.fontWeight"
-                        :fontFamily="comp.props.fontFamily"
-                        :borderRadius="comp.props.borderRadius"
-                        :borderWidth="comp.props.borderWidth"
-                        :borderStyle="comp.props.borderStyle"
-                        :borderColor="comp.props.borderColor"
-                        :shadowX="comp.props.shadowX"
-                        :shadowY="comp.props.shadowY"
-                        :shadowBlur="comp.props.shadowBlur"
-                        :shadowSpread="comp.props.shadowSpread"
-                        :shadowColor="comp.props.shadowColor"
+                        v-bind="comp.props"
                         :scale="scale"
-                        :selected="props.selectedId === comp.id"
-                        @select="handleSelect(comp.id)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 </div>
               </template>
+              
+              <!-- 简化的吸附线组件 -->
+              <SnapLines 
+                :scale="scale"
+                :offset="panOffset"
+              />
+              
               <div class="placeholder" v-if="props.components.length === 0">
                 拖拽组件到此处开始设计
               </div>
@@ -155,16 +118,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue';
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
 import Ruler from './Ruler.vue';
+import SnapLines, { type SnapLine } from './SnapLines.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
+
 import BoardToolbar from './BoardToolbar.vue';
+import { useSnaplineStore } from '../../stores/snapline';
+import { usePageStore } from '../../stores/page';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -173,7 +140,6 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const props = defineProps<{
   components: Comp[];
-  selectedId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -227,6 +193,19 @@ const contextMenu = ref({
   component: null as Comp | null
 });
 
+const snaplineStore = useSnaplineStore();
+const pageStore = usePageStore();
+
+// 计算选中的组件ID
+const selectedId = computed(() => {
+  return pageStore.selectedComps.length > 0 ? pageStore.selectedComps[0].id : null;
+});
+
+// 监听组件变化，更新 store
+watch(() => props.components, (newComponents) => {
+  snaplineStore.updateAllComponents(newComponents);
+}, { immediate: true, deep: true });
+
 // 处理空格键
 function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
@@ -241,7 +220,7 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     e.preventDefault();
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && props.selectedId) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
     deleteSelectedComponent();
     e.preventDefault();
   }
@@ -419,6 +398,8 @@ function handleUpdatePosition(id: string, updates: { x?: number; y?: number; wid
   emit('update', updatedComp);
 }
 
+
+
 // 处理拖拽
 function handleDragOver(e: DragEvent) {
   e.preventDefault();
@@ -525,6 +506,8 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', handleKeyUp);
   
+
+  
   // 等待DOM渲染完成后初始化画布位置
   setTimeout(() => {
     initializeCanvas();
@@ -542,19 +525,20 @@ const canRedo = computed(() => history.canRedo());
 
 // 删除选中的组件
 function deleteSelectedComponent() {
-  const comp = props.components.find(comp => comp.id === props.selectedId);
-  if (comp) {
-    // 记录删除操作
-    history.addAction({
-      type: ActionType.DELETE,
-      componentId: comp.id,
-      data: {
-        before: comp
-      }
+  if (pageStore.selectedComps.length > 0) {
+    pageStore.selectedComps.forEach(comp => {
+      // 记录删除操作
+      history.addAction({
+        type: ActionType.DELETE,
+        componentId: comp.id,
+        data: {
+          before: comp
+        }
+      });
+      
+      // 发出删除事件
+      emit('delete', comp.id);
     });
-    
-    // 发出删除事件
-    emit('delete', comp.id);
   }
 }
 
@@ -870,10 +854,9 @@ function deleteComponentFromMenu() {
 
 // 选中组件的层级调整方法
 function bringSelectedToFront() {
-  if (!props.selectedId) return;
-  const comp = props.components.find(c => c.id === props.selectedId);
-  if (!comp) return;
+  if (pageStore.selectedComps.length === 0) return;
   
+  const comp = pageStore.selectedComps[0];
   const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 1));
   const newZIndex = maxZIndex + 1;
   
@@ -896,10 +879,9 @@ function bringSelectedToFront() {
 }
 
 function bringSelectedForward() {
-  if (!props.selectedId) return;
-  const comp = props.components.find(c => c.id === props.selectedId);
-  if (!comp) return;
+  if (pageStore.selectedComps.length === 0) return;
   
+  const comp = pageStore.selectedComps[0];
   const currentZIndex = comp.props.zIndex || 1;
   const higherComponents = props.components.filter(c => (c.props.zIndex || 1) > currentZIndex);
   
@@ -920,10 +902,9 @@ function bringSelectedForward() {
 }
 
 function sendSelectedBackward() {
-  if (!props.selectedId) return;
-  const comp = props.components.find(c => c.id === props.selectedId);
-  if (!comp) return;
+  if (pageStore.selectedComps.length === 0) return;
   
+  const comp = pageStore.selectedComps[0];
   const currentZIndex = comp.props.zIndex || 1;
   const lowerComponents = props.components.filter(c => (c.props.zIndex || 1) < currentZIndex);
   
@@ -944,10 +925,9 @@ function sendSelectedBackward() {
 }
 
 function sendSelectedToBack() {
-  if (!props.selectedId) return;
-  const comp = props.components.find(c => c.id === props.selectedId);
-  if (!comp) return;
+  if (pageStore.selectedComps.length === 0) return;
   
+  const comp = pageStore.selectedComps[0];
   const currentZIndex = comp.props.zIndex || 1;
   
   // 如果只有一个组件，则不需要操作

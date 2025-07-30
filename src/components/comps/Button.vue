@@ -2,7 +2,7 @@
   <div class="button-comp"
        :style="buttonStyle"
        @mousedown.stop="handleMouseDown"
-       :class="{ selected: selected }">
+       :class="{ selected: isSelected }">
     {{ props.content || '按钮' }}
   </div>
 </template>
@@ -11,10 +11,10 @@
 import { computed } from 'vue';
 import type { CompProps } from './base';
 import { useDraggable } from '../../utils/dragHelper';
+import { usePageStore } from '../../stores/page';
 
 const props = defineProps<{
   id: string;
-  selected?: boolean;
   content?: string;
   x: number;
   y: number;
@@ -40,32 +40,35 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', id: string): void;
   (e: 'update', updates: Partial<CompProps>): void;
 }>();
 
-const buttonStyle = computed(() => ({
-  transform: `translate(${props.x}px, ${props.y}px)`,
-  width: props.width ? `${props.width}px` : 'auto',
-  height: props.height ? `${props.height}px` : 'auto',
-  color: props.color || '#ffffff',
-  backgroundColor: props.backgroundColor || '#1890ff',
-  borderWidth: `${props.borderWidth || 0}px`,
-  borderStyle: props.borderStyle || 'none',
-  borderColor: props.borderColor || '#000000',
-  borderTopLeftRadius: `${props.borderRadiusTopLeft || 4}px`,
-  borderTopRightRadius: `${props.borderRadiusTopRight || 4}px`,
-  borderBottomLeftRadius: `${props.borderRadiusBottomLeft || 4}px`,
-  borderBottomRightRadius: `${props.borderRadiusBottomRight || 4}px`,
-  fontSize: props.fontSize ? `${props.fontSize}px` : '14px',
-  fontWeight: props.fontWeight || 'normal',
-  boxShadow: props.shadowColor ? `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 'none',
-}));
+// 使用 page store
+const pageStore = usePageStore();
 
-// 使用拖拽工具函数
+// 计算是否选中
+const isSelected = computed(() => {
+  return pageStore.isComponentSelected(props.id);
+});
+
+// 添加缺失的 componentSize 计算
+const componentSize = computed(() => {
+  return {
+    width: props.width || 100,
+    height: props.height || 32
+  };
+});
+
+// 使用新的拖拽工具函数
 const { handleMouseDown: startDrag } = useDraggable({
   scale: computed(() => props.scale || 1),
-  onDragStart: () => emit('select', props.id),
+  componentId: props.id,
+  componentSize: componentSize,
+  onDragStart: () => {
+    const event = window.event as MouseEvent;
+    const multiSelect = event?.ctrlKey || event?.metaKey;
+    pageStore.selectComponent(props.id, multiSelect);
+  },
   onUpdate: (updates) => emit('update', updates)
 });
 
@@ -73,6 +76,31 @@ const { handleMouseDown: startDrag } = useDraggable({
 function handleMouseDown(e: MouseEvent) {
   startDrag(e, props.x, props.y);
 }
+
+// 计算按钮样式
+const buttonStyle = computed(() => {
+  return {
+    transform: `translate(${props.x}px, ${props.y}px)`,
+    width: `${props.width || 100}px`,
+    height: `${props.height || 32}px`,
+    color: props.color || '#333',
+    backgroundColor: props.backgroundColor || '#fff',
+    borderWidth: `${props.borderWidth || 1}px`,
+    borderStyle: props.borderStyle || 'solid',
+    borderColor: props.borderColor || '#d9d9d9',
+    borderRadius: [
+      props.borderRadiusTopLeft || 4,
+      props.borderRadiusTopRight || 4,
+      props.borderRadiusBottomRight || 4,
+      props.borderRadiusBottomLeft || 4
+    ].join('px ') + 'px',
+    fontSize: `${props.fontSize || 14}px`,
+    fontWeight: props.fontWeight || 'normal',
+    boxShadow: props.shadowColor ? 
+      `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 
+      'none'
+  };
+});
 </script>
 
 <style scoped>
@@ -84,33 +112,12 @@ function handleMouseDown(e: MouseEvent) {
   padding: 4px 15px;
   cursor: move;
   user-select: none;
-}
-
-.button-comp:hover {
-  opacity: 0.9;
-  box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.2);
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
 }
 
 .button-comp.selected {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.4);
-}
-
-.button-comp.selected:hover {
-  opacity: 0.9;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.6);
-}
-
-/* 文字选中效果 */
-.button-comp::selection,
-.button-comp *::selection {
-  background: rgba(24, 144, 255, 0.2);
-  color: inherit;
-}
-
-/* 拖动时的效果 */
-.button-comp:active {
-  cursor: grabbing;
-  opacity: 0.8;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 1px #1890ff;
 }
 </style>

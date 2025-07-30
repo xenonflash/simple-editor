@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue'; // 移除 ref
 import LeftPanel from '../components/layout/LeftPanel.vue';
 import PropertiesPanel from '../components/layout/PropertiesPanel.vue';
 import Board from '../components/layout/Board.vue';
@@ -10,26 +10,21 @@ import type { Comp } from '../components/comps/base';
 // 页面store
 const pageStore = usePageStore();
 
-// 状态管理
-const selectedId = ref<string | null>(null);
-const boardRef = ref<InstanceType<typeof Board> | null>(null);
-
-// 计算属性
+// 计算属性 - 直接从 store 获取
 const components = computed(() => pageStore.currentComponents);
-const selectedComponent = computed(() => {
-  if (!selectedId.value) return null;
-  return components.value.find(comp => comp.id === selectedId.value) || null;
-});
+const selectedComponent = computed(() => pageStore.primarySelectedComp); // 使用第一个选中的组件
+
+// 移除 selectedId 相关代码
 
 // 初始化
 onMounted(() => {
   pageStore.initializeDefaultPage();
 });
 
-// 处理组件选中
+// 处理组件选中 - 简化
 function handleSelect(id: string | null) {
   console.log('Selected component:', id);
-  selectedId.value = id;
+  pageStore.selectComponent(id);
 }
 
 // 处理组件更新
@@ -47,16 +42,14 @@ function handleUpdate(compOrComps: Comp | Comp[]) {
 function handleAddComponent(comp: Comp) {
   console.log('Add component:', comp);
   pageStore.addComponentToCurrentPage(comp);
-  selectedId.value = comp.id;
+  pageStore.selectComponent(comp.id); // 选中新添加的组件
 }
 
 // 处理删除组件
 function handleDeleteComponent(id: string) {
   console.log('Delete component:', id);
   pageStore.deleteComponentFromCurrentPage(id);
-  if (selectedId.value === id) {
-    selectedId.value = null;
-  }
+  // 删除逻辑已在 store 中处理选中状态
 }
 </script>
 
@@ -65,9 +58,8 @@ function handleDeleteComponent(id: string) {
     <PageManager />
     <div class="main">
       <LeftPanel />
-      <Board ref="boardRef" 
+      <Board 
              :components="components"
-             :selected-id="selectedId"
              @select="handleSelect"
              @update="handleUpdate"
              @add="handleAddComponent"
@@ -78,6 +70,7 @@ function handleDeleteComponent(id: string) {
   </div>
 </template>
 
+<!-- 样式保持不变 -->
 <style scoped>
 .editor-container {
   height: calc(100vh - 48px);
