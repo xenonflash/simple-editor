@@ -40,9 +40,9 @@ defineEmits<{
 
 <style scoped>
 .data-sidebar {
-  width: 280px;
+  width: 240px;
   background: #fafafa;
-  border-right: 1px solid #e8e8e8;
+  border-right: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;

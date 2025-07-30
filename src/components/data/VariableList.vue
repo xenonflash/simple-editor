@@ -67,30 +67,36 @@ const formatValue = (value: any): string => {
 
 <style scoped>
 .variable-list {
-  padding: 16px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  padding: 20px 16px 16px;
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .section-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #2c3e50;
 }
 
 .count {
-  background: #f0f0f0;
-  color: #666;
+  background: #667eea;
+  color: white;
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
+  font-weight: 500;
+}
+
+.list-content {
+  padding: 16px;
 }
 
 .variable-item {
@@ -101,53 +107,47 @@ const formatValue = (value: any): string => {
   margin-bottom: 8px;
   background: white;
   border: 1px solid #e8e8e8;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .variable-item:hover {
-  border-color: #1890ff;
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+  border-color: #667eea;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+  transform: translateY(-1px);
 }
 
 .variable-info {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
 .variable-name {
-  font-size: 14px;
   font-weight: 500;
   color: #333;
+  font-size: 14px;
 }
 
 .variable-type {
   font-size: 12px;
-  color: #666;
-  background: #f5f5f5;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
   width: fit-content;
 }
 
 .variable-value {
   font-size: 12px;
-  color: #999;
-  font-family: monospace;
+  color: #666;
 }
 
 .variable-actions {
   display: flex;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.variable-item:hover .variable-actions {
-  opacity: 1;
 }
 
 .action-btn {
@@ -164,33 +164,33 @@ const formatValue = (value: any): string => {
 }
 
 .action-btn.edit {
-  background: #f0f0f0;
-  color: #666;
+  background: #f8f9fa;
+  color: #667eea;
 }
 
 .action-btn.edit:hover {
-  background: #1890ff;
+  background: #667eea;
   color: white;
 }
 
 .action-btn.delete {
-  background: #fff2f0;
-  color: #ff4d4f;
+  background: #f8f9fa;
+  color: #dc3545;
 }
 
 .action-btn.delete:hover {
-  background: #ff4d4f;
+  background: #dc3545;
   color: white;
 }
 
 .empty-state {
   text-align: center;
-  padding: 24px 12px;
+  padding: 40px 20px;
   color: #999;
 }
 
 .empty-state p {
-  margin: 0 0 4px 0;
+  margin: 0 0 8px 0;
   font-size: 14px;
 }
 

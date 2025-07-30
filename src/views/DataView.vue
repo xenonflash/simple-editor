@@ -33,6 +33,25 @@
   </div>
 </template>
 
+<style scoped>
+.data-view {
+  height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8f9fa;
+}
+
+.data-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #ffffff;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+</style>
+
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -136,18 +155,3 @@ const handleDeleteRecord = (index: number) => {
   }
 }
 </script>
-
-<style scoped>
-.data-view {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f5f5;
-}
-
-.data-main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-</style>

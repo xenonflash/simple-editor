@@ -58,25 +58,45 @@ const handleAddField = (name: string, type: FieldType, options: any) => {
   flex: 1;
   background: white;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: #666;
+  color: #999;
+  padding: 40px;
 }
 
 .empty-icon {
   font-size: 48px;
   margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+  color: #999;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .table-view {
-  height: 100%;
+  flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 </style>

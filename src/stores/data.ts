@@ -191,37 +191,38 @@ export const useDataStore = defineStore('data', () => {
   }
 
   // 在 return 中添加初始化函数
+  // 在 return 中添加初始化函数
   return {
-    // 状态
-    variables,
-    tables,
-    currentTableId,
-    
-    // 计算属性
-    currentTable,
-    
-    // 初始化函数
-    initDemoData,
-    
-    // 变量管理
-    addVariable,
-    updateVariable,
-    deleteVariable,
-    
-    // 数据表管理
-    addTable,
-    updateTable,
-    deleteTable,
-    selectTable,
-    
-    // 字段管理
-    addField,
-    updateField,
-    deleteField,
-    
-    // 记录管理
-    addRecord,
-    updateRecord,
-    deleteRecord
-  }
+  // 状态
+  variables,
+  tables,
+  currentTableId,
+  
+  // 计算属性
+  currentTable,
+  
+  // 初始化函数
+  initDemoData,
+  
+  // 变量管理
+  addVariable,
+  updateVariable,
+  deleteVariable,
+  
+  // 数据表管理
+  addTable,
+  updateTable,
+  deleteTable,
+  selectTable,
+  
+  // 字段管理
+  addField,
+  updateField,
+  deleteField,
+  
+  // 记录管理
+  addRecord,
+  updateRecord,
+  deleteRecord
+}
 })

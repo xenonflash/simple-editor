@@ -1,92 +1,7 @@
 <template>
   <div class="board">
-    <div class="toolbar">
-      <div class="button-group">
-        <button @click="undo" :disabled="!canUndo" data-tooltip="撤销 (⌘Z)">
-          <span class="icon">↩</span>
-          <span class="text">撤销</span>
-        </button>
-        <button @click="redo" :disabled="!canRedo" data-tooltip="重做 (⌘⇧Z)">
-          <span class="icon">↪</span>
-          <span class="text">重做</span>
-        </button>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="zoom-controls">
-        <button @click="zoomOut" data-tooltip="缩小 (⌘-)">
-          <span class="icon">－</span>
-        </button>
-        <span class="zoom-value">{{ Math.round(scale * 100) }}%</span>
-        <button @click="zoomIn" data-tooltip="放大 (⌘+)">
-          <span class="icon">＋</span>
-        </button>
-        <button @click="resetZoom" data-tooltip="重置缩放 (⌘0)">
-          <span class="icon">↺</span>
-        </button>
-      </div>
-
-      <div class="divider"></div>
-
-      <button class="delete-button" 
-              @click="deleteSelectedComponent" 
-              :disabled="!selectedId"
-              data-tooltip="删除 (Delete)">
-        <span class="icon">🗑</span>
-        <span class="text">删除</span>
-      </button>
-
-      <div class="divider"></div>
-
-      <div class="button-group">
-        <button @click="bringSelectedToFront" 
-                :disabled="!selectedId"
-                data-tooltip="置于顶层">
-          <span class="icon">⬆</span>
-        </button>
-        <button @click="bringSelectedForward" 
-                :disabled="!selectedId"
-                data-tooltip="上移一层">
-          <span class="icon">↑</span>
-        </button>
-        <button @click="sendSelectedBackward" 
-                :disabled="!selectedId"
-                data-tooltip="下移一层">
-          <span class="icon">↓</span>
-        </button>
-        <button @click="sendSelectedToBack" 
-                :disabled="!selectedId"
-                data-tooltip="置于底层">
-          <span class="icon">⬇</span>
-        </button>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="button-group">
-        <button @click="handleExport" data-tooltip="导出到JSON">
-          <span class="icon">⬇</span>
-          <span class="text">导出</span>
-        </button>
-        <button @click="handleImport" data-tooltip="从JSON导入">
-          <span class="icon">⬆</span>
-          <span class="text">导入</span>
-        </button>
-      </div>
-
-      <!-- 隐藏的文件输入框 -->
-      <input
-        type="file"
-        ref="fileInput"
-        accept=".json"
-        style="display: none"
-        @change="handleFileSelect"
-      />
-    </div>
     <div class="main-content">
       <div class="canvas-container">
-        <div class="ruler-corner"></div>
         <Ruler type="horizontal" 
                :scale="scale" 
                :offset="panOffset" />
@@ -182,6 +97,25 @@
         </div>
       </div>
     </div>
+    <!-- 新的悬浮工具栏 -->
+    <BoardToolbar
+      :canUndo="canUndo"
+      :canRedo="canRedo"
+      :scale="scale"
+      :selected="!!selectedId"
+      @undo="undo"
+      @redo="redo"
+      @zoomOut="zoomOut"
+      @zoomIn="zoomIn"
+      @resetZoom="resetZoom"
+      @delete="deleteSelectedComponent"
+      @bringToFront="bringSelectedToFront"
+      @bringForward="bringSelectedForward"
+      @sendBackward="sendSelectedBackward"
+      @sendToBack="sendSelectedToBack"
+      @export="handleExport"
+      @import="handleImport"
+    />
     
     <!-- 右键菜单 -->
     <div 
@@ -230,6 +164,7 @@ import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
+import BoardToolbar from './BoardToolbar.vue';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
