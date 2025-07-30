@@ -11,7 +11,7 @@
         :key="table.id"
         class="table-item"
         :class="{ active: table.id === currentTableId }"
-        @click="$emit('select', table.id)"
+        @click="$emit('select-table', table.id)"
       >
         <div class="table-info">
           <span class="table-name">{{ table.name }}</span>
@@ -59,7 +59,7 @@ interface Props {
 defineProps<Props>()
 
 defineEmits<{
-  select: [id: string]
+  'select-table': [id: string]
   edit: [id: string]
   delete: [id: string]
 }>()

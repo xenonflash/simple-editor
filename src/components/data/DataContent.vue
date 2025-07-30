@@ -7,17 +7,14 @@
     </div>
     
     <div v-else class="content-wrapper">
-      <TableEditor 
+      <DataEditor 
         :table="currentTable"
+        :fields="currentTable.fields"
+        :records="currentTable.records"
         @update-table="$emit('updateTable', $event)"
         @add-field="handleAddField"
         @update-field="(fieldId, updates) => $emit('updateField', fieldId, updates)"
         @delete-field="$emit('deleteField', $event)"
-      />
-      
-      <RecordEditor 
-        :fields="currentTable.fields"
-        :records="currentTable.records"
         @add-record="$emit('addRecord', $event)"
         @update-record="(index, updates) => $emit('updateRecord', index, updates)"
         @delete-record="$emit('deleteRecord', $event)"
@@ -29,8 +26,7 @@
 <script setup lang="ts">
 import type { DataTable } from '../../types/data'
 import { FieldType } from '../../types/data'
-import TableEditor from './TableEditor.vue'
-import RecordEditor from './RecordEditor.vue'
+import DataEditor from './DataEditor.vue'
 
 interface Props {
   currentTable: DataTable | null
@@ -48,8 +44,8 @@ const emit = defineEmits<{
   deleteRecord: [index: number]
 }>()
 
-const handleAddField = (name: string, type: FieldType, options: any) => {
-  emit('addField', name, type)
+const handleAddField = (event: { name: string; type: FieldType }) => {
+  emit('addField', event.name, event.type)
 }
 </script>
 
@@ -57,7 +53,7 @@ const handleAddField = (name: string, type: FieldType, options: any) => {
 .data-content {
   flex: 1;
   background: white;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -93,10 +89,8 @@ const handleAddField = (name: string, type: FieldType, options: any) => {
   line-height: 1.5;
 }
 
-.table-view {
+.content-wrapper {
   flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 </style>

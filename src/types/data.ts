@@ -66,7 +66,7 @@ export function createVariable(name: string, type: FieldType, value: any): Varia
 
 export function createDataTable(name: string, description?: string): DataTable {
   return {
-    id: `table_${Date.now()}`,
+    id: `table_${Date.now()}_${name}`,
     name,
     description,
     fields: [],

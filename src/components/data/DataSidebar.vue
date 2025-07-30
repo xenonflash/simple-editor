@@ -9,7 +9,7 @@
     <TableList 
       :tables="tables"
       :current-table-id="currentTableId"
-      @select="$emit('selectTable', $event)"
+      @select-table="$emit('selectTable', $event)"
       @edit="$emit('editTable', $event)"
       @delete="$emit('deleteTable', $event)"
     />
