@@ -4,7 +4,7 @@
     <div class="actions">
       <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
       <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">流程</router-link>
-      <router-link to="/about" class="action-btn" :class="{ active: $route.path === '/about' }">数据</router-link>
+      <router-link to="/data" class="action-btn" :class="{ active: $route.path === '/about' }">数据</router-link>
     </div>
   </div>
 </template>
