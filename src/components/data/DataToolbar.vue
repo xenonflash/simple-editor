@@ -44,68 +44,67 @@ defineEmits<{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: 12px 20px;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .toolbar-left h2 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #111827;
 }
 
 .toolbar-right {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
 .btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 4px;
+  padding: 6px 12px;
   border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #6366f1;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #5a6fd8;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+  background: #5855eb;
   transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
 }
 
 .btn-secondary {
-  background: #f8f9fa;
-  color: #555;
-  border: 1px solid #e8e8e8;
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
 }
 
 .btn-secondary:hover {
-  background: #e9ecef;
-  border-color: #667eea;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.1);
+  background: #f3f4f6;
+  border-color: #6366f1;
+  color: #6366f1;
 }
 
 .btn-group {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .icon {
-  font-size: 14px;
+  font-size: 12px;
 }
 </style>

@@ -74,128 +74,149 @@ const formatValue = (value: any): string => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 16px 16px;
+  padding: 12px 16px 8px;
   background: white;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .section-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .count {
-  background: #667eea;
+  background: #6366f1;
   color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  text-align: center;
 }
 
 .list-content {
-  padding: 16px;
+  padding: 8px 12px;
 }
 
 .variable-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
   background: white;
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
 }
 
 .variable-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
-  transform: translateY(-1px);
+  border-color: #6366f1;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.1);
 }
 
 .variable-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .variable-name {
   font-weight: 500;
-  color: #333;
-  font-size: 14px;
+  color: #111827;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .variable-type {
-  font-size: 12px;
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-size: 10px;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
   width: fit-content;
+  font-weight: 500;
+  text-transform: uppercase;
 }
 
 .variable-value {
-  font-size: 12px;
-  color: #666;
+  font-size: 10px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SF Mono', monospace;
 }
 
 .variable-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.variable-item:hover .variable-actions {
+  opacity: 1;
 }
 
 .action-btn {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  transition: all 0.2s ease;
+  font-size: 10px;
+  transition: all 0.15s ease;
 }
 
 .action-btn.edit {
-  background: #f8f9fa;
-  color: #667eea;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
 }
 
 .action-btn.edit:hover {
-  background: #667eea;
+  background: #6366f1;
   color: white;
 }
 
 .action-btn.delete {
-  background: #f8f9fa;
-  color: #dc3545;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .action-btn.delete:hover {
-  background: #dc3545;
+  background: #ef4444;
   color: white;
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
-  color: #999;
+  padding: 24px 16px;
+  color: #9ca3af;
 }
 
 .empty-state p {
-  margin: 0 0 8px 0;
-  font-size: 14px;
+  margin: 0 0 4px 0;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .empty-state small {
-  font-size: 12px;
-  color: #ccc;
+  font-size: 10px;
+  color: #d1d5db;
 }
 </style>

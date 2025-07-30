@@ -67,83 +67,99 @@ defineEmits<{
 
 <style scoped>
 .table-list {
-  padding: 16px;
+  padding: 8px 12px;
 }
 
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .section-header h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .count {
-  background: #f0f0f0;
-  color: #666;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
+  background: #10b981;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  text-align: center;
 }
 
 .table-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
+  padding: 10px;
+  margin-bottom: 4px;
   background: white;
-  border: 1px solid #e8e8e8;
+  border: 1px solid #f3f4f6;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .table-item:hover {
-  border-color: #1890ff;
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+  border-color: #10b981;
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
 }
 
 .table-item.active {
-  background: #e6f7ff;
-  border-color: #1890ff;
+  background: rgba(16, 185, 129, 0.05);
+  border-color: #10b981;
 }
 
 .table-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
 }
 
 .table-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  color: #333;
+  color: #111827;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table-meta {
-  font-size: 12px;
-  color: #666;
+  font-size: 10px;
+  color: #6b7280;
+  font-weight: 400;
 }
 
 .table-description {
-  font-size: 12px;
-  color: #999;
+  font-size: 10px;
+  color: #9ca3af;
   font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .table-item:hover .table-actions {
@@ -151,51 +167,52 @@ defineEmits<{
 }
 
 .action-btn {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  transition: all 0.2s ease;
+  font-size: 10px;
+  transition: all 0.15s ease;
 }
 
 .action-btn.edit {
-  background: #f0f0f0;
-  color: #666;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
 }
 
 .action-btn.edit:hover {
-  background: #1890ff;
+  background: #10b981;
   color: white;
 }
 
 .action-btn.delete {
-  background: #fff2f0;
-  color: #ff4d4f;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .action-btn.delete:hover {
-  background: #ff4d4f;
+  background: #ef4444;
   color: white;
 }
 
 .empty-state {
   text-align: center;
-  padding: 24px 12px;
-  color: #999;
+  padding: 24px 16px;
+  color: #9ca3af;
 }
 
 .empty-state p {
   margin: 0 0 4px 0;
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .empty-state small {
-  font-size: 12px;
-  color: #ccc;
+  font-size: 10px;
+  color: #d1d5db;
 }
 </style>
