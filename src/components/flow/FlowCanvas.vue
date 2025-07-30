@@ -145,11 +145,6 @@ const handleDrop = (event: DragEvent) => {
         }"
       />
     </VueFlow>
-    
-    <!-- 拖拽提示 -->
-    <div v-if="isDragOver" class="drop-indicator">
-      <div class="drop-text">释放以添加节点</div>
-    </div>
   </div>
 </template>
 
@@ -166,32 +161,5 @@ const handleDrop = (event: DragEvent) => {
 
 .vue-flow {
   flex: 1;
-}
-
-.drop-indicator {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(102, 126, 234, 0.9);
-  color: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.drop-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drop-text::before {
-  content: '📍';
-  font-size: 20px;
 }
 </style>

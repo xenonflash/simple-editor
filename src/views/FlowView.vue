@@ -49,6 +49,7 @@ const nodes = ref([
   // 判断节点
   {
     id: 'decision1',
+    type: 'decision',
     data: { 
       label: '验证是否通过？',
       description: '条件判断节点'
