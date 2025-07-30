@@ -26,8 +26,8 @@
         <SchemaEditor 
           :table="table"
           @update-table="$emit('updateTable', $event)"
-          @add-field="$emit('addField', $event.name, $event.type)"
-          @update-field="$emit('updateField', $event.fieldId, $event.updates)"
+          @add-field="handleAddField"
+          @update-field="handleUpdateField"
           @delete-field="$emit('deleteField', $event)"
         />
       </div>
@@ -38,7 +38,7 @@
           :fields="fields"
           :records="records"
           @add-record="$emit('addRecord', $event)"
-          @update-record="$emit('updateRecord', $event.index, $event.updates)"
+          @update-record="handleUpdateRecord"
           @delete-record="$emit('deleteRecord', $event)"
         />
       </div>
@@ -60,7 +60,8 @@ interface Props {
 
 defineProps<Props>()
 
-defineEmits<{
+// Assign defineEmits to a variable
+const emit = defineEmits<{
   updateTable: [updates: any]
   addField: [event: { name: string; type: any }]
   updateField: [event: { fieldId: string; updates: any }]
@@ -71,6 +72,19 @@ defineEmits<{
 }>()
 
 const activeTab = ref<'schema' | 'data'>('schema')
+
+// Add these method handlers
+function handleAddField(event: { name: string; type: string }) {
+  emit('addField', event)
+}
+
+function handleUpdateField(event: { fieldId: string; updates: any }) {
+  emit('updateField', event)
+}
+
+function handleUpdateRecord(event: { index: number; updates: any }) {
+  emit('updateRecord', event)
+}
 </script>
 
 <style scoped>

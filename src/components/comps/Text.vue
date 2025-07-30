@@ -4,6 +4,9 @@
        :class="{ selected: isSelected }"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">
+    <!-- 选中状态的边框指示器 -->
+    <div v-if="isSelected" class="selection-border"></div>
+    
     <div v-if="isEditing" 
          class="edit-wrapper"
          @click.stop>
@@ -21,15 +24,15 @@
     <div v-if="isSelected && !isEditing" class="resize-handles">
       <!-- 右下角调整手柄 -->
       <div class="resize-handle resize-se" 
-           @mousedown.stop="startResize('se', $event)"></div>
+           @mousedown.stop="handleResize('bottom-right', $event)"></div>
       <!-- 右侧调整手柄（仅固定宽度模式显示） -->
       <div v-if="props.widthMode === 'fixed'" 
            class="resize-handle resize-e" 
-           @mousedown.stop="startResize('e', $event)"></div>
+           @mousedown.stop="handleResize('top-right', $event)"></div>
       <!-- 底部调整手柄（仅非自动高度模式显示） -->
       <div v-if="!props.autoHeight" 
            class="resize-handle resize-s" 
-           @mousedown.stop="startResize('s', $event)"></div>
+           @mousedown.stop="handleResize('bottom-left', $event)"></div>
     </div>
   </div>
 </template>
@@ -37,8 +40,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
 import { history, ActionType } from '../../utils/history';
-import { useDraggable } from '../../utils/dragHelper';
-import { usePageStore } from '../../stores/page'; // 新增
+import { useDraggable, useResizable } from '../../utils/dragHelper'; // Fix: import useResizable from dragHelper
+import { usePageStore } from '../../stores/page';
 import type { CompProps } from './base';
 
 const props = defineProps<{
@@ -49,7 +52,6 @@ const props = defineProps<{
   width?: number;
   height?: number;
   scale: number;
-  // 移除 selected 属性
   color?: string;
   fontSize?: number;
   fontWeight?: number | string;
@@ -68,7 +70,7 @@ const props = defineProps<{
   autoHeight?: boolean;
 }>();
 
-const emit = defineEmits(['update']); // 移除 select 事件
+const emit = defineEmits(['update']);
 
 // 使用 page store
 const pageStore = usePageStore();
@@ -78,7 +80,7 @@ const isSelected = computed(() => {
   return pageStore.isComponentSelected(props.id);
 });
 
-// 其他状态变量保持不变
+// 状态变量
 const isResizing = ref(false);
 const resizeDirection = ref('');
 const currentX = ref(props.x);
@@ -104,36 +106,38 @@ const { handleMouseDown: dragMouseDown } = useDraggable({
   componentId: props.id,
   componentSize: componentSize,
   onDragStart: () => {
-    // 选中当前组件（支持多选）
     const event = window.event as MouseEvent;
     const multiSelect = event?.ctrlKey || event?.metaKey;
     pageStore.selectComponent(props.id, multiSelect);
   },
   onUpdate: (updates) => {
-    // 更新当前位置用于实时显示
     if (updates.x !== undefined) currentX.value = updates.x
     if (updates.y !== undefined) currentY.value = updates.y
-    // 发送更新事件
     emit('update', updates)
   }
 })
 
+// 使用调整大小功能
+const { startResize } = useResizable({
+  scale: computed(() => props.scale || 1),
+  minWidth: 20,
+  minHeight: 20,
+  onResizeStart: () => {
+    pageStore.selectComponent(props.id);
+  },
+  onUpdate: (updates) => {
+    if (updates.width !== undefined) currentWidth.value = updates.width;
+    if (updates.height !== undefined) currentHeight.value = updates.height;
+    emit('update', updates);
+  }
+});
+
 // 统一的鼠标按下处理
 function handleMouseDown(e: MouseEvent) {
   if (!isEditing.value && !isResizing.value) {
-    // 使用新的拖拽系统
     dragMouseDown(e, props.x, props.y)
   }
 }
-
-// 记录开始状态（用于调整大小）
-let startState = {
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0,
-  content: ''
-};
 
 // 计算文字实际宽度
 function calculateTextWidth(text: string): number {
@@ -170,90 +174,9 @@ function calculateTextHeight(text: string, width: number): number {
   return Math.max(20, height);
 }
 
-// 调整大小相关函数保持不变
-function startResize(direction: string, e: MouseEvent) {
-  isResizing.value = true;
-  resizeDirection.value = direction;
-  
-  startState = {
-    x: props.x,
-    y: props.y,
-    width: currentWidth.value,
-    height: currentHeight.value,
-    content: props.content
-  };
-  
-  window.addEventListener('mousemove', handleResize);
-  window.addEventListener('mouseup', stopResize);
-  e.preventDefault();
-}
-
-function handleResize(e: MouseEvent) {
-  if (!isResizing.value) return;
-  
-  const scale = props.scale || 1;
-  const deltaX = e.movementX / scale;
-  const deltaY = e.movementY / scale;
-  
-  switch (resizeDirection.value) {
-    case 'se': // 右下角
-      currentWidth.value = Math.max(20, currentWidth.value + deltaX);
-      if (!props.autoHeight) {
-        currentHeight.value = Math.max(20, currentHeight.value + deltaY);
-      }
-      break;
-    case 'e': // 右侧
-      currentWidth.value = Math.max(20, currentWidth.value + deltaX);
-      break;
-    case 's': // 底部
-      if (!props.autoHeight) {
-        currentHeight.value = Math.max(20, currentHeight.value + deltaY);
-      }
-      break;
-  }
-}
-
-function stopResize() {
-  if (isResizing.value) {
-    isResizing.value = false;
-    
-    // 记录调整大小操作到历史
-    history.addAction({
-      type: ActionType.UPDATE,
-      componentId: props.id,
-      data: {
-        before: { 
-          props: {
-            x: startState.x,
-            y: startState.y,
-            width: startState.width,
-            height: startState.height
-          }
-        },
-        after: { 
-          props: {
-            x: props.x,
-            y: props.y,
-            width: currentWidth.value,
-            height: currentHeight.value
-          }
-        }
-      }
-    });
-    
-    emit('update', {
-      width: currentWidth.value,
-      height: currentHeight.value
-    });
-    
-    window.removeEventListener('mousemove', handleResize);
-    window.removeEventListener('mouseup', stopResize);
-  }
-}
-
-// 文本编辑相关函数保持不变
+// 文本编辑相关函数
 function startEditing() {
-  if (!isSelected.value) return; // 修改：使用 isSelected.value 而不是 props.selected
+  if (!isSelected.value) return;
   
   isEditing.value = true;
   editingContent.value = props.content;
@@ -286,6 +209,16 @@ function finishEditing() {
 function cancelEditing() {
   editingContent.value = props.content;
   isEditing.value = false;
+}
+
+// Handle resize with proper parameters
+function handleResize(direction: string, e: MouseEvent) {
+  startResize(direction, e, {
+    x: props.x,
+    y: props.y,
+    width: props.width || 100,
+    height: props.height || 40
+  });
 }
 
 // 样式计算
@@ -349,21 +282,27 @@ watch(() => props.height, (newHeight) => {
 .text-comp {
   position: absolute;
   cursor: move;
-  border: 2px solid transparent;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: none;
   transition: border-color 0.2s ease;
 }
 
-.text-comp.selected {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 1px #1890ff;
+/* 独立的选中边框指示器 */
+.selection-border {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border: 1px solid #1890ff;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .text-content {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 .edit-wrapper {

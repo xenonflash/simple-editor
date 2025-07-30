@@ -50,34 +50,52 @@ export function useDraggable(options: DragOptions = {}) {
     const deltaX = (e.clientX - dragState.value.startX) / scale
     const deltaY = (e.clientY - dragState.value.startY) / scale
 
-    const newX = dragState.value.startPosX + deltaX
-    const newY = dragState.value.startPosY + deltaY
+    const rawX = dragState.value.startPosX + deltaX
+    const rawY = dragState.value.startPosY + deltaY
 
-    // 更新拖拽组件信息到 store
+    let finalX = rawX
+    let finalY = rawY
+
+    // 如果有组件ID和尺寸信息，进行吸附计算
     if (options.componentId && options.componentSize) {
       const size = typeof options.componentSize === 'object' && 'value' in options.componentSize 
         ? options.componentSize.value 
         : options.componentSize
       
-      console.log('Updating dragging component:', {
-        id: options.componentId,
-        x: newX,
-        y: newY,
-        size
-      })
-      
+      // 先更新拖拽组件信息到 store（用于计算吸附线）
       snaplineStore.updateDraggingComponent({
         id: options.componentId,
-        x: newX,
-        y: newY,
+        x: rawX,
+        y: rawY,
+        width: size.width,
+        height: size.height
+      })
+      
+      // 计算吸附位置
+      const snapResult = snaplineStore.calculateSnapPosition(rawX, rawY, size.width, size.height)
+      finalX = snapResult.x
+      finalY = snapResult.y
+      
+      console.log('Snap calculation:', {
+        raw: { x: rawX, y: rawY },
+        snapped: { x: finalX, y: finalY },
+        snappedX: snapResult.snappedX,
+        snappedY: snapResult.snappedY
+      })
+      
+      // 更新最终位置到 store
+      snaplineStore.updateDraggingComponent({
+        id: options.componentId,
+        x: finalX,
+        y: finalY,
         width: size.width,
         height: size.height
       })
     }
 
     options.onUpdate?.({
-      x: newX,
-      y: newY
+      x: finalX,
+      y: finalY
     })
   }
 

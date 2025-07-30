@@ -35,11 +35,16 @@
                             @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Text v-else-if="comp.type === 'text'"
                         :id="comp.id"
+                        :content="comp.props.content || '新建文本'"
+                        :x="comp.props.x || 0"
+                        :y="comp.props.y || 0"
                         v-bind="comp.props"
                         :scale="scale"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Button v-else-if="comp.type === 'button'"
                         :id="comp.id"
+                        :x="comp.props.x || 0"
+                        :y="comp.props.y || 0"
                         v-bind="comp.props"
                         :scale="scale"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
@@ -123,7 +128,7 @@ import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
 import Ruler from './Ruler.vue';
-import SnapLines, { type SnapLine } from './SnapLines.vue';
+import SnapLines from './SnapLines.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';

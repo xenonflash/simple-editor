@@ -1,22 +1,16 @@
 <template>
   <div class="data-content">
-    <div v-if="!currentTable" class="empty-state">
-      <div class="empty-icon">📊</div>
-      <h3>选择数据表</h3>
-      <p>请从左侧选择一个数据表开始编辑</p>
-    </div>
-    
-    <div v-else class="content-wrapper">
-      <DataEditor 
+    <div v-if="currentTable" class="table-container">
+      <DataEditor
         :table="currentTable"
         :fields="currentTable.fields"
         :records="currentTable.records"
         @update-table="$emit('updateTable', $event)"
         @add-field="handleAddField"
-        @update-field="(fieldId, updates) => $emit('updateField', fieldId, updates)"
+        @update-field="handleUpdateField"
         @delete-field="$emit('deleteField', $event)"
         @add-record="$emit('addRecord', $event)"
-        @update-record="(index, updates) => $emit('updateRecord', index, updates)"
+        @update-record="handleUpdateRecord"
         @delete-record="$emit('deleteRecord', $event)"
       />
     </div>
@@ -34,6 +28,7 @@ interface Props {
 
 defineProps<Props>()
 
+// Make sure emit is properly declared
 const emit = defineEmits<{
   updateTable: [updates: any]
   addField: [name: string, type: FieldType]
@@ -46,6 +41,16 @@ const emit = defineEmits<{
 
 const handleAddField = (event: { name: string; type: FieldType }) => {
   emit('addField', event.name, event.type)
+}
+
+// Add these method handlers
+// Then your handler functions can use emit
+function handleUpdateField(event: { fieldId: string; updates: any }) {
+  emit('updateField', event.fieldId, event.updates)
+}
+
+function handleUpdateRecord(event: { index: number; updates: any }) {
+  emit('updateRecord', event.index, event.updates)
 }
 </script>
 

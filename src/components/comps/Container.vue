@@ -2,7 +2,7 @@
   <div class="container" 
        :class="{ 'is-selected': isSelected }" 
        :style="containerStyle" 
-       @mousedown.stop="handleMouseDown"
+       @mousedown.stop="(e) => handleMouseDown(e, props.x || 0, props.y || 0)"
        @click.stop>
     <slot></slot>
     <template v-if="isSelected">
@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 import type { CompProps } from './base'
 import { useDraggable, useResizable } from '../../utils/dragHelper'
-import { usePageStore } from '../../stores/page' // 新增
+import { usePageStore } from '../../stores/page'
 
 const props = defineProps<{
   id: string
@@ -41,6 +41,12 @@ const props = defineProps<{
   shadowColor?: string
   shadowInset?: boolean
   background?: string
+  backgroundColor?: string // 新增
+  gradientType?: 'linear' | 'radial' // 新增
+  gradientDirection?: string // 新增
+  gradientColor1?: string // 新增
+  gradientColor2?: string // 新增
+  backgroundImage?: string // 新增
   paddingTop?: number
   paddingRight?: number
   paddingBottom?: number
@@ -88,9 +94,12 @@ const { startResize } = useResizable({
   scale: computed(() => props.scale || 1),
   minWidth: 50,
   minHeight: 50,
-  onResizeStart: () => emit('select'),
+  onResizeStart: () => {
+    // 修复：调整大小时也选中组件
+    pageStore.selectComponent(props.id)
+  },
   onUpdate: (updates) => emit('update', updates)
-});
+})
 
 // 处理调整大小
 function handleResize(handle: string, e: MouseEvent) {
@@ -99,7 +108,7 @@ function handleResize(handle: string, e: MouseEvent) {
     y: props.y || 0,
     width: props.width || 100,
     height: props.height || 100
-  });
+  })
 }
 
 // 计算容器样式
@@ -109,58 +118,58 @@ const containerStyle = computed(() => {
     top: `${props.y || 0}px`,
     width: `${props.width || 100}px`,
     height: `${props.height || 100}px`
-  };
+  }
 
   // 边框样式
   if (props.borderWidth && props.borderStyle && props.borderStyle !== 'none') {
-    style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor || '#000'}`;
+    style.border = `${props.borderWidth}px ${props.borderStyle} ${props.borderColor || '#000'}`
   }
 
   // 边框圆角
   if (props.borderRadiusTopLeft || props.borderRadiusTopRight || props.borderRadiusBottomLeft || props.borderRadiusBottomRight) {
-    style.borderRadius = `${props.borderRadiusTopLeft || 0}px ${props.borderRadiusTopRight || 0}px ${props.borderRadiusBottomRight || 0}px ${props.borderRadiusBottomLeft || 0}px`;
+    style.borderRadius = `${props.borderRadiusTopLeft || 0}px ${props.borderRadiusTopRight || 0}px ${props.borderRadiusBottomRight || 0}px ${props.borderRadiusBottomLeft || 0}px`
   }
 
   // 阴影
   if (props.shadowX || props.shadowY || props.shadowBlur || props.shadowSpread) {
-    const shadowInset = props.shadowInset ? 'inset ' : '';
-    style.boxShadow = `${shadowInset}${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor || '#000000'}`;
+    const shadowInset = props.shadowInset ? 'inset ' : ''
+    style.boxShadow = `${shadowInset}${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor || '#000000'}`
   }
 
   // 背景色
   if (props.backgroundColor) {
-    style.backgroundColor = props.backgroundColor;
+    style.backgroundColor = props.backgroundColor
   }
 
   // 渐变背景
   if (props.gradientType && props.gradientColor1 && props.gradientColor2) {
-    const direction = props.gradientDirection || 'to right';
+    const direction = props.gradientDirection || 'to right'
     if (props.gradientType === 'linear') {
-      style.background = `linear-gradient(${direction}, ${props.gradientColor1}, ${props.gradientColor2})`;
+      style.background = `linear-gradient(${direction}, ${props.gradientColor1}, ${props.gradientColor2})`
     } else if (props.gradientType === 'radial') {
-      style.background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`;
+      style.background = `radial-gradient(circle, ${props.gradientColor1}, ${props.gradientColor2})`
     }
   }
 
   // 背景图片
   if (props.backgroundImage) {
-    style.backgroundImage = `url(${props.backgroundImage})`;
-    style.backgroundSize = 'cover';
-    style.backgroundPosition = 'center';
+    style.backgroundImage = `url(${props.backgroundImage})`
+    style.backgroundSize = 'cover'
+    style.backgroundPosition = 'center'
   }
 
   // 内边距
   if (props.paddingTop || props.paddingRight || props.paddingBottom || props.paddingLeft) {
-    style.padding = `${props.paddingTop || 0}px ${props.paddingRight || 0}px ${props.paddingBottom || 0}px ${props.paddingLeft || 0}px`;
+    style.padding = `${props.paddingTop || 0}px ${props.paddingRight || 0}px ${props.paddingBottom || 0}px ${props.paddingLeft || 0}px`
   }
 
   // 外边距
   if (props.marginTop || props.marginRight || props.marginBottom || props.marginLeft) {
-    style.margin = `${props.marginTop || 0}px ${props.marginRight || 0}px ${props.marginBottom || 0}px ${props.marginLeft || 0}px`;
+    style.margin = `${props.marginTop || 0}px ${props.marginRight || 0}px ${props.marginBottom || 0}px ${props.marginLeft || 0}px`
   }
 
-  return style;
-});
+  return style
+})
 </script>
 
 <style scoped>
