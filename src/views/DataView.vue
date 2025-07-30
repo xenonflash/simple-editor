@@ -56,7 +56,7 @@
 import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDataStore } from '../stores/data'
-import { FieldType } from '../types/data'
+import { FieldType, type DataTable, type DataField } from '../types/data'  // Use type-only imports
 import DataToolbar from '../components/data/DataToolbar.vue'
 import DataSidebar from '../components/data/DataSidebar.vue'
 import DataContent from '../components/data/DataContent.vue'
@@ -153,5 +153,18 @@ const handleDeleteRecord = (index: number) => {
   if (currentTableId.value) {
     dataStore.deleteRecord(currentTableId.value, index)
   }
+}
+
+// Add missing method definitions
+const selectTable = (tableId: string) => {
+  dataStore.selectTable(tableId)
+}
+
+const deleteVariable = (variableId: string) => {
+  dataStore.deleteVariable(variableId)
+}
+
+const deleteTable = (tableId: string) => {
+  dataStore.deleteTable(tableId)
 }
 </script>

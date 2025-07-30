@@ -190,8 +190,7 @@ export const useDataStore = defineStore('data', () => {
     return true
   }
 
-  // 在 return 中添加初始化函数
-  // 在 return 中添加初始化函数
+  // 在 return 中添加所有函数
   return {
   // 状态
   variables,
@@ -200,9 +199,6 @@ export const useDataStore = defineStore('data', () => {
   
   // 计算属性
   currentTable,
-  
-  // 初始化函数
-  initDemoData,
   
   // 变量管理
   addVariable,
@@ -223,6 +219,9 @@ export const useDataStore = defineStore('data', () => {
   // 记录管理
   addRecord,
   updateRecord,
-  deleteRecord
+  deleteRecord,
+  
+  // 初始化函数
+  initDemoData
 }
 })

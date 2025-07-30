@@ -1,17 +1,17 @@
 <template>
   <div class="data-content">
     <div v-if="!currentTable" class="empty-state">
-      <div class="empty-icon">🗃️</div>
-      <h3>选择或创建数据表</h3>
-      <p>请从左侧选择一个数据表，或创建新的数据表来开始管理数据</p>
+      <div class="empty-icon">📊</div>
+      <h3>选择数据表</h3>
+      <p>请从左侧选择一个数据表开始编辑</p>
     </div>
     
-    <div v-else class="table-view">
+    <div v-else class="content-wrapper">
       <TableEditor 
         :table="currentTable"
         @update-table="$emit('updateTable', $event)"
         @add-field="handleAddField"
-        @update-field="$emit('updateField', $event.fieldId, $event.updates)"
+        @update-field="(fieldId, updates) => $emit('updateField', fieldId, updates)"
         @delete-field="$emit('deleteField', $event)"
       />
       
@@ -19,7 +19,7 @@
         :fields="currentTable.fields"
         :records="currentTable.records"
         @add-record="$emit('addRecord', $event)"
-        @update-record="$emit('updateRecord', $event.index, $event.updates)"
+        @update-record="(index, updates) => $emit('updateRecord', index, updates)"
         @delete-record="$emit('deleteRecord', $event)"
       />
     </div>
