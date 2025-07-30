@@ -12,7 +12,19 @@ const emit = defineEmits<{
 }>()
 
 const activeTab = ref('node')
-const nodeProperties = ref({
+
+// 定义明确的类型接口
+interface NodeProperties {
+  id: string
+  label: string
+  type: string
+  description: string
+  backgroundColor: string
+  borderColor: string
+  borderWidth: number
+}
+
+const nodeProperties = ref<NodeProperties>({
   id: '',
   label: '',
   type: 'default',
@@ -51,8 +63,8 @@ const extractBorderWidth = (border: string) => {
   return match ? parseInt(match[0]) : 2
 }
 
-const updateProperty = (key: string, value: any) => {
-  nodeProperties.value[key as keyof typeof nodeProperties.value] = value
+const updateProperty = (key: keyof NodeProperties, value: any) => {
+  (nodeProperties.value as any)[key] = value
   
   // 构建更新对象
   const updates: any = {

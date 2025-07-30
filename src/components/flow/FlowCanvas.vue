@@ -6,6 +6,7 @@ import { MiniMap } from '@vue-flow/minimap'
 import { Background } from '@vue-flow/background'
 import CustomNode from './nodes/CustomNode.vue'
 import FormNode from './nodes/FormNode.vue'
+import type { NodeTypesObject } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -26,9 +27,9 @@ const emit = defineEmits<{
 }>()
 
 // 注册自定义节点类型
-const nodeTypes = {
-  custom: CustomNode,
-  form: FormNode
+const nodeTypes: NodeTypesObject = {
+  custom: CustomNode as any,
+  form: FormNode as any
 }
 
 const isDragOver = ref(false)
