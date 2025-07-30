@@ -7,7 +7,7 @@ import FlowPropertiesPanel from '@/components/flow/FlowPropertiesPanel.vue'
 
 // 全局状态管理
 const nodes = ref([
-  // 开始节点
+  // 开始节点 - 简化样式
   {
     id: 'start',
     type: 'input',
@@ -17,11 +17,14 @@ const nodes = ref([
     },
     position: { x: 100, y: 50 },
     style: {
-      background: '#e1f5fe',
-      border: '2px solid #01579b',
-      borderRadius: '10px',
-      fontSize: '14px',
-      fontWeight: 'bold'
+      background: '#667eea',
+      border: 'none',
+      borderRadius: '12px',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      padding: '12px 16px',
+      boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)'
     }
   },
   // 数据验证节点
@@ -33,9 +36,14 @@ const nodes = ref([
     },
     position: { x: 100, y: 150 },
     style: {
-      background: '#f3e5f5',
-      border: '2px solid #4a148c',
-      borderRadius: '8px'
+      background: '#f093fb',
+      border: 'none',
+      borderRadius: '8px',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      padding: '12px 16px',
+      boxShadow: '0 2px 8px rgba(240, 147, 251, 0.2)'
     }
   },
   // 判断节点
@@ -47,14 +55,18 @@ const nodes = ref([
     },
     position: { x: 100, y: 250 },
     style: {
-      background: '#fff3e0',
-      border: '2px solid #e65100',
+      background: '#4facfe',
+      border: 'none',
       borderRadius: '50%',
-      width: '120px',
-      height: '80px',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      width: '100px',
+      height: '100px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      boxShadow: '0 2px 8px rgba(79, 172, 254, 0.2)'
     }
   },
   // 错误处理节点
@@ -66,9 +78,14 @@ const nodes = ref([
     },
     position: { x: 300, y: 250 },
     style: {
-      background: '#ffebee',
-      border: '2px solid #c62828',
-      borderRadius: '8px'
+      background: '#ff6b6b',
+      border: 'none',
+      borderRadius: '8px',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      padding: '12px 16px',
+      boxShadow: '0 2px 8px rgba(255, 107, 107, 0.2)'
     }
   },
   // 结束节点
@@ -81,11 +98,14 @@ const nodes = ref([
     },
     position: { x: 200, y: 400 },
     style: {
-      background: '#e8f5e8',
-      border: '2px solid #2e7d32',
-      borderRadius: '10px',
-      fontSize: '14px',
-      fontWeight: 'bold'
+      background: '#51cf66',
+      border: 'none',
+      borderRadius: '12px',
+      color: 'white',
+      fontSize: '13px',
+      fontWeight: '500',
+      padding: '12px 16px',
+      boxShadow: '0 2px 8px rgba(81, 207, 102, 0.2)'
     }
   }
 ])
@@ -96,13 +116,27 @@ const edges = ref([
     source: 'start', 
     target: 'validate',
     animated: true,
-    style: { stroke: '#01579b', strokeWidth: 2 }
+    style: { 
+      stroke: '#667eea', 
+      strokeWidth: 2
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#667eea'
+    }
   },
   { 
     id: 'e2', 
     source: 'validate', 
     target: 'decision1',
-    style: { stroke: '#4a148c', strokeWidth: 2 }
+    style: { 
+      stroke: '#f093fb', 
+      strokeWidth: 2
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#f093fb'
+    }
   },
   // 验证失败分支
   { 
@@ -111,8 +145,20 @@ const edges = ref([
     target: 'error',
     label: '验证失败',
     type: 'smoothstep',
-    style: { stroke: '#c62828', strokeWidth: 2 },
-    labelStyle: { fill: '#c62828', fontWeight: 'bold' }
+    style: { 
+      stroke: '#ff6b6b', 
+      strokeWidth: 2,
+      strokeDasharray: '6,3'
+    },
+    labelStyle: { 
+      fill: '#ff6b6b', 
+      fontWeight: '500',
+      fontSize: '12px'
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#ff6b6b'
+    }
   },
   // 验证成功分支
   { 
@@ -120,8 +166,19 @@ const edges = ref([
     source: 'decision1', 
     target: 'end',
     label: '验证通过',
-    style: { stroke: '#2e7d32', strokeWidth: 2 },
-    labelStyle: { fill: '#2e7d32', fontWeight: 'bold' }
+    style: { 
+      stroke: '#51cf66', 
+      strokeWidth: 2
+    },
+    labelStyle: { 
+      fill: '#51cf66', 
+      fontWeight: '500',
+      fontSize: '12px'
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#51cf66'
+    }
   }
 ])
 
@@ -140,7 +197,7 @@ const addNode = (nodeData: any) => {
   const newNode = {
     ...nodeData,
     id: `node_${Date.now()}`,
-    position: { x: 200, y: 200 }
+    position: nodeData.position || { x: 200, y: 200 }
   }
   nodes.value.push(newNode)
 }
@@ -153,7 +210,15 @@ const deleteNode = (nodeId: string) => {
 const addEdge = (edgeData: any) => {
   const newEdge = {
     ...edgeData,
-    id: `edge_${Date.now()}`
+    id: `edge_${Date.now()}`,
+    style: {
+      stroke: '#667eea',
+      strokeWidth: 2
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      color: '#667eea'
+    }
   }
   edges.value.push(newEdge)
 }
@@ -235,6 +300,7 @@ const handlePropertyUpdate = (updates: any) => {
         @edge-select="handleEdgeSelect"
         @add-edge="addEdge"
         @update-node="updateNode"
+        @add-node="addNode"
       />
     </div>
 
@@ -252,12 +318,16 @@ const handlePropertyUpdate = (updates: any) => {
   height: calc(100vh - 48px);
   display: flex;
   overflow: hidden;
+  background: #f8f9fa;
 }
 
 .flow-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #f0f0f0;
+  background: #ffffff;
+  border-radius: 0 8px 8px 0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 </style>
