@@ -4,6 +4,8 @@ import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { Background } from '@vue-flow/background'
+import CustomNode from './nodes/CustomNode.vue'
+import FormNode from './nodes/FormNode.vue'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
@@ -23,6 +25,14 @@ const emit = defineEmits<{
   addNode: [nodeData: any]
 }>()
 
+// 注册自定义节点类型
+const nodeTypes = {
+  custom: CustomNode,
+  form: FormNode
+}
+
+const isDragOver = ref(false)
+
 const { 
   onPaneReady, 
   onNodeDragStop, 
@@ -33,8 +43,6 @@ const {
   onPaneClick,
   screenToFlowCoordinate
 } = useVueFlow()
-
-const isDragOver = ref(false)
 
 // 连接节点时添加边
 onConnect((connection) => {
@@ -101,7 +109,8 @@ const handleDrop = (event: DragEvent) => {
       type: nodeType.type,
       data: {
         label: nodeType.name,
-        description: `新建的${nodeType.name}`
+        description: `新建的${nodeType.name}`,
+        ...nodeType.data
       },
       style: nodeType.style,
       position
@@ -123,6 +132,7 @@ const handleDrop = (event: DragEvent) => {
     <VueFlow
       :nodes="nodes"
       :edges="edges"
+      :node-types="nodeTypes"
       class="vue-flow"
       :min-zoom="0.1"
       :max-zoom="4"
@@ -139,12 +149,19 @@ const handleDrop = (event: DragEvent) => {
       <MiniMap 
         :node-color="(node) => {
           if (node.type === 'input') return '#667eea'
-          if (node.type === 'output') return '#a8edea'
+          if (node.type === 'output') return '#51cf66'
           if (node.type === 'decision') return '#4facfe'
-          return '#f093fb'
+          if (node.type === 'custom') return '#f093fb'
+          if (node.type === 'form') return '#faad14'
+          return '#f5f5f5'
         }"
       />
     </VueFlow>
+    
+    <!-- 拖拽提示 -->
+    <div v-if="isDragOver" class="drop-indicator">
+      <div class="drop-text">释放以添加节点</div>
+    </div>
   </div>
 </template>
 
@@ -161,5 +178,32 @@ const handleDrop = (event: DragEvent) => {
 
 .vue-flow {
   flex: 1;
+}
+
+.drop-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(102, 126, 234, 0.9);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.drop-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drop-text::before {
+  content: '📍';
+  font-size: 20px;
 }
 </style>

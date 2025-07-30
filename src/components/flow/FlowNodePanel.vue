@@ -11,7 +11,7 @@ const emit = defineEmits<{
   addNode: [nodeData: any]
 }>()
 
-// 简化的节点类型配置
+// 节点类型配置，包含自定义节点
 const nodeTypes = [
   { 
     icon: '🚀', 
@@ -73,6 +73,39 @@ const nodeTypes = [
       fontWeight: '500',
       boxShadow: '0 2px 8px rgba(81, 207, 102, 0.2)'
     }
+  },
+  // 新增自定义节点类型
+  { 
+    icon: '🎯', 
+    name: '自定义节点', 
+    type: 'custom',
+    data: {
+      icon: '🎯',
+      status: 'info',
+      progress: 50
+    },
+    style: {}
+  },
+  { 
+    icon: '📝', 
+    name: '表单节点', 
+    type: 'form',
+    data: {
+      fields: [
+        {
+          name: '字段名',
+          type: 'text',
+          value: '默认值'
+        },
+        {
+          name: '选项',
+          type: 'select',
+          value: '选项1',
+          options: ['选项1', '选项2', '选项3']
+        }
+      ]
+    },
+    style: {}
   }
 ]
 
@@ -81,7 +114,8 @@ const handleNodeClick = (nodeType: any) => {
     type: nodeType.type,
     data: {
       label: nodeType.name,
-      description: `新建的${nodeType.name}`
+      description: `新建的${nodeType.name}`,
+      ...nodeType.data
     },
     style: nodeType.style
   }

@@ -5,17 +5,17 @@ import FlowNodePanel from '@/components/flow/FlowNodePanel.vue'
 import FlowCanvas from '@/components/flow/FlowCanvas.vue'
 import FlowPropertiesPanel from '@/components/flow/FlowPropertiesPanel.vue'
 
-// 全局状态管理
+// 全局状态管理 - 包含自定义节点的演示数据
 const nodes = ref([
-  // 开始节点 - 简化样式
+  // 开始节点
   {
     id: 'start',
     type: 'input',
-    data: { 
-      label: '用户注册流程开始',
-      description: '触发器：用户提交注册表单'
-    },
     position: { x: 100, y: 50 },
+    data: { 
+      label: '开始：用户注册流程',
+      description: '用户访问注册页面'
+    },
     style: {
       background: '#667eea',
       border: 'none',
@@ -27,34 +27,63 @@ const nodes = ref([
       boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)'
     }
   },
-  // 数据验证节点
+  
+  // 表单节点 - 用户信息收集
   {
-    id: 'validate',
-    data: { 
-      label: '数据验证',
-      description: '验证邮箱格式、密码强度等'
-    },
-    position: { x: 100, y: 150 },
-    style: {
-      background: '#f093fb',
-      border: 'none',
-      borderRadius: '8px',
-      color: 'white',
-      fontSize: '13px',
-      fontWeight: '500',
-      padding: '12px 16px',
-      boxShadow: '0 2px 8px rgba(240, 147, 251, 0.2)'
+    id: 'userForm',
+    type: 'form',
+    position: { x: 100, y: 180 },
+    data: {
+      label: '用户信息表单',
+      fields: [
+        {
+          name: '用户名',
+          type: 'text',
+          value: ''
+        },
+        {
+          name: '邮箱',
+          type: 'text',
+          value: ''
+        },
+        {
+          name: '用户类型',
+          type: 'select',
+          value: '普通用户',
+          options: ['普通用户', 'VIP用户', '企业用户']
+        },
+        {
+          name: '年龄',
+          type: 'number',
+          value: 18
+        }
+      ]
     }
   },
+  
+  // 自定义节点 - 数据验证
+  {
+    id: 'validation',
+    type: 'custom',
+    position: { x: 400, y: 180 },
+    data: {
+      label: '数据验证',
+      description: '验证用户输入的信息格式和完整性',
+      icon: '🔍',
+      status: 'info',
+      progress: 0
+    }
+  },
+  
   // 判断节点
   {
-    id: 'decision1',
+    id: 'decision',
     type: 'decision',
-    data: { 
-      label: '验证是否通过？',
-      description: '条件判断节点'
+    position: { x: 400, y: 350 },
+    data: {
+      label: '验证通过？',
+      description: '检查数据是否符合要求'
     },
-    position: { x: 100, y: 250 },
     style: {
       background: '#4facfe',
       border: 'none',
@@ -70,34 +99,86 @@ const nodes = ref([
       boxShadow: '0 2px 8px rgba(79, 172, 254, 0.2)'
     }
   },
+  
+  // 自定义节点 - 数据库操作
+  {
+    id: 'database',
+    type: 'custom',
+    position: { x: 600, y: 280 },
+    data: {
+      label: '保存到数据库',
+      description: '将用户信息存储到数据库中',
+      icon: '💾',
+      status: 'success',
+      progress: 100
+    }
+  },
+  
+  // 表单节点 - 邮件配置
+  {
+    id: 'emailConfig',
+    type: 'form',
+    position: { x: 600, y: 450 },
+    data: {
+      label: '邮件发送配置',
+      fields: [
+        {
+          name: '邮件模板',
+          type: 'select',
+          value: '欢迎邮件',
+          options: ['欢迎邮件', '验证邮件', '通知邮件']
+        },
+        {
+          name: '发送延迟(秒)',
+          type: 'number',
+          value: 0
+        },
+        {
+          name: '邮件内容',
+          type: 'textarea',
+          value: '欢迎加入我们的平台！'
+        }
+      ]
+    }
+  },
+  
+  // 自定义节点 - 发送邮件
+  {
+    id: 'sendEmail',
+    type: 'custom',
+    position: { x: 800, y: 350 },
+    data: {
+      label: '发送欢迎邮件',
+      description: '向用户发送注册成功的欢迎邮件',
+      icon: '📧',
+      status: 'warning',
+      progress: 75
+    }
+  },
+  
   // 错误处理节点
   {
     id: 'error',
-    data: { 
-      label: '返回错误信息',
-      description: '显示具体的验证错误'
-    },
-    position: { x: 300, y: 250 },
-    style: {
-      background: '#ff6b6b',
-      border: 'none',
-      borderRadius: '8px',
-      color: 'white',
-      fontSize: '13px',
-      fontWeight: '500',
-      padding: '12px 16px',
-      boxShadow: '0 2px 8px rgba(255, 107, 107, 0.2)'
+    type: 'custom',
+    position: { x: 200, y: 450 },
+    data: {
+      label: '错误处理',
+      description: '处理验证失败的情况',
+      icon: '❌',
+      status: 'error',
+      progress: 0
     }
   },
+  
   // 结束节点
   {
     id: 'end',
     type: 'output',
-    data: { 
-      label: '注册流程完成',
-      description: '用户成功注册并激活'
+    position: { x: 800, y: 550 },
+    data: {
+      label: '注册完成',
+      description: '用户注册流程成功完成'
     },
-    position: { x: 200, y: 400 },
     style: {
       background: '#51cf66',
       border: 'none',
@@ -112,74 +193,82 @@ const nodes = ref([
 ])
 
 const edges = ref([
-  { 
-    id: 'e1', 
-    source: 'start', 
-    target: 'validate',
+  // 主流程
+  {
+    id: 'e1',
+    source: 'start',
+    target: 'userForm',
     animated: true,
-    style: { 
-      stroke: '#667eea', 
-      strokeWidth: 2
-    },
-    markerEnd: {
-      type: 'arrowclosed',
-      color: '#667eea'
-    }
+    style: { stroke: '#667eea', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#667eea' }
   },
-  { 
-    id: 'e2', 
-    source: 'validate', 
-    target: 'decision1',
-    style: { 
-      stroke: '#f093fb', 
-      strokeWidth: 2
-    },
-    markerEnd: {
-      type: 'arrowclosed',
-      color: '#f093fb'
-    }
+  {
+    id: 'e2',
+    source: 'userForm',
+    target: 'validation',
+    style: { stroke: '#faad14', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#faad14' }
   },
+  {
+    id: 'e3',
+    source: 'validation',
+    target: 'decision',
+    style: { stroke: '#f093fb', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#f093fb' }
+  },
+  
+  // 验证成功分支
+  {
+    id: 'e4',
+    source: 'decision',
+    target: 'database',
+    label: '验证通过',
+    style: { stroke: '#51cf66', strokeWidth: 2 },
+    labelStyle: { fill: '#51cf66', fontWeight: '500', fontSize: '12px' },
+    markerEnd: { type: 'arrowclosed', color: '#51cf66' }
+  },
+  {
+    id: 'e5',
+    source: 'database',
+    target: 'emailConfig',
+    style: { stroke: '#f093fb', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#f093fb' }
+  },
+  {
+    id: 'e6',
+    source: 'emailConfig',
+    target: 'sendEmail',
+    style: { stroke: '#faad14', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#faad14' }
+  },
+  {
+    id: 'e7',
+    source: 'sendEmail',
+    target: 'end',
+    style: { stroke: '#51cf66', strokeWidth: 2 },
+    markerEnd: { type: 'arrowclosed', color: '#51cf66' }
+  },
+  
   // 验证失败分支
-  { 
-    id: 'e3', 
-    source: 'decision1', 
+  {
+    id: 'e8',
+    source: 'decision',
     target: 'error',
     label: '验证失败',
     type: 'smoothstep',
-    style: { 
-      stroke: '#ff6b6b', 
-      strokeWidth: 2,
-      strokeDasharray: '6,3'
-    },
-    labelStyle: { 
-      fill: '#ff6b6b', 
-      fontWeight: '500',
-      fontSize: '12px'
-    },
-    markerEnd: {
-      type: 'arrowclosed',
-      color: '#ff6b6b'
-    }
+    style: { stroke: '#ff6b6b', strokeWidth: 2, strokeDasharray: '6,3' },
+    labelStyle: { fill: '#ff6b6b', fontWeight: '500', fontSize: '12px' },
+    markerEnd: { type: 'arrowclosed', color: '#ff6b6b' }
   },
-  // 验证成功分支
-  { 
-    id: 'e4', 
-    source: 'decision1', 
-    target: 'end',
-    label: '验证通过',
-    style: { 
-      stroke: '#51cf66', 
-      strokeWidth: 2
-    },
-    labelStyle: { 
-      fill: '#51cf66', 
-      fontWeight: '500',
-      fontSize: '12px'
-    },
-    markerEnd: {
-      type: 'arrowclosed',
-      color: '#51cf66'
-    }
+  {
+    id: 'e9',
+    source: 'error',
+    target: 'userForm',
+    label: '重新填写',
+    type: 'smoothstep',
+    style: { stroke: '#ff6b6b', strokeWidth: 2, strokeDasharray: '3,3' },
+    labelStyle: { fill: '#ff6b6b', fontWeight: '500', fontSize: '12px' },
+    markerEnd: { type: 'arrowclosed', color: '#ff6b6b' }
   }
 ])
 
