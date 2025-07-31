@@ -1,0 +1,91 @@
+// src/utils/icons.ts
+import { library } from '@fortawesome/fontawesome-svg-core'
+import {
+  faSearch,
+  faSave,
+  faEnvelope,
+  faTimes,
+  faClipboard,
+  faTrash,
+  faChartBar,
+  faDatabase,
+  faDownload,
+  faUpload,
+  faEdit,
+  faPlus,
+  faMapMarkerAlt,
+  faRocket,
+  faCog,
+  faQuestion,
+  faFlag,
+  faBullseye,
+  faFileAlt,
+  faBox,
+  faCircle,
+  faCopy,
+  faTable,
+  faHammer,
+  faWrench
+} from '@fortawesome/free-solid-svg-icons'
+
+// 图标库初始化
+export function initIcons() {
+  library.add(
+    faSearch,
+    faSave,
+    faEnvelope,
+    faTimes,
+    faClipboard,
+    faTrash,
+    faChartBar,
+    faDatabase,
+    faDownload,
+    faUpload,
+    faEdit,
+    faPlus,
+    faMapMarkerAlt,
+    faRocket,
+    faCog,
+    faQuestion,
+    faFlag,
+    faBullseye,
+    faFileAlt,
+    faBox,
+    faCircle,
+    faCopy,
+    faTable,
+    faHammer,
+    faWrench
+  )
+}
+
+// emoji到FontAwesome图标的映射
+export const iconMap: Record<string, string> = {
+  '🔍': 'search',
+  '💾': 'save',
+  '📧': 'envelope',
+  '❌': 'times',
+  '📋': 'clipboard',
+  '🗑': 'trash',
+  '🗑️': 'trash',
+  '📊': 'chart-bar',
+  '🗃️': 'database',
+  '📥': 'download',
+  '📤': 'upload',
+  '✏️': 'edit',
+  '✕': 'times',
+  '➕': 'plus',
+  '📍': 'map-marker-alt',
+  '🚀': 'rocket',
+  '⚙️': 'cog',
+  '⚙': 'cog',
+  '❓': 'question',
+  '🏁': 'flag',
+  '🎯': 'bullseye',
+  '📝': 'file-alt',
+  '📦': 'box',
+  '🔘': 'circle',
+  '✏': 'edit',
+  '🏗️': 'hammer',
+  '🔧': 'wrench'
+}

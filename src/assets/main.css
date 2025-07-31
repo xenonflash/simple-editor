@@ -1,1 +1,19 @@
 @import './base.css';
+
+/* FontAwesome图标样式 */
+.app-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+}
+
+/* 图标大小变体 */
+.icon-sm .app-icon { font-size: 0.875rem; }
+.icon-lg .app-icon { font-size: 1.25rem; }
+.icon-xl .app-icon { font-size: 1.5rem; }
+
+/* 图标颜色 */
+.icon-primary .app-icon { color: #667eea; }
+.icon-success .app-icon { color: #48bb78; }
+.icon-warning .app-icon { color: #ed8936; }
+.icon-danger .app-icon { color: #f56565; }
