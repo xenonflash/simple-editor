@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Comp } from '../components/comps/base'
 import { usePageStore } from './page'
+import { CompType } from '../components/comps/base'
 
 export interface ControlPoint {
   id: string
@@ -12,6 +13,73 @@ export interface ControlPoint {
   width: number
   height: number
   handle?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'right' | 'bottom' | 'left'
+}
+
+// 计算文字实际宽度（复制Text组件的逻辑）
+function calculateTextWidth(text: string, fontSize: number, fontWeight: string, fontFamily: string): number {
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) return 100
+  
+  context.font = `${fontWeight || 'normal'} ${fontSize || 14}px ${fontFamily || 'Arial'}`
+  const metrics = context.measureText(text || '新建文本')
+  const width = metrics.width + 8
+  
+  return Math.max(20, width)
+}
+
+// 计算文字实际高度（复制Text组件的逻辑）
+function calculateTextHeight(text: string, width: number, fontSize: number, fontWeight: string, fontFamily: string): number {
+  const tempDiv = document.createElement('div')
+  tempDiv.style.cssText = `
+    position: absolute;
+    visibility: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: ${fontSize || 14}px;
+    font-weight: ${fontWeight || 'normal'};
+    font-family: ${fontFamily || 'Arial'};
+    width: ${width}px;
+    padding: 4px;
+  `
+  tempDiv.textContent = text || '新建文本'
+  document.body.appendChild(tempDiv)
+  const height = tempDiv.offsetHeight
+  document.body.removeChild(tempDiv)
+  
+  return Math.max(20, height)
+}
+
+// 获取组件的实际尺寸（考虑自动尺寸）
+function getComponentActualSize(comp: Comp): { width: number; height: number } {
+  let width = comp.props.width || 100
+  let height = comp.props.height || 100
+  
+  // 处理Text组件的自动尺寸
+  if (comp.type === CompType.TEXT) {
+    // 自动宽度
+    if (comp.props.widthMode === 'auto') {
+      width = calculateTextWidth(
+        comp.props.content || '新建文本',
+        comp.props.fontSize || 14,
+        comp.props.fontWeight || 'normal',
+        comp.props.fontFamily || 'Arial'
+      )
+    }
+    
+    // 自动高度
+    if (comp.props.autoHeight) {
+      height = calculateTextHeight(
+        comp.props.content || '新建文本',
+        width,
+        comp.props.fontSize || 14,
+        comp.props.fontWeight || 'normal',
+        comp.props.fontFamily || 'Arial'
+      )
+    }
+  }
+  
+  return { width, height }
 }
 
 export const useControlStore = defineStore('control', () => {
@@ -27,8 +95,9 @@ export const useControlStore = defineStore('control', () => {
     selectedComps.forEach(comp => {
       const x = comp.props.x || 0
       const y = comp.props.y || 0
-      const width = comp.props.width || 100
-      const height = comp.props.height || 100
+      
+      // 获取实际尺寸（考虑自动尺寸）
+      const { width, height } = getComponentActualSize(comp)
       
       // 选中边框
       controlPoints.push({
@@ -43,7 +112,23 @@ export const useControlStore = defineStore('control', () => {
       
       // 调整手柄（仅单选时显示）
       if (selectedComps.length === 1) {
-        const handles = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
+        let handles = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+        
+        if (comp.type === CompType.TEXT) {
+          const isAutoWidth = comp.props.widthMode === 'auto'
+          const isAutoHeight = comp.props.autoHeight
+          handles = ["right", "bottom"]
+          
+          // 如果宽度或高度任一为自动，则不显示调整手柄
+          // 因为四角手柄会同时影响宽度和高度
+          if (isAutoWidth) {
+            handles = handles.filter(h => h !== "right")
+          }
+          if (isAutoHeight) {
+            handles = handles.filter(h => h !== "bottom")
+          }
+        }
+        
         handles.forEach(handle => {
           controlPoints.push({
             id: `resize-${comp.id}-${handle}`,

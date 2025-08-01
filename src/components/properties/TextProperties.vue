@@ -13,27 +13,14 @@
                placeholder="输入文字内容..." />
       </div>
       
-      <!-- 宽度模式 -->
+      <!-- 自动宽度开关 -->
       <div class="property-row">
-        <label class="property-label">宽度模式</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <input type="radio" 
-                   name="widthMode"
-                   value="auto"
-                   :checked="(widthMode || 'auto') === 'auto'"
-                   @change="updateValue('widthMode', $event)" />
-            <span>自动</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" 
-                   name="widthMode"
-                   value="fixed"
-                   :checked="widthMode === 'fixed'"
-                   @change="updateValue('widthMode', $event)" />
-            <span>固定</span>
-          </label>
-        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" 
+                 :checked="(widthMode || 'auto') === 'auto'" 
+                 @change="emit('update', { widthMode: $event.target.checked ? 'auto' : 'fixed' })" />
+          <span>自动宽度</span>
+        </label>
       </div>
       
       <!-- 自动高度开关 -->
@@ -41,7 +28,7 @@
         <label class="checkbox-label">
           <input type="checkbox" 
                  :checked="autoHeight !== false" 
-                 @change="updateValue('autoHeight', $event)" />
+                 @change="emit('update', { autoHeight: $event.target.checked })" />
           <span>自动高度</span>
         </label>
       </div>

@@ -207,6 +207,14 @@ export function useResizable(options: ResizeOptions = {}) {
         updates.width = Math.max(minWidth, resizeState.value.startWidth + deltaX)
         updates.height = Math.max(minHeight, resizeState.value.startHeight + deltaY)
         break
+      // 新增：右侧手柄 - 只调整宽度
+      case 'right':
+        updates.width = Math.max(minWidth, resizeState.value.startWidth + deltaX)
+        break
+      // 新增：底部手柄 - 只调整高度
+      case 'bottom':
+        updates.height = Math.max(minHeight, resizeState.value.startHeight + deltaY)
+        break
     }
 
     options.onUpdate?.(updates)

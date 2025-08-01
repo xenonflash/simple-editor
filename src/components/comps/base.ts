@@ -200,8 +200,8 @@ export function createComp(type: CompType, name: string): Comp {
           width: 100,
           height: 40,
           // 新增文字组件默认属性
-          widthMode: 'auto', // 默认自动宽度
-          autoHeight: true, // 默认自动高度
+          widthMode: 'fixed', // 改为默认固定宽度
+          autoHeight: false, // 改为默认固定高度
           minWidth: 20,
           maxWidth: 500
         },

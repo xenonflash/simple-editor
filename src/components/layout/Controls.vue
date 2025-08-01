@@ -26,6 +26,15 @@ import { useControlStore } from '../../stores/control'
 import { useResizable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
 
+// 手柄尺寸常量配置
+const HANDLE_CONFIG = {
+  SIZE: 8,           // 手柄尺寸 (px)
+  BORDER_WIDTH: 2,   // 边框宽度 (px)
+  get HALF_SIZE() {  // 计算属性：手柄尺寸的一半，用于定位
+    return this.SIZE / 2
+  }
+} as const
+
 interface Props {
   scale: number
 }
@@ -65,10 +74,10 @@ function getSelectionStyle(control: any) {
 function getResizeHandleStyle(control: any) {
   const baseStyle = {
     position: 'absolute',
-    width: '12px',
-    height: '12px',
+    width: `${HANDLE_CONFIG.SIZE}px`,
+    height: `${HANDLE_CONFIG.SIZE}px`,
     background: '#fff',
-    border: '2px solid #1890ff',
+    border: `${HANDLE_CONFIG.BORDER_WIDTH}px solid #1890ff`,
     borderRadius: '50%',
     zIndex: '1001',
     cursor: getResizeCursor(control.handle)
@@ -80,20 +89,30 @@ function getResizeHandleStyle(control: any) {
   
   switch (control.handle) {
     case 'top-left':
-      left = x - 6
-      top = y - 6
+      left = x - HANDLE_CONFIG.HALF_SIZE
+      top = y - HANDLE_CONFIG.HALF_SIZE
       break
     case 'top-right':
-      left = x + width - 6
-      top = y - 6
+      left = x + width - HANDLE_CONFIG.HALF_SIZE
+      top = y - HANDLE_CONFIG.HALF_SIZE
       break
     case 'bottom-left':
-      left = x - 6
-      top = y + height - 6
+      left = x - HANDLE_CONFIG.HALF_SIZE
+      top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
     case 'bottom-right':
-      left = x + width - 6
-      top = y + height - 6
+      left = x + width - HANDLE_CONFIG.HALF_SIZE
+      top = y + height - HANDLE_CONFIG.HALF_SIZE
+      break
+    // 新增：右侧手柄
+    case 'right':
+      left = x + width - HANDLE_CONFIG.HALF_SIZE
+      top = y + height / 2 - HANDLE_CONFIG.HALF_SIZE
+      break
+    // 新增：底部手柄
+    case 'bottom':
+      left = x + width / 2 - HANDLE_CONFIG.HALF_SIZE
+      top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
   }
   
@@ -110,7 +129,9 @@ function getResizeCursor(handle: string) {
     'top-left': 'nw-resize',
     'top-right': 'ne-resize',
     'bottom-left': 'sw-resize',
-    'bottom-right': 'se-resize'
+    'bottom-right': 'se-resize',
+    'right': 'e-resize',
+    'bottom': 's-resize'
   }
   return cursorMap[handle] || 'default'
 }
