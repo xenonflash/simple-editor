@@ -58,7 +58,10 @@
               />
               
               <!-- 新增：Control组件 -->
-              <Controls :scale="scale" />
+              <Controls 
+                :scale="scale" 
+                @update="handleUpdatePosition"
+              />
               
               <div class="placeholder" v-if="props.components.length === 0">
                 拖拽组件到此处开始设计
@@ -132,13 +135,13 @@ import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
 import Ruler from './Ruler.vue';
 import SnapLines from './SnapLines.vue';
+import Controls from './Controls.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
 
 import BoardToolbar from './BoardToolbar.vue';
-import Controls from './Controls.vue';
 import { useSnaplineStore } from '../../stores/snapline';
 import { usePageStore } from '../../stores/page';
 

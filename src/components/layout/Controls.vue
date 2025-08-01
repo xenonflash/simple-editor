@@ -31,6 +31,10 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{
+  update: [componentId: string, updates: any]
+}>()
+
 const controlStore = useControlStore()
 const pageStore = usePageStore()
 
@@ -115,15 +119,10 @@ function getResizeCursor(handle: string) {
 const { startResize } = useResizable({
   scale: computed(() => props.scale),
   onUpdate: (updates) => {
-    // 更新选中的组件
+    // 通过emit向Board组件传递更新事件
     const selectedComp = pageStore.selectedComps[0]
     if (selectedComp) {
-      // 发出更新事件给Board组件
-      // 这里需要通过emit或者直接调用pageStore的方法
-      pageStore.updateComponentInCurrentPage({
-        ...selectedComp,
-        props: { ...selectedComp.props, ...updates }
-      })
+      emit('update', selectedComp.id, updates)
     }
   }
 })

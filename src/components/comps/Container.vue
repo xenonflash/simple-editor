@@ -1,7 +1,7 @@
 <template>
   <div class="container" 
        :style="containerStyle" 
-       @mousedown.stop="handleMouseDown"
+       @mousedown.stop="(e) => handleMouseDown(e, props.x || 0, props.y || 0)"
        @click.stop>
     <slot></slot>
   </div>
