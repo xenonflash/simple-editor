@@ -1,37 +1,46 @@
 <template>
   <div class="left-panel">
-    <div class="panel-title">组件</div>
-    <div class="component-list">
-      <div class="component-item"
-           draggable="true"
-           @dragstart="handleDragStart(CompType.CONTAINER)">
-        <div class="icon">
-          <AppIcon name="box" />
+    <!-- 组件区域 -->
+    <div class="panel-section">
+      <div class="panel-title">组件</div>
+      <div class="component-list">
+        <div class="component-item"
+             draggable="true"
+             @dragstart="handleDragStart(CompType.CONTAINER)">
+          <div class="icon">
+            <AppIcon name="box" />
+          </div>
+          <div class="name">容器</div>
         </div>
-        <div class="name">容器</div>
-      </div>
-      <div class="component-item"
-           draggable="true"
-           @dragstart="handleDragStart(CompType.TEXT)">
-        <div class="icon">
-          <AppIcon name="file-alt" />
+        <div class="component-item"
+             draggable="true"
+             @dragstart="handleDragStart(CompType.TEXT)">
+          <div class="icon">
+            <AppIcon name="file-alt" />
+          </div>
+          <div class="name">文字</div>
         </div>
-        <div class="name">文字</div>
-      </div>
-      <div class="component-item"
-           draggable="true"
-           @dragstart="handleDragStart(CompType.BUTTON)">
-        <div class="icon">
-          <AppIcon name="circle" />
+        <div class="component-item"
+             draggable="true"
+             @dragstart="handleDragStart(CompType.BUTTON)">
+          <div class="icon">
+            <AppIcon name="circle" />
+          </div>
+          <div class="name">按钮</div>
         </div>
-        <div class="name">按钮</div>
       </div>
+    </div>
+
+    <!-- 页面管理区域 -->
+    <div class="panel-section">
+      <PageManagerVertical />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { CompType } from '../comps/base';
+import PageManagerVertical from './PageManagerVertical.vue';
 
 function handleDragStart(type: CompType) {
   // 设置拖拽数据
@@ -46,8 +55,23 @@ function handleDragStart(type: CompType) {
 <style scoped>
 .left-panel {
   width: 240px;
+  height: 100vh; /* 使用视口高度 */
+  max-height: 100vh; /* 限制最大高度 */
   border-right: 1px solid #f0f0f0;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 防止溢出 */
+}
+
+.panel-section {
+  flex-shrink: 0;
+}
+
+.panel-section:not(:last-child) {
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
 }
 
 .panel-title {

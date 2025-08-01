@@ -56,8 +56,6 @@
 
           <BackgroundProperties v-bind="props.component.props"
                           @update="updateProps" />
-
-          
         </div>
 
         <!-- 事件面板 -->
@@ -148,11 +146,14 @@ function addEvent(eventName: string) {
 <style scoped>
 .properties-panel {
   width: 240px;
+  height: 100vh; /* 关键：使用视口高度 */
+  max-height: 100vh; /* 关键：限制最大高度 */
   background: #ffffff;
   border-left: 1px solid #e5e5e5;
   display: flex;
   flex-direction: column;
   user-select: none;
+  overflow: hidden; /* 关键：防止面板本身溢出 */
 }
 
 .panel-content {
@@ -160,6 +161,8 @@ function addEvent(eventName: string) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* 关键：允许flex子项收缩 */
+  height: 100%; /* 关键：确保占满父容器 */
 }
 
 /* 标签页样式 */
@@ -168,6 +171,7 @@ function addEvent(eventName: string) {
   display: flex;
   border-bottom: 1px solid #e5e5e5;
   padding: 0 8px;
+  flex-shrink: 0; /* 防止标签页被压缩 */
 }
 
 .tab-button {
@@ -200,7 +204,30 @@ function addEvent(eventName: string) {
 
 .tab-content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* 只在内容区域滚动 */
+  overflow-x: hidden;
+  min-height: 0; /* 关键：允许flex子项收缩 */
+  height: calc(100% - 36px); /* 关键：减去标签页高度 */
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
+}
+
+.tab-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
 }
 
 /* 空状态 */
