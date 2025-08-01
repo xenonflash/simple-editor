@@ -190,14 +190,14 @@ export function createComp(type: CompType, name: string): Comp {
         name,
         props: {
           ...baseProps,
-          content: '新建文本',
+          content: '一段文字',
           color: '#333',
           fontSize: 14,
           fontWeight: 'normal',
           fontFamily: 'Arial',
           textDecoration: 'none',
           fontStyle: 'normal',
-          width: 30,
+          width: 60,
           height: 20,
           // 新增文字组件默认属性
           widthMode: 'fixed', // 改为默认固定宽度

@@ -241,7 +241,7 @@ document.addEventListener('click', () => {
 }
 
 .page-list {
-  padding: 0 16px;
+  padding: 30px 16px;
   max-height: 300px;
   overflow-y: auto;
   scrollbar-width: thin;

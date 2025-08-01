@@ -22,7 +22,7 @@ function calculateTextWidth(text: string, fontSize: number, fontWeight: string, 
   if (!context) return 100
   
   context.font = `${fontWeight || 'normal'} ${fontSize || 14}px ${fontFamily || 'Arial'}`
-  const metrics = context.measureText(text || '新建文本')
+  const metrics = context.measureText(text || '一段文字')
   const width = metrics.width + 8
   
   return Math.max(20, width)
@@ -40,14 +40,13 @@ function calculateTextHeight(text: string, width: number, fontSize: number, font
     font-weight: ${fontWeight || 'normal'};
     font-family: ${fontFamily || 'Arial'};
     width: ${width}px;
-    padding: 4px;
   `
   tempDiv.textContent = text || '新建文本'
   document.body.appendChild(tempDiv)
   const height = tempDiv.offsetHeight
   document.body.removeChild(tempDiv)
   
-  return Math.max(20, height)
+  return Math.max(10, height)
 }
 
 // 获取组件的实际尺寸（考虑自动尺寸）
