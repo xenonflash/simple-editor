@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import TopBar from './components/layout/TopBar.vue';
+import { useUserStore } from './stores/user'
+import { ref, onBeforeMount } from 'vue'
+
+const userStore = useUserStore()
+onBeforeMount(() => {
+  userStore.initAuth()
+})
+const showTopbar = ref(!/\/login/.test(location.pathname))
 </script>
 
 <template>
   <div class="app">
-    <TopBar />
+    <TopBar v-if="showTopbar"/>
     <router-view />
   </div>
 </template>

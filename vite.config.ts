@@ -5,7 +5,6 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
-// https://vite.dev/config/
 export default defineConfig({
   base: "/simple-editor-web/",
   plugins: [
@@ -24,7 +23,7 @@ export default defineConfig({
         target: 'http://localhost:7001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // 移除rewrite，保持/api路径不变
       },
     },
   },

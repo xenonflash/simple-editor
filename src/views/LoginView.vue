@@ -3,8 +3,7 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>Simple Editor</h1>
-        <p>低代码可视化编辑器</p>
+        <h1>The Editor</h1>
       </div>
       
       <form @submit.prevent="handleLogin" class="login-form">
@@ -91,7 +90,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
 }
 
