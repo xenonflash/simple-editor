@@ -23,10 +23,19 @@
                @mousedown.stop="handleCanvasClick">
             <div class="canvas-content"
                  :style="contentStyle">
+              <!-- 多选组件 - 放在底层但能接收事件 -->
+              <MultiSelect 
+                :components="props.components"
+                :scale="scale"
+                :offset="panOffset"
+                :canvas-ref="canvasRef"
+              />
+              
+              <!-- 组件渲染 - 提高层级 -->
               <template v-for="(comp, index) in props.components"
                         :key="comp.id">
                 <div class="component-wrapper"
-                     :style="{ zIndex: comp.props.zIndex || index + 1 }"
+                     :style="{ zIndex: comp.props.zIndex || index + 1000 }"
                      @contextmenu.prevent="showContextMenu($event, comp)">
                   <Container v-if="comp.type === 'container'"
                             :id="comp.id"
@@ -51,13 +60,12 @@
                 </div>
               </template>
               
-              <!-- 简化的吸附线组件 -->
+              <!-- 其他组件保持原有层级 -->
               <SnapLines 
                 :scale="scale"
                 :offset="panOffset"
               />
               
-              <!-- 新增：Control组件 -->
               <Controls 
                 :scale="scale" 
                 @update="handleUpdatePosition"
@@ -136,6 +144,7 @@ import Button from '../comps/Button.vue';
 import Ruler from './Ruler.vue';
 import SnapLines from './SnapLines.vue';
 import Controls from './Controls.vue';
+import MultiSelect from './MultiSelect.vue';
 import type { Comp } from '../comps/base';
 import { CompType, createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
@@ -372,9 +381,12 @@ const contentStyle = computed(() => ({
 
 // 处理画布点击
 function handleCanvasClick(e: MouseEvent) {
+  // MultiSelect 组件会处理框选逻辑
+  // 这里只处理简单的取消选中
   if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('canvas-content')) {
-    emit('select', null);
-    log('Canvas clicked, deselect component');
+    if (!e.ctrlKey && !e.metaKey) {
+      pageStore.selectComponent(null);
+    }
   }
 }
 
