@@ -197,8 +197,8 @@ export function createComp(type: CompType, name: string): Comp {
           fontFamily: 'Arial',
           textDecoration: 'none',
           fontStyle: 'normal',
-          width: 100,
-          height: 40,
+          width: 30,
+          height: 20,
           // 新增文字组件默认属性
           widthMode: 'fixed', // 改为默认固定宽度
           autoHeight: false, // 改为默认固定高度

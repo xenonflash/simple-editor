@@ -1,7 +1,8 @@
 <template>
   <div class="properties-panel">
+    <!-- 组件属性编辑 -->
     <div v-if="props.component" class="panel-content">
-      <!-- 标签页头部 -->
+      <!-- 现有的组件属性编辑代码 -->
       <div class="tabs">
         <button class="tab-button" 
                 :class="{ active: activeTab === 'properties' }"
@@ -82,14 +83,26 @@
         </div>
       </div>
     </div>
-    <div v-else class="empty-tip">
-      在画布中选择一个对象以查看属性
+    
+    <!-- 页面属性编辑（当无选中组件时自动显示） -->
+    <div v-else-if="currentPage" class="panel-content">
+      <div class="panel-header">
+        <h3>页面属性</h3>
+      </div>
+      <PageProperties :page="currentPage" />
+    </div>
+    
+    <!-- 空状态 -->
+    <div v-else class="empty-state">
+      <div class="empty-icon">🎨</div>
+      <p>暂无内容</p>
+      <small>创建页面或添加组件开始编辑</small>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { Comp } from '../comps/base';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
@@ -98,12 +111,21 @@ import ShadowProperties from '../properties/ShadowProperties.vue';
 import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
 import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
+import { usePageStore } from '../../stores/page';
+import PageProperties from '../properties/PageProperties.vue';
+import AppIcon from '../icons/AppIcon.vue';
 
 const props = defineProps<{
   component: Comp | null;
 }>();
 
 const emit = defineEmits(['update']);
+
+// 只保留一个 pageStore 声明
+const pageStore = usePageStore();
+
+// 简化：直接使用当前页面
+const currentPage = computed(() => pageStore.currentPage);
 
 // 标签页状态
 const activeTab = ref('properties');
@@ -140,6 +162,22 @@ function updateProps(updates: Record<string, any>) {
 function addEvent(eventName: string) {
   console.log('添加事件:', eventName);
   // TODO: 实现事件添加逻辑
+}
+
+// 移除重复的声明：
+// const pageStore = usePageStore(); // 删除这行重复的声明
+// const activeTab = ref('properties'); // 删除这行重复的声明
+
+// 计算当前编辑的页面
+const selectedPageForEdit = computed(() => pageStore.selectedPageForEdit);
+const editingPage = computed(() => {
+  if (!selectedPageForEdit.value) return null;
+  return pageStore.pages.find(p => p.id === selectedPageForEdit.value);
+});
+
+// 关闭页面编辑
+function closePageEdit() {
+  pageStore.selectPageForEdit(null);
 }
 </script>
 

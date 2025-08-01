@@ -23,13 +23,11 @@
               <AppIcon name="box" />
               {{ page.components.length }}
             </span>
-            <span v-if="hasUnsavedChanges(page)" class="unsaved-indicator" title="有未保存的更改">
-              <AppIcon name="circle" />
-            </span>
           </div>
         </div>
         
         <div class="page-actions">
+          <!-- 移除页面属性编辑按钮，因为切换到页面后自动显示页面属性 -->
           <button 
             v-if="pages.length > 1"
             class="action-btn delete-btn"
@@ -41,14 +39,9 @@
         </div>
       </div>
     </div>
-
+    
     <!-- 右键菜单 -->
-    <div 
-      v-if="contextMenu.show" 
-      class="context-menu"
-      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-      @click.stop
-    >
+    <div v-if="contextMenu.show" class="context-menu">
       <div class="menu-item" @click="renamePageInMenu">
         <AppIcon name="edit" />
         重命名
@@ -89,14 +82,15 @@
 import { ref, computed, nextTick } from 'vue';
 import { usePageStore } from '../../stores/page';
 import type { Page } from '../../types/page';
+import AppIcon from '../icons/AppIcon.vue';
 
-// 页面store
 const pageStore = usePageStore();
 
 // 计算属性
 const pages = computed(() => pageStore.pages);
 const currentPageId = computed(() => pageStore.currentPageId);
 
+// 添加缺少的响应式变量声明
 // 右键菜单状态
 const contextMenu = ref({
   show: false,
@@ -115,6 +109,8 @@ const renaming = ref({
 // 页面操作方法
 function switchPage(pageId: string) {
   pageStore.switchPage(pageId);
+  // 切换页面时清空组件选择，这样属性面板会自动显示页面属性
+  pageStore.selectComponent(null);
 }
 
 function addNewPage() {
@@ -202,6 +198,11 @@ function hasUnsavedChanges(page: Page): boolean {
 document.addEventListener('click', () => {
   hideContextMenu();
 });
+
+// 移除不需要的代码
+// const selectedPageForEdit = computed(() => pageStore.selectedPageForEdit);
+// function editPageProperties(pageId: string) { ... }
+// function editPagePropertiesInMenu() { ... }
 </script>
 
 <style scoped>
@@ -480,5 +481,18 @@ document.addEventListener('click', () => {
 .btn-primary:hover {
   background: #40a9ff;
   border-color: #40a9ff;
+}
+
+.page-item.editing {
+  border-left: 3px solid #1890ff;
+  background: #f0f8ff;
+}
+
+.edit-btn {
+  color: #1890ff;
+}
+
+.edit-btn:hover {
+  background: #e6f7ff;
 }
 </style>
