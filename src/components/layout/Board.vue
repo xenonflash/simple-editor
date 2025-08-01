@@ -57,6 +57,9 @@
                 :offset="panOffset"
               />
               
+              <!-- 新增：Control组件 -->
+              <Controls :scale="scale" />
+              
               <div class="placeholder" v-if="props.components.length === 0">
                 拖拽组件到此处开始设计
               </div>
@@ -135,6 +138,7 @@ import { history, ActionType } from '../../utils/history';
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
 
 import BoardToolbar from './BoardToolbar.vue';
+import Controls from './Controls.vue';
 import { useSnaplineStore } from '../../stores/snapline';
 import { usePageStore } from '../../stores/page';
 

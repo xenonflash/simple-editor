@@ -1,11 +1,8 @@
 <template>
   <div class="text-comp" 
        :style="style"
-       :class="{ selected: isSelected }"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">
-    <!-- 选中状态的边框指示器 -->
-    <div v-if="isSelected" class="selection-border"></div>
     
     <div v-if="isEditing" 
          class="edit-wrapper"
@@ -19,30 +16,15 @@
                 @keydown.backspace.stop"></textarea>
     </div>
     <div v-else class="text-content">{{ props.content }}</div>
-    
-    <!-- 调整手柄 -->
-    <div v-if="isSelected && !isEditing" class="resize-handles">
-      <!-- 右下角调整手柄 -->
-      <div class="resize-handle resize-se" 
-           @mousedown.stop="handleResize('bottom-right', $event)"></div>
-      <!-- 右侧调整手柄（仅固定宽度模式显示） -->
-      <div v-if="props.widthMode === 'fixed'" 
-           class="resize-handle resize-e" 
-           @mousedown.stop="handleResize('top-right', $event)"></div>
-      <!-- 底部调整手柄（仅非自动高度模式显示） -->
-      <div v-if="!props.autoHeight" 
-           class="resize-handle resize-s" 
-           @mousedown.stop="handleResize('bottom-left', $event)"></div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
-import { history, ActionType } from '../../utils/history';
-import { useDraggable, useResizable } from '../../utils/dragHelper'; // Fix: import useResizable from dragHelper
-import { usePageStore } from '../../stores/page';
-import type { CompProps } from './base';
+import { ref, computed, nextTick, watch } from 'vue'
+import type { CompProps } from './base'
+import { useDraggable } from '../../utils/dragHelper'
+import { usePageStore } from '../../stores/page'
+import { history, ActionType } from '../../utils/history'
 
 const props = defineProps<{
   id: string;
@@ -70,10 +52,11 @@ const props = defineProps<{
   autoHeight?: boolean;
 }>();
 
-const emit = defineEmits(['update']);
+const emit = defineEmits<{
+  (e: 'update', updates: Partial<CompProps>): void
+}>()
 
-// 使用 page store
-const pageStore = usePageStore();
+const pageStore = usePageStore()
 
 // 计算是否选中
 const isSelected = computed(() => {
@@ -117,24 +100,9 @@ const { handleMouseDown: dragMouseDown } = useDraggable({
   }
 })
 
-// 使用调整大小功能
-const { startResize } = useResizable({
-  scale: computed(() => props.scale || 1),
-  minWidth: 20,
-  minHeight: 20,
-  onResizeStart: () => {
-    pageStore.selectComponent(props.id);
-  },
-  onUpdate: (updates) => {
-    if (updates.width !== undefined) currentWidth.value = updates.width;
-    if (updates.height !== undefined) currentHeight.value = updates.height;
-    emit('update', updates);
-  }
-});
-
 // 统一的鼠标按下处理
 function handleMouseDown(e: MouseEvent) {
-  if (!isEditing.value && !isResizing.value) {
+  if (!isEditing.value) {
     dragMouseDown(e, props.x, props.y)
   }
 }
@@ -211,16 +179,6 @@ function cancelEditing() {
   isEditing.value = false;
 }
 
-// Handle resize with proper parameters
-function handleResize(direction: string, e: MouseEvent) {
-  startResize(direction, e, {
-    x: props.x,
-    y: props.y,
-    width: props.width || 100,
-    height: props.height || 40
-  });
-}
-
 // 样式计算
 const style = computed(() => {
   const styleObj: any = {
@@ -288,18 +246,6 @@ watch(() => props.height, (newHeight) => {
   transition: border-color 0.2s ease;
 }
 
-/* 独立的选中边框指示器 */
-.selection-border {
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  right: -1px;
-  bottom: -1px;
-  border: 1px solid #1890ff;
-  pointer-events: none;
-  z-index: 1;
-}
-
 .text-content {
   position: relative;
   z-index: 2;
@@ -321,51 +267,5 @@ watch(() => props.height, (newHeight) => {
   color: inherit;
   padding: 0;
   margin: 0;
-}
-
-.resize-handles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-.resize-handle {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  border: 2px solid #1890ff;
-  border-radius: 50%;
-  z-index: 3;
-  pointer-events: auto;
-}
-
-.resize-handle:hover {
-  background: #1890ff;
-  transform: scale(1.2);
-  transition: transform 0.2s;
-}
-
-.resize-se {
-  right: -6px;
-  bottom: -6px;
-  cursor: se-resize;
-}
-
-.resize-e {
-  right: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: e-resize;
-}
-
-.resize-s {
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  cursor: s-resize;
 }
 </style>

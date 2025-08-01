@@ -1,23 +1,16 @@
 <template>
   <div class="container" 
-       :class="{ 'is-selected': isSelected }" 
        :style="containerStyle" 
-       @mousedown.stop="(e) => handleMouseDown(e, props.x || 0, props.y || 0)"
+       @mousedown.stop="handleMouseDown"
        @click.stop>
     <slot></slot>
-    <template v-if="isSelected">
-      <div class="resize-handle top-left" @mousedown.stop="(e) => handleResize('top-left', e)"></div>
-      <div class="resize-handle top-right" @mousedown.stop="(e) => handleResize('top-right', e)"></div>
-      <div class="resize-handle bottom-left" @mousedown.stop="(e) => handleResize('bottom-left', e)"></div>
-      <div class="resize-handle bottom-right" @mousedown.stop="(e) => handleResize('bottom-right', e)"></div>
-    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CompProps } from './base'
-import { useDraggable, useResizable } from '../../utils/dragHelper'
+import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
 
 const props = defineProps<{
@@ -41,12 +34,12 @@ const props = defineProps<{
   shadowColor?: string
   shadowInset?: boolean
   background?: string
-  backgroundColor?: string // 新增
-  gradientType?: 'linear' | 'radial' // 新增
-  gradientDirection?: string // 新增
-  gradientColor1?: string // 新增
-  gradientColor2?: string // 新增
-  backgroundImage?: string // 新增
+  backgroundColor?: string
+  gradientType?: 'linear' | 'radial'
+  gradientDirection?: string
+  gradientColor1?: string
+  gradientColor2?: string
+  backgroundImage?: string
   paddingTop?: number
   paddingRight?: number
   paddingBottom?: number
@@ -61,15 +54,9 @@ const emit = defineEmits<{
   (e: 'update', updates: Partial<CompProps>): void
 }>()
 
-// 使用 page store
 const pageStore = usePageStore()
 
-// 计算是否选中
-const isSelected = computed(() => {
-  return pageStore.isComponentSelected(props.id)
-})
-
-// 修复 componentSize 的计算
+// 计算组件尺寸
 const componentSize = computed(() => {
   const width = props.width || 100
   const height = props.height || 100
@@ -88,28 +75,6 @@ const { handleMouseDown } = useDraggable({
   },
   onUpdate: (updates) => emit('update', updates)
 })
-
-// 使用调整大小工具函数
-const { startResize } = useResizable({
-  scale: computed(() => props.scale || 1),
-  minWidth: 50,
-  minHeight: 50,
-  onResizeStart: () => {
-    // 修复：调整大小时也选中组件
-    pageStore.selectComponent(props.id)
-  },
-  onUpdate: (updates) => emit('update', updates)
-})
-
-// 处理调整大小
-function handleResize(handle: string, e: MouseEvent) {
-  startResize(handle, e, {
-    x: props.x || 0,
-    y: props.y || 0,
-    width: props.width || 100,
-    height: props.height || 100
-  })
-}
 
 // 计算容器样式
 const containerStyle = computed(() => {
@@ -181,66 +146,5 @@ const containerStyle = computed(() => {
   justify-content: center;
   user-select: none;
   pointer-events: auto;
-}
-
-.container.is-selected {
-  position: absolute;
-}
-
-.container.is-selected::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border: 2px solid #1890ff;
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.resize-handle {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  border: 2px solid #1890ff;
-  border-radius: 50%;
-  z-index: 3;
-  pointer-events: auto;
-}
-
-.resize-handle:hover {
-  background: #1890ff;
-  transform: scale(1.2);
-  transition: transform 0.2s;
-}
-
-.resize-handle.top-left {
-  top: -6px;
-  left: -6px;
-  cursor: nw-resize;
-}
-
-.resize-handle.top-right {
-  top: -6px;
-  right: -6px;
-  cursor: ne-resize;
-}
-
-.resize-handle.bottom-left {
-  bottom: -6px;
-  left: -6px;
-  cursor: sw-resize;
-}
-
-.resize-handle.bottom-right {
-  bottom: -6px;
-  right: -6px;
-  cursor: se-resize;
-}
-
-/* 禁止选择文本 */
-:global(body.resizing) {
-  cursor: inherit;
-  user-select: none;
-  -webkit-user-select: none;
 }
 </style>

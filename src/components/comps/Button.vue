@@ -1,17 +1,17 @@
 <template>
-  <div class="button-comp"
-       :style="buttonStyle"
-       @mousedown.stop="handleMouseDown"
-       :class="{ selected: isSelected }">
+  <button class="button-comp" 
+          :style="buttonStyle" 
+          @mousedown.stop="handleMouseDown"
+          @click.stop>
     {{ props.content || '按钮' }}
-  </div>
+  </button>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { CompProps } from './base';
-import { useDraggable } from '../../utils/dragHelper';
-import { usePageStore } from '../../stores/page';
+import { computed } from 'vue'
+import type { CompProps } from './base'
+import { useDraggable } from '../../utils/dragHelper'
+import { usePageStore } from '../../stores/page'
 
 const props = defineProps<{
   id: string;
@@ -40,26 +40,19 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update', updates: Partial<CompProps>): void;
-}>();
+  (e: 'update', updates: Partial<CompProps>): void
+}>()
 
-// 使用 page store
-const pageStore = usePageStore();
+const pageStore = usePageStore()
 
-// 计算是否选中
-const isSelected = computed(() => {
-  return pageStore.isComponentSelected(props.id);
-});
-
-// 添加缺失的 componentSize 计算
+// 计算组件尺寸
 const componentSize = computed(() => {
-  return {
-    width: props.width || 100,
-    height: props.height || 32
-  };
-});
+  const width = props.width || 100
+  const height = props.height || 32
+  return { width, height }
+})
 
-// 使用新的拖拽工具函数
+// 使用拖拽功能
 const { handleMouseDown: startDrag } = useDraggable({
   scale: computed(() => props.scale || 1),
   componentId: props.id,
@@ -114,10 +107,5 @@ const buttonStyle = computed(() => {
   user-select: none;
   border: 2px solid transparent;
   transition: border-color 0.2s ease;
-}
-
-.button-comp.selected {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 1px #1890ff;
 }
 </style>
