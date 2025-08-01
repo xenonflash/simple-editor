@@ -84,7 +84,7 @@
       :canUndo="canUndo"
       :canRedo="canRedo"
       :scale="scale"
-      :selected="!!selectedId"
+      :selected="hasSelection"
       @undo="undo"
       @redo="redo"
       @zoomOut="zoomOut"
@@ -217,9 +217,14 @@ const contextMenu = ref({
 const snaplineStore = useSnaplineStore();
 const pageStore = usePageStore();
 
-// 计算选中的组件ID
+// 计算选中的组件ID（保持向下兼容）
 const selectedId = computed(() => {
   return pageStore.selectedComps.length > 0 ? pageStore.selectedComps[0].id : null;
+});
+
+// 新增：计算是否有选中组件（支持多选）
+const hasSelection = computed(() => {
+  return pageStore.selectedComps.length > 0;
 });
 
 // 监听组件变化，更新 store
@@ -241,7 +246,8 @@ function handleKeyDown(e: KeyboardEvent) {
     }
     e.preventDefault();
   }
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId.value) {
+  // 修复：支持多选删除
+  if ((e.key === 'Delete' || e.key === 'Backspace') && pageStore.selectedComps.length > 0) {
     deleteSelectedComponent();
     e.preventDefault();
   }
@@ -547,7 +553,7 @@ onUnmounted(() => {
 const canUndo = computed(() => history.canUndo());
 const canRedo = computed(() => history.canRedo());
 
-// 删除选中的组件
+// 删除选中的组件（已支持多选）
 function deleteSelectedComponent() {
   if (pageStore.selectedComps.length > 0) {
     pageStore.selectedComps.forEach(comp => {

@@ -180,7 +180,6 @@ function handleResizeStart(control: any, e: MouseEvent) {
 
 .resize-handle {
   pointer-events: auto;
-  transition: transform 0.2s ease;
 }
 
 .resize-handle:hover {
