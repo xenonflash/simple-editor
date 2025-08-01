@@ -12,7 +12,7 @@ const handleAction = (action: string) => {
   <div class="toolbar">
     <div class="button-group">
       <button @click="handleAction('save')" data-tooltip="保存流程图">
-        <span class="icon">💾</span>
+        <AppIcon name="save" />
         保存
       </button>
       <button @click="handleAction('export')" data-tooltip="导出流程图">
@@ -24,7 +24,7 @@ const handleAction = (action: string) => {
         导入
       </button>
       <button @click="handleAction('clear')" data-tooltip="清空画布">
-        <span class="icon">🗑️</span>
+        <AppIcon name="trash" />
         清空
       </button>
     </div>
@@ -44,7 +44,7 @@ const handleAction = (action: string) => {
         自动布局
       </button>
       <button @click="handleAction('fitView')" data-tooltip="适应画布">
-        <span class="icon">🔍</span>
+        <AppIcon name="search" />
         适应画布
       </button>
     </div>

@@ -19,7 +19,7 @@
       
       <div class="table-actions">
         <button class="btn btn-primary" @click="showAddFieldDialog = true">
-          <span class="icon">➕</span>
+          <AppIcon name="plus" />
           添加字段
         </button>
       </div>

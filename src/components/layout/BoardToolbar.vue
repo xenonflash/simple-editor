@@ -32,7 +32,7 @@
             @click="$emit('delete')" 
             :disabled="!selected"
             data-tooltip="删除 (Delete)">
-      <span class="icon">🗑</span>
+      <AppIcon name="trash" />
       <span class="text">删除</span>
     </button>
 

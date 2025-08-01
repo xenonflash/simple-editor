@@ -6,12 +6,12 @@
     
     <div class="toolbar-right">
       <button class="btn btn-primary" @click="$emit('addVariable')">
-        <span class="icon">📊</span>
+        <AppIcon name="chart-bar" />
         添加变量
       </button>
       
       <button class="btn btn-primary" @click="$emit('addTable')">
-        <span class="icon">🗃️</span>
+        <AppIcon name="database" />
         添加数据表
       </button>
       

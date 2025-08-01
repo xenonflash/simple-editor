@@ -5,19 +5,25 @@
       <div class="component-item"
            draggable="true"
            @dragstart="handleDragStart(CompType.CONTAINER)">
-        <div class="icon">📦</div>
+        <div class="icon">
+          <AppIcon name="box" />
+        </div>
         <div class="name">容器</div>
       </div>
       <div class="component-item"
            draggable="true"
            @dragstart="handleDragStart(CompType.TEXT)">
-        <div class="icon">📝</div>
+        <div class="icon">
+          <AppIcon name="file-alt" />
+        </div>
         <div class="name">文字</div>
       </div>
       <div class="component-item"
            draggable="true"
            @dragstart="handleDragStart(CompType.BUTTON)">
-        <div class="icon">🔘</div>
+        <div class="icon">
+          <AppIcon name="circle" />
+        </div>
         <div class="name">按钮</div>
       </div>
     </div>
@@ -48,37 +54,30 @@ function handleDragStart(type: CompType) {
   padding: 20px 16px 16px;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
-  border-bottom: 1px solid #f0f0f0;
-  background: white;
+  color: #333;
 }
 
 .component-list {
-  padding: 20px 16px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  padding: 0 16px;
 }
 
 .component-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 12px;
-  border: 1px solid #e8e8e8;
-  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
   cursor: grab;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  user-select: none;
+  border: 1px solid #e8e8e8;
 }
 
 .component-item:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
-  transform: translateY(-2px);
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .component-item:active {
@@ -86,15 +85,20 @@ function handleDragStart(type: CompType) {
   transform: translateY(0);
 }
 
-.component-item .icon {
-  font-size: 24px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+.icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #666;
 }
 
-.component-item .name {
-  font-size: 12px;
-  color: #555;
-  text-align: center;
+.name {
+  font-size: 14px;
+  color: #333;
   font-weight: 500;
 }
 </style>

@@ -6,14 +6,14 @@
         :class="['tab-btn', { active: activeTab === 'schema' }]"
         @click="activeTab = 'schema'"
       >
-        <span class="tab-icon">🏗️</span>
+        <AppIcon name="hammer" />
         <span class="tab-text">字段设计</span>
       </button>
       <button 
         :class="['tab-btn', { active: activeTab === 'data' }]"
         @click="activeTab = 'data'"
       >
-        <span class="tab-icon">📊</span>
+        <AppIcon name="chart-bar" />
         <span class="tab-text">数据记录</span>
         <span class="tab-badge">{{ records.length }}</span>
       </button>

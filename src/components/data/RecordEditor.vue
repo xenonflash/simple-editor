@@ -3,7 +3,7 @@
     <div class="records-header">
       <h4>数据记录 ({{ records.length }})</h4>
       <button class="btn btn-primary" @click="addRecord">
-        <span class="icon">➕</span>
+        <AppIcon name="plus" />
         添加记录
       </button>
     </div>

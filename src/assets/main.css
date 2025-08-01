@@ -1,10 +1,23 @@
 @import './base.css';
 
-/* FontAwesome图标样式 */
+/* FontAwesome 图标样式 */
 .app-icon {
+  display: inline-block;
   width: 1em;
   height: 1em;
-  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 工具栏图标样式 */
+.toolbar-btn .app-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+/* 按钮中的图标 */
+.icon {
+  font-size: 16px;
+  color: inherit;
 }
 
 /* 图标大小变体 */

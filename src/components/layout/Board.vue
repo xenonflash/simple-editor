@@ -115,7 +115,7 @@
       </div>
       <div class="menu-divider"></div>
       <div class="menu-item danger" @click="deleteComponentFromMenu">
-        <span class="icon">🗑</span>
+        <AppIcon name="trash" />
         <span class="text">删除</span>
       </div>
     </div>

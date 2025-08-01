@@ -117,7 +117,7 @@
       @click="hideContextMenu"
     >
       <div class="menu-item" @click="renamePageInMenu">
-        <span class="icon">✏</span>
+        <AppIcon name="edit" />
         重命名
       </div>
       <div class="menu-item" @click="duplicatePageInMenu">
@@ -130,7 +130,7 @@
         @click="deletePageInMenu"
         :class="{ disabled: pages.length <= 1 }"
       >
-        <span class="icon">🗑</span>
+        <AppIcon name="trash" />
         删除页面
       </div>
     </div>
