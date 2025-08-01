@@ -215,6 +215,16 @@ export const usePageStore = defineStore('page', () => {
     return newPage;
   }
 
+  // 在 usePageStore 中添加
+  function updateComponentPosition(componentId: string, updates: { x?: number, y?: number }) {
+    const component = currentComponents.value.find(comp => comp.id === componentId)
+    if (component) {
+      if (updates.x !== undefined) component.props.x = updates.x
+      if (updates.y !== undefined) component.props.y = updates.y
+    }
+  }
+  
+  // 在 return 中导出
   return {
     // 状态
     pages,
@@ -240,6 +250,7 @@ export const usePageStore = defineStore('page', () => {
     addComponentToCurrentPage,
     deleteComponentFromCurrentPage,
     updateComponentInCurrentPage,
+    updateComponentPosition, // 新增：导出 updateComponentPosition 函数
     duplicatePage
   };
 });

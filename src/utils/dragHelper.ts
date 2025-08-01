@@ -2,6 +2,8 @@ import { ref } from 'vue'
 import type { Ref } from 'vue'
 import type { CompProps } from '../components/comps/base'
 import { useSnaplineStore } from '../stores/snapline'
+// 新增：导入 usePageStore
+import { usePageStore } from '../stores/page'
 
 interface DragState {
   isDragging: boolean
@@ -20,6 +22,7 @@ interface DragOptions {
   componentSize?: Ref<{ width: number; height: number }> | { width: number; height: number }
 }
 
+// 在 useDraggable 函数中添加群组拖拽支持
 export function useDraggable(options: DragOptions = {}) {
   const dragState = ref<DragState>({
     isDragging: false,
@@ -30,6 +33,8 @@ export function useDraggable(options: DragOptions = {}) {
   })
   
   const snaplineStore = useSnaplineStore()
+  // 新增：导入 pageStore
+  const pageStore = usePageStore()
 
   function handleMouseDown(e: MouseEvent, currentX: number, currentY: number) {
     dragState.value.isDragging = true
@@ -38,31 +43,76 @@ export function useDraggable(options: DragOptions = {}) {
     dragState.value.startPosX = currentX
     dragState.value.startPosY = currentY
 
-    window.addEventListener('mousemove', handleMouseMove)
+    // 新增：记录群组拖拽的初始位置
+    const selectedComponents = pageStore.selectedComps
+    const groupStartPositions = new Map()
+    
+    if (selectedComponents.length > 1 && options.componentId) {
+      // 多选状态下，记录所有选中组件的初始位置
+      selectedComponents.forEach(comp => {
+        groupStartPositions.set(comp.id, {
+          x: comp.props.x || 0,
+          y: comp.props.y || 0
+        })
+      })
+    }
+
+    window.addEventListener('mousemove', (e) => handleMouseMove(e, groupStartPositions))
     window.addEventListener('mouseup', handleMouseUp)
     options.onDragStart?.()
   }
 
-  function handleMouseMove(e: MouseEvent) {
+  function handleMouseMove(e: MouseEvent, groupStartPositions?: Map<string, {x: number, y: number}>) {
     if (!dragState.value.isDragging) return
 
     const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1
     const deltaX = (e.clientX - dragState.value.startX) / scale
     const deltaY = (e.clientY - dragState.value.startY) / scale
 
+    const selectedComponents = pageStore.selectedComps
+    
+    // 检查是否为群组拖拽
+    if (selectedComponents.length > 1 && groupStartPositions && options.componentId) {
+      const isCurrentComponentSelected = selectedComponents.some(comp => comp.id === options.componentId)
+      
+      if (isCurrentComponentSelected) {
+        // 群组拖拽：移动所有选中的组件
+        selectedComponents.forEach(comp => {
+          const startPos = groupStartPositions.get(comp.id)
+          if (startPos) {
+            const newX = startPos.x + deltaX
+            const newY = startPos.y + deltaY
+            
+            // 触发每个组件的更新
+            if (comp.id === options.componentId) {
+              // 当前拖拽的组件通过 onUpdate 回调更新
+              options.onUpdate?.({
+                x: newX,
+                y: newY
+              })
+            } else {
+              // 其他选中组件直接更新
+              pageStore.updateComponentPosition(comp.id, { x: newX, y: newY })
+            }
+          }
+        })
+        return
+      }
+    }
+    
+    // 单个组件拖拽（原有逻辑）
     const rawX = dragState.value.startPosX + deltaX
     const rawY = dragState.value.startPosY + deltaY
 
     let finalX = rawX
     let finalY = rawY
 
-    // 如果有组件ID和尺寸信息，进行吸附计算
+    // 吸附计算逻辑保持不变...
     if (options.componentId && options.componentSize) {
       const size = typeof options.componentSize === 'object' && 'value' in options.componentSize 
         ? options.componentSize.value 
         : options.componentSize
       
-      // 先更新拖拽组件信息到 store（用于计算吸附线）
       snaplineStore.updateDraggingComponent({
         id: options.componentId,
         x: rawX,
@@ -71,19 +121,10 @@ export function useDraggable(options: DragOptions = {}) {
         height: size.height
       })
       
-      // 计算吸附位置
       const snapResult = snaplineStore.calculateSnapPosition(rawX, rawY, size.width, size.height)
       finalX = snapResult.x
       finalY = snapResult.y
       
-      console.log('Snap calculation:', {
-        raw: { x: rawX, y: rawY },
-        snapped: { x: finalX, y: finalY },
-        snappedX: snapResult.snappedX,
-        snappedY: snapResult.snappedY
-      })
-      
-      // 更新最终位置到 store
       snaplineStore.updateDraggingComponent({
         id: options.componentId,
         x: finalX,
@@ -99,16 +140,14 @@ export function useDraggable(options: DragOptions = {}) {
     })
   }
 
+  // handleMouseUp 保持不变...
   function handleMouseUp() {
     if (dragState.value.isDragging) {
       dragState.value.isDragging = false
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
       
-      // 清除拖拽状态
-      console.log('Clearing dragging component')
       snaplineStore.updateDraggingComponent(null)
-      
       options.onDragEnd?.()
     }
   }

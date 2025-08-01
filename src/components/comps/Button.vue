@@ -60,7 +60,16 @@ const { handleMouseDown: startDrag } = useDraggable({
   onDragStart: () => {
     const event = window.event as MouseEvent;
     const multiSelect = event?.ctrlKey || event?.metaKey;
-    pageStore.selectComponent(props.id, multiSelect);
+    
+    // 修复：只有在组件未被选中时才进行选中操作
+    if (!pageStore.isComponentSelected(props.id)) {
+      // 组件未选中，正常选中逻辑
+      pageStore.selectComponent(props.id, multiSelect);
+    } else if (multiSelect) {
+      // 组件已选中且按住多选键，取消选中
+      pageStore.selectComponent(props.id, true);
+    }
+    // 如果组件已选中且没按多选键，保持当前选中状态不变
   },
   onUpdate: (updates) => emit('update', updates)
 });
