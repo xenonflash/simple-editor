@@ -11,6 +11,7 @@
                class="text-content"
                :value="content" 
                @input="updateValue('content', $event)" 
+               maxlength="2000"
                placeholder="输入文字内容..." />
       </div>
       

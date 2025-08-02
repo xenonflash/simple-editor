@@ -4,7 +4,7 @@
     <div class="actions">
       <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
       <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">流程</router-link>
-      <router-link to="/data" class="action-btn" :class="{ active: $route.path === '/about' }">数据</router-link>
+      <router-link to="/data" class="action-btn" :class="{ active: $route.path === '/data' }">数据</router-link>
     </div>
   </div>
 </template>
@@ -50,16 +50,8 @@
   background-color: #f5f5f5;
 }
 
-.action-btn:active {
-  background-color: #e8e8e8;
-}
-
 .action-btn.active {
-  background-color: #1890ff;
+  background-color: #000;
   color: white;
-}
-
-.action-btn.active:hover {
-  background-color: #40a9ff;
 }
 </style>
