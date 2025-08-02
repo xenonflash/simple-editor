@@ -258,9 +258,5 @@ export const usePageStore = defineStore('page', () => {
     
     // 页面属性编辑方法
     updatePageProperties,
-    
-    // 页面编辑方法
-    selectPageForEdit, // 新增导出
-    closePageEdit      // 新增导出
   };
 });

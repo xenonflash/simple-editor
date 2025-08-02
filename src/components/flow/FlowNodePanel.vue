@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import FlowStats from './FlowStats.vue'
 
 interface Props {
   nodes: any[]
@@ -147,9 +146,6 @@ const handleDragStart = (event: DragEvent, nodeType: any) => {
         <div class="name">{{ nodeType.name }}</div>
       </div>
     </div>
-    
-    <!-- 流程统计 -->
-    <FlowStats :nodes="nodes" :edges="edges" />
   </div>
 </template>
 

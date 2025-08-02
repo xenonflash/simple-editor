@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import FlowToolbar from '@/components/flow/FlowToolbar.vue'
 import FlowNodePanel from '@/components/flow/FlowNodePanel.vue'
 import FlowCanvas from '@/components/flow/FlowCanvas.vue'
 import FlowPropertiesPanel from '@/components/flow/FlowPropertiesPanel.vue'
@@ -379,9 +378,6 @@ const handlePropertyUpdate = (updates: any) => {
 
     <!-- 主体区域 -->
     <div class="flow-main">
-      <!-- 顶部工具栏 -->
-      <FlowToolbar @action="handleToolbarAction" />
-      
       <!-- 画布区域 -->
       <FlowCanvas
         :nodes="nodes"
