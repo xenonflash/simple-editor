@@ -1,17 +1,12 @@
 # 文字属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>文字</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="文字">
+    <template #content>
       <!-- 文字内容 -->
       <div class="property-row">
-        <textarea 
-               class="text-content"
+        <textarea type="text" 
                :value="content" 
                @input="updateValue('content', $event)" 
-               maxlength="2000"
                placeholder="输入文字内容..." />
       </div>
       
@@ -75,11 +70,13 @@
                @input="updateValue('color', $event)"
                title="文字颜色" />
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
+import PropertySection from './PropertySection.vue';
+
 const props = defineProps<{
   content: string;
   color?: string;
@@ -137,55 +134,22 @@ function toggleDecoration(value: string) {
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.section-content {
-  padding: 8px;
-}
-
 .property-row {
-  margin-bottom: 6px;
+  margin-bottom: 4px; /* 统一间距 */
 }
 
 .property-row:last-child {
   margin-bottom: 0;
 }
 
-.property-label {
-  display: block;
-  font-size: 10px;
-  color: #666;
-  margin-bottom: 2px;
-  font-weight: 500;
-}
-
 .checkbox-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px; /* 统一间距 */
   cursor: pointer;
   font-size: 11px;
   color: #333;
-  margin: 0 5px;
+  margin: 0 4px; /* 统一间距 */
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -194,22 +158,22 @@ function toggleDecoration(value: string) {
   margin: 0;
 }
 
-.text-content {
+textarea {
   max-width: 100%;
-  max-height: 100px;
   min-width: 100%;
-  min-height: 30px;
-  border-color: #ccc;
+  max-height: 100px;
+  min-height: fit-content;
   font-size: 12px;
+  border-color: #ccc;
 }
-.text-content:focus-visible {
+textarea:focus-visible{
   outline: none
 }
 
 input[type="text"],
 input[type="number"],
 select {
-  width: 100%;
+  width: 80px;
   height: 24px;
   padding: 0 6px;
   border: 1px solid #e5e5e5;
@@ -223,28 +187,13 @@ select {
 input[type="text"]:hover,
 input[type="number"]:hover,
 select:hover {
-  border-color: #d9d9d9;
-}
-
-input[type="text"]:focus,
-input[type="number"]:focus,
-select:focus {
-  border-color: #000;
+  border-color: #ccc;
 }
 
 .controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
-}
-
-.control-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.control-group .property-label {
-  margin-bottom: 2px;
 }
 
 .buttons {
@@ -281,7 +230,7 @@ select:focus {
 input[type="color"] {
   width: 24px;
   height: 24px;
-  padding: 2px;
+  padding: 0;
   border: 1px solid #e5e5e5;
   border-radius: 2px;
   cursor: pointer;
@@ -292,31 +241,11 @@ input[type="color"]:hover {
   border-color: #d9d9d9;
 }
 
+input[type="color"]:focus {
+  border-color: #000;
+}
+
 ::-webkit-inner-spin-button {
   display: none;
-}
-
-.radio-group {
-  display: inline-flex;
-  gap: 12px;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  font-size: 11px;
-  color: #333;
-}
-
-.radio-label input[type="radio"] {
-  width: auto;
-  height: auto;
-  margin: 0;
-}
-
-.radio-label span {
-  user-select: none;
 }
 </style>

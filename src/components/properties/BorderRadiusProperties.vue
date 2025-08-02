@@ -1,8 +1,8 @@
 # 圆角属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>圆角</span>
+  <PropertySection title="圆角">
+    <!-- 将 slider 控件放到 head slot 中 -->
+    <template #head>
       <div class="radius-controls">
         <div class="slider-control">
           <input type="range"
@@ -25,9 +25,20 @@
           <span class="link-icon">⭷</span>
         </button>
       </div>
-    </div>
-    <div class="section-content">
+    </template>
+    
+    <template #content>
       <div class="radius-grid">
+        <!-- 预览元素 -->
+        <div class="radius-preview">
+          <div class="preview-box" :style="{
+            borderTopLeftRadius: `${borderRadiusTopLeft}px`,
+            borderTopRightRadius: `${borderRadiusTopRight}px`,
+            borderBottomLeftRadius: `${borderRadiusBottomLeft}px`,
+            borderBottomRightRadius: `${borderRadiusBottomRight}px`
+          }"></div>
+        </div>
+        
         <div class="radius-item top-left">
           <input type="number"
                  :value="borderRadiusTopLeft"
@@ -43,9 +54,6 @@
                  :disabled="isLinked"
                  min="0"
                  placeholder="0" />
-        </div>
-        <div class="radius-preview">
-          <div class="preview-box" :style="previewStyle"></div>
         </div>
         <div class="radius-item bottom-left">
           <input type="number"
@@ -64,12 +72,13 @@
                  placeholder="0" />
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, ref } from 'vue';
+import PropertySection from './PropertySection.vue';
 
 interface Props {
   borderRadiusTopLeft?: number
@@ -222,9 +231,9 @@ function toggleLink() {
 
 .all-radius-input {
   width: 40px;
-  height: 20px;
+  height: 24px; /* 统一高度 */
   padding: 0 4px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid #e5e5e5; /* 统一边框色 */
   border-radius: 2px;
   font-size: 11px;
   text-align: center;
@@ -233,7 +242,7 @@ function toggleLink() {
 .radius-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 4px; /* 统一间距 */
   position: relative;
   padding: 8px 24px;
 }
@@ -263,9 +272,9 @@ function toggleLink() {
 
 .radius-item input {
   width: 32px;
-  height: 20px;
+  height: 24px; /* 统一高度 */
   padding: 0 4px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid #e5e5e5; /* 统一边框色 */
   border-radius: 2px;
   font-size: 11px;
   text-align: center;
@@ -277,13 +286,13 @@ function toggleLink() {
 .radius-item.bottom-right { justify-self: end; }
 
 .radius-item input:hover {
-  border-color: #40a9ff;
+  border-color: #d9d9d9; /* 统一hover色 */
 }
 
 .radius-item input:focus {
-  border-color: #1890ff;
+  border-color: #000; /* 统一focus色 */
   outline: none;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1); /* 简化阴影 */
 }
 
 .radius-item input:disabled {
@@ -320,4 +329,4 @@ function toggleLink() {
 input[type="number"] {
   -moz-appearance: textfield;
 }
-</style> 
+</style>

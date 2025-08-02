@@ -1,10 +1,6 @@
-# 布局属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>布局</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="布局">
+    <template #content>
       <div class="property-grid">
         <div class="property-item">
           <label>X</label>
@@ -31,11 +27,13 @@
                  @input="updateValue('height', $event)" />
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
+import PropertySection from './PropertySection.vue';
+
 const props = defineProps<{
   x: number;
   y: number;
@@ -52,31 +50,6 @@ function updateValue(key: string, event: Event) {
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.section-content {
-  padding: 8px;
-}
-
 .property-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

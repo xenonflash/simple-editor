@@ -1,10 +1,7 @@
 # 边框属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>边框</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="边框">
+    <template #content>
       <!-- 第一行：宽度和颜色 -->
       <div class="row-controls">
         <div class="width-group">
@@ -52,11 +49,13 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
+import PropertySection from './PropertySection.vue';
+
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -109,112 +108,47 @@ function updateValue(key: string, event: Event) {
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-}
-
-.section-content {
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* 行布局 */
 .row-controls {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  gap: 4px; /* 统一间距 */
+  margin-bottom: 4px; /* 统一间距 */
 }
-
-/* 通用标签样式 */
-.control-label {
-  font-size: 11px;
-  color: #666;
-  margin-bottom: 4px;
-  display: block;
-  font-weight: 500;
-}
-
-/* 宽度组 */
 .width-group {
-  display: flex;
-  flex-direction: column;
-  min-width: 60px;
-}
-
-.width-input {
-  width: 50px;
-  height: 24px;
-  padding: 0 6px;
-  border: 1px solid #d9d9d9;
-  border-radius: 3px;
-  font-size: 12px;
-  text-align: center;
-  transition: all 0.2s;
-}
-
-/* 颜色组 */
-.color-group {
-  display: flex;
-  flex-direction: column;
   flex: 1;
+}
+.width-group input {
+  width: 20px
+}
+.color-group{
+  flex: 2
+}
+[class*="-group"] .control-label{
+  display: inline-block;
+  margin-right: 5px;
+}
+
+
+.control-label {
+  display: block;
+  font-size: 11px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .color-controls {
   display: flex;
+  gap: 4px;
   align-items: center;
-  gap: 6px;
 }
 
-.color-picker {
-  width: 24px;
-  height: 24px;
-  padding: 1px;
-  border: 1px solid #d9d9d9;
-  border-radius: 3px;
-  cursor: pointer;
-  background: white;
-  transition: all 0.2s;
-}
-
-.color-input {
-  flex: 1;
-  height: 24px;
-  padding: 0 6px;
-  border: 1px solid #d9d9d9;
-  border-radius: 3px;
-  font-size: 11px;
-  font-family: monospace;
-  transition: all 0.2s;
-  min-width: 60px;
-}
-
-/* 样式组 */
 .style-group {
-  display: flex;
-  flex-direction: column;
   width: 100%;
 }
 
 .style-options {
   display: flex;
-  gap: 8px;
+  gap: 4px; /* 统一间距 */
   flex-wrap: wrap;
 }
 
@@ -222,94 +156,89 @@ function updateValue(key: string, event: Event) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   cursor: pointer;
-  padding: 3px;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  background: white;
-  transition: all 0.2s;
-  min-width: 30px;
+  font-size: 10px;
+  color: #666;
+  padding: 4px;
+  border-radius: 2px; /* 统一圆角 */
+  transition: background-color 0.2s;
 }
 
 .style-option:hover {
-  border-color: #40a9ff;
-  background: #f8fcff;
+  background-color: #f5f5f5;
 }
 
-.style-option:has(.style-radio:checked) {
-  border-color: #1890ff;
-  background: #e6f7ff;
-}
-
-.style-radio {
+.style-option input[type="radio"] {
   display: none;
 }
 
 .style-preview {
   width: 24px;
-  height: 12px;
+  height: 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fafafa;
-  border-radius: 2px;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.style-option input[type="radio"]:checked + .style-preview {
+  border-color: #1890ff;
+  background-color: #e6f7ff;
 }
 
 .style-line {
-  width: 20px;
+  width: 16px;
   height: 2px;
+  background: #333;
 }
 
 .style-name {
   font-size: 10px;
   color: #666;
-  text-align: center;
-  line-height: 1;
+  margin-top: 2px;
 }
 
-/* Hover 和 Focus 状态 */
-.width-input:hover,
-.color-picker:hover,
-.color-input:hover {
-  border-color: #40a9ff;
-}
-
-.width-input:focus,
-.color-picker:focus,
-.color-input:focus {
-  border-color: #1890ff;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
-}
-
-/* 禁用数字输入框的上下箭头 */
-.width-input::-webkit-inner-spin-button,
-.width-input::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.width-input[type="number"] {
-  -moz-appearance: textfield;
-}
-
-/* 优化 placeholder 样式 */
-.width-input::placeholder,
-.color-input::placeholder {
-  color: #bfbfbf;
+input[type="number"],
+input[type="text"],
+input[type="color"] {
+  height: 24px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
   font-size: 11px;
+  font-family: inherit;
+  background: white;
+  outline: none;
 }
 
-/* 响应式调整 */
-@media (max-width: 280px) {
-  .row-controls {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .style-options {
-    justify-content: center;
-  }
+input[type="number"],
+input[type="text"] {
+  padding: 0 6px;
+  width: 50px
+}
+
+input[type="color"] {
+  width: 24px;
+  padding: 0;
+  cursor: pointer;
+}
+
+input[type="number"]:hover,
+input[type="text"]:hover,
+input[type="color"]:hover {
+  border-color: #d9d9d9;
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+input[type="color"]:focus {
+  border-color: #000;
+}
+
+::-webkit-inner-spin-button {
+  display: none;
 }
 </style>

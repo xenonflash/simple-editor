@@ -1,10 +1,7 @@
 # 间距属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>间距</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="间距">
+    <template #content>
       <div class="spacing-row">
         <!-- 内边距 -->
         <div class="spacing-group">
@@ -48,8 +45,8 @@
             </div>
           </div>
         </div>
-
-        <!-- 外边距 -->
+        
+        <!-- 外边距 - 补充完整实现 -->
         <div class="spacing-group">
           <label class="group-label">外边距</label>
           <div class="spacing-box">
@@ -92,11 +89,13 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
+import PropertySection from './PropertySection.vue';
+
 const props = defineProps<{
   paddingTop?: number;
   paddingRight?: number;
@@ -122,30 +121,7 @@ function updateMargin(key: string, event: Event) {
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.section-content {
-  padding: 8px;
-}
+/* 移除原有的 .section, .section-header, .section-content 样式 */
 
 /* 水平排列的行 */
 .spacing-row {
@@ -176,8 +152,6 @@ function updateMargin(key: string, event: Event) {
   display: grid;
   grid-template-columns: 24px 32px 24px;
   grid-template-rows: 16px 32px 16px;
-  /* background: #fafafa;
-  border: 1px solid #e5e5e5; */
   border-radius: 3px;
 }
 

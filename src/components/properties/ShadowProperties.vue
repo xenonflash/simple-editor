@@ -1,10 +1,6 @@
-# 阴影属性组件
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>阴影</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="阴影">
+    <template #content>
       <!-- 四个方向的数值设置 -->
       <div class="values-grid">
         <div class="value-item">
@@ -57,12 +53,13 @@
           <div class="shadow-preview" :style="{ boxShadow: computedShadow }"></div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import PropertySection from './PropertySection.vue';
 
 interface Props {
   shadowX?: number
@@ -99,100 +96,87 @@ const updateValue = (key: string, event: Event) => {
     : target.type === 'number' 
       ? Number(target.value) 
       : target.value
-  
-  emit('update', { 
-    [key]: value,
-    boxShadow: computedShadow.value // 同时发送计算后的 box-shadow 值
-  })
+  emit('update', { [key]: value })
 }
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
+/* 移除原有的 .section, .section-header, .section-content 样式 */
 
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-}
-
-.section-content {
-  padding: 12px;
-}
-
-/* 四个方向数值的网格布局 */
 .values-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
 .value-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  height: 24px;
 }
 
 .value-item label {
+  width: 28px; /* 调整标签宽度，与其他组件保持一致 */
   font-size: 11px;
-  color: #666;
-  flex-shrink: 0;
+  color: #333;
+  font-weight: 500;
+  flex-shrink: 0; /* 防止标签被压缩 */
 }
 
 .value-item input[type="number"] {
-  flex: 1;
+  flex: 1; /* 使用 flex: 1 而不是 width: 100% */
   height: 24px;
-  padding: 0 4px;
-  border: 1px solid #d9d9d9;
-  border-radius: 2px;
-  font-size: 12px;
   width: 30px;
+  padding: 0 6px;
+  border: 1px solid #e5e5e5;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: inherit;
+  background: white;
+  outline: none;
+  min-width: 0; /* 允许输入框收缩 */
 }
 
-/* 底部区域：颜色控制和预览 */
 .bottom-section {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  gap: 8px;
 }
 
 .controls-column {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 50px;
+  gap: 6px; /* 增加垂直间距 */
+}
+
+.preview-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .color-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .color-item label {
   font-size: 11px;
-  color: #666;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .color-item input[type="color"] {
   width: 100%;
-  height: 32px;
+  height: 24px;
   padding: 0;
-  border: 1px solid #d9d9d9;
+  border: 1px solid #e5e5e5;
   border-radius: 2px;
   cursor: pointer;
+  outline: none;
 }
 
 .checkbox-item {
@@ -204,35 +188,53 @@ const updateValue = (key: string, event: Event) => {
   display: flex;
   align-items: center;
   gap: 6px;
-  cursor: pointer;
   font-size: 11px;
-  color: #666;
-}
-
-.checkbox-item input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+  color: #333;
+  cursor: pointer;
   margin: 0;
 }
 
-.preview-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.checkbox-item input[type="checkbox"] {
+  width: auto;
+  height: auto;
+  margin: 0;
 }
 
 .preview-column label {
   font-size: 11px;
-  color: #666;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .shadow-preview {
   width: 100%;
-  height: 50px;
+  height: 40px;
   background: white;
   border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  min-width: 8px;
+  border-radius: 2px;
+  flex: 1;
+}
+
+/* 输入框通用样式 */
+input[type="number"]:hover,
+input[type="color"]:hover {
+  border-color: #d9d9d9;
+}
+
+input[type="number"]:focus,
+input[type="color"]:focus {
+  border-color: #000;
+}
+
+/* 隐藏数字输入框的上下箭头 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 </style>

@@ -1,9 +1,6 @@
 <template>
-  <div class="section">
-    <div class="section-header">
-      <span>背景</span>
-    </div>
-    <div class="section-content">
+  <PropertySection title="背景">
+    <template #content>
       <div class="property-row">
         <div class="property-item">
           <label>背景图片</label>
@@ -83,11 +80,13 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </PropertySection>
 </template>
 
 <script setup lang="ts">
+import PropertySection from './PropertySection.vue';
+
 import { ref, watch, computed } from 'vue';
 
 const props = defineProps<{
@@ -190,33 +189,8 @@ watch(props, (newProps) => {
 </script>
 
 <style scoped>
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.section-content {
-  padding: 8px;
-}
-
 .property-row {
-  margin-bottom: 8px;
+  margin-bottom: 4px; /* 统一间距 */
 }
 
 .property-row:last-child {
@@ -230,8 +204,9 @@ watch(props, (newProps) => {
 }
 
 .property-item label {
-  font-size: 12px;
-  color: #666;
+  font-size: 11px; /* 统一字体 */
+  color: #333; /* 统一颜色 */
+  font-weight: 500;
   margin-bottom: 4px;
 }
 
@@ -239,25 +214,25 @@ watch(props, (newProps) => {
 .property-item select {
   width: 100%;
   height: 24px;
-  padding: 0 4px;
-  border: 1px solid #ddd;
+  padding: 0 6px;
+  border: 1px solid #e5e5e5; /* 统一边框 */
   border-radius: 2px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .color-input {
   display: flex;
   align-items: center;
   width: 100%;
+  gap: 4px; /* 统一间距 */
 }
 
 .color-input input[type="color"] {
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #ddd;
+  border: 1px solid #e5e5e5; /* 统一边框 */
   border-radius: 2px;
-  margin-right: 4px;
 }
 
 .color-input input[type="text"] {
@@ -278,7 +253,7 @@ watch(props, (newProps) => {
 
 .radio-group {
   display: flex;
-  gap: 8px;
+  gap: 4px; /* 统一间距 */
 }
 
 .radio-item {
@@ -297,15 +272,14 @@ watch(props, (newProps) => {
 
 .direction-group {
   display: flex;
-  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
 }
 
 .direction-btn {
   width: 22px;
   height: 22px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #e5e5e5; /* 统一边框 */
+  border-radius: 2px; /* 统一圆角 */
   background: white;
   cursor: pointer;
   display: flex;
@@ -316,7 +290,7 @@ watch(props, (newProps) => {
 }
 
 .direction-btn:hover {
-  border-color: #1890ff;
+  border-color: #d9d9d9; /* 统一hover */
   background: #f0f8ff;
 }
 
@@ -336,8 +310,8 @@ watch(props, (newProps) => {
 .gradient-preview {
   flex: 1;
   height: 32px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #e5e5e5; /* 统一边框 */
+  border-radius: 2px; /* 统一圆角 */
   background: #f5f5f5;
   min-width: 100px;
 }
@@ -345,13 +319,26 @@ watch(props, (newProps) => {
 .color-picker {
   width: 32px;
   height: 32px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #e5e5e5; /* 统一边框 */
+  border-radius: 2px; /* 统一圆角 */
   cursor: pointer;
   padding: 0;
 }
 
-.color-picker:hover {
-  border-color: #1890ff;
+/* 统一输入框样式 */
+input[type="text"]:hover,
+input[type="color"]:hover {
+  border-color: #d9d9d9;
+}
+
+input[type="text"]:focus,
+input[type="color"]:focus {
+  border-color: #000;
+}
+
+input[type="radio"] {
+  width: auto;
+  height: auto;
+  margin: 0;
 }
 </style>

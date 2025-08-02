@@ -415,7 +415,7 @@ const handlePropertyUpdate = (updates: any) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: #e3e3e3;
   border-radius: 0 8px 8px 0;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);

@@ -1,11 +1,8 @@
 <template>
   <div class="page-properties">
     <!-- 基本信息 -->
-    <div class="section">
-      <div class="section-header">
-        <span>基本信息</span>
-      </div>
-      <div class="section-content">
+    <PropertySection title="基本信息">
+      <template #content>
         <div class="form-group">
           <label>页面名称</label>
           <input 
@@ -27,15 +24,22 @@
             rows="3"
           ></textarea>
         </div>
-      </div>
-    </div>
+        
+        <div class="form-group">
+          <label>创建时间</label>
+          <div class="readonly-value">{{ formatDate(page.createdAt) }}</div>
+        </div>
+        
+        <div class="form-group">
+          <label>更新时间</label>
+          <div class="readonly-value">{{ formatDate(page.updatedAt) }}</div>
+        </div>
+      </template>
+    </PropertySection>
 
     <!-- 页面尺寸 -->
-    <div class="section">
-      <div class="section-header">
-        <span>页面尺寸</span>
-      </div>
-      <div class="section-content">
+    <PropertySection title="页面尺寸">
+      <template #content>
         <div class="form-row">
           <div class="form-group">
             <label>宽度</label>
@@ -60,15 +64,12 @@
             />
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </PropertySection>
 
     <!-- 背景设置 -->
-    <div class="section">
-      <div class="section-header">
-        <span>背景设置</span>
-      </div>
-      <div class="section-content">
+    <PropertySection title="背景设置">
+      <template #content>
         <div class="form-group">
           <label>背景颜色</label>
           <div class="color-input-group">
@@ -87,15 +88,12 @@
             />
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </PropertySection>
 
     <!-- 内边距 -->
-    <div class="section">
-      <div class="section-header">
-        <span>内边距</span>
-      </div>
-      <div class="section-content">
+    <PropertySection title="内边距">
+      <template #content>
         <div class="padding-grid">
           <div class="padding-item">
             <label>上</label>
@@ -138,15 +136,12 @@
             />
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </PropertySection>
 
     <!-- SEO设置 -->
-    <div class="section">
-      <div class="section-header">
-        <span>SEO设置</span>
-      </div>
-      <div class="section-content">
+    <PropertySection title="SEO设置">
+      <template #content>
         <div class="form-group">
           <label>SEO标题</label>
           <input 
@@ -179,17 +174,8 @@
             placeholder="关键词，用逗号分隔"
           />
         </div>
-      </div>
-    </div>
-    <div class="form-group">
-          <label>创建时间</label>
-          <div class="readonly-value">{{ formatDate(page.createdAt) }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label>更新时间</label>
-          <div class="readonly-value">{{ formatDate(page.updatedAt) }}</div>
-        </div>
+      </template>
+    </PropertySection>
   </div>
 </template>
 
@@ -197,22 +183,16 @@
 import { computed } from 'vue';
 import type { Page } from '../../types/page';
 import { usePageStore } from '../../stores/page';
+import PropertySection from './PropertySection.vue';
 
-interface Props {
-  page: Page | null;
-}
-
-const props = defineProps<Props>();
 const pageStore = usePageStore();
 
-// 添加安全检查
-if (!props.page) {
-  console.warn('PageProperties: page prop is null');
-}
+const props = defineProps<{
+  page: Page;
+}>();
 
 // 更新页面属性
 function updateProperty(key: keyof Page, value: any) {
-  if (!props.page) return;
   pageStore.updatePageProperties(props.page.id, { [key]: value });
 }
 
@@ -225,51 +205,29 @@ function updatePadding(side: 'top' | 'right' | 'bottom' | 'left', value: number)
 
 // 更新SEO设置
 function updateSEO(key: 'title' | 'description' | 'keywords', value: string) {
-  const currentSEO = props.page.seo || {};
+  const currentSEO = props.page.seo || { title: '', description: '', keywords: '' };
   const newSEO = { ...currentSEO, [key]: value };
   pageStore.updatePageProperties(props.page.id, { seo: newSEO });
 }
 
 // 格式化日期
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('zh-CN', {
+function formatDate(date: Date | string): string {
+  const d = new Date(date);
+  return d.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(date));
+  });
 }
 </script>
 
 <style scoped>
+/* 移除原有的 .section, .section-header, .section-content 样式 */
+
 .page-properties {
-  /* 移除外层样式，保持与其他属性组件一致 */
-}
-
-.section {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.section-header {
-  height: 32px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fafafa;
-}
-
-.section-header span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.section-content {
-  padding: 8px;
+  /* 保持外层容器样式 */
 }
 
 .form-group {
