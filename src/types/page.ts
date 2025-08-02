@@ -8,6 +8,15 @@ export interface Page {
   components: Comp[];
   createdAt: Date;
   updatedAt: Date;
+  width: number;
+  height: number;
+  padding: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  },
+  backgroundColor: string;
 }
 
 // 创建新页面的工厂函数
@@ -19,7 +28,16 @@ export function createPage(name: string = '新页面', description: string = '')
     description,
     components: [],
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    width: 1280,
+    height: 720,
+    padding: {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+    },
+    backgroundColor: '#fff',
   };
 }
 

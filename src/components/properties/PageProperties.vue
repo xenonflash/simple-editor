@@ -8,7 +8,7 @@
           <input 
             type="text" 
             :value="page.name" 
-            @input="updateProperty('name', $event.target.value)"
+            @input="updateProperty('name', $event)"
             class="form-input"
             placeholder="请输入页面名称"
           />
@@ -18,7 +18,7 @@
           <label>页面描述</label>
           <textarea 
             :value="page.description" 
-            @input="updateProperty('description', $event.target.value)"
+            @input="updateProperty('description', $event)"
             class="form-textarea"
             placeholder="请输入页面描述"
             rows="3"
@@ -46,7 +46,7 @@
             <input 
               type="number" 
               :value="page.width || 1200" 
-              @input="updateProperty('width', parseInt($event.target.value))"
+              @input="updateProperty('width', $event)"
               class="form-input"
               min="320"
               max="3840"
@@ -57,7 +57,7 @@
             <input 
               type="number" 
               :value="page.height || 800" 
-              @input="updateProperty('height', parseInt($event.target.value))"
+              @input="updateProperty('height', $event)"
               class="form-input"
               min="240"
               max="2160"
@@ -76,13 +76,13 @@
             <input 
               type="color" 
               :value="page.backgroundColor || '#ffffff'" 
-              @input="updateProperty('backgroundColor', $event.target.value)"
+              @input="updateProperty('backgroundColor', $event)"
               class="color-picker"
             />
             <input 
               type="text" 
               :value="page.backgroundColor || '#ffffff'" 
-              @input="updateProperty('backgroundColor', $event.target.value)"
+              @input="updateProperty('backgroundColor', $event)"
               class="color-text"
               placeholder="#ffffff"
             />
@@ -100,7 +100,7 @@
             <input 
               type="number" 
               :value="page.padding?.top || 20" 
-              @input="updatePadding('top', parseInt($event.target.value))"
+              @input="updatePadding('top', $event)"
               class="form-input"
               min="0"
             />
@@ -110,7 +110,7 @@
             <input 
               type="number" 
               :value="page.padding?.right || 20" 
-              @input="updatePadding('right', parseInt($event.target.value))"
+              @input="updatePadding('right', $event)"
               class="form-input"
               min="0"
             />
@@ -120,7 +120,7 @@
             <input 
               type="number" 
               :value="page.padding?.bottom || 20" 
-              @input="updatePadding('bottom', parseInt($event.target.value))"
+              @input="updatePadding('bottom', $event)"
               class="form-input"
               min="0"
             />
@@ -130,7 +130,7 @@
             <input 
               type="number" 
               :value="page.padding?.left || 20" 
-              @input="updatePadding('left', parseInt($event.target.value))"
+              @input="updatePadding('left', $event)"
               class="form-input"
               min="0"
             />
@@ -140,7 +140,7 @@
     </PropertySection>
 
     <!-- SEO设置 -->
-    <PropertySection title="SEO设置">
+    <!-- <PropertySection title="SEO设置">
       <template #content>
         <div class="form-group">
           <label>SEO标题</label>
@@ -175,7 +175,7 @@
           />
         </div>
       </template>
-    </PropertySection>
+    </PropertySection> -->
   </div>
 </template>
 
@@ -192,23 +192,28 @@ const props = defineProps<{
 }>();
 
 // 更新页面属性
-function updateProperty(key: keyof Page, value: any) {
+function updateProperty(key: keyof Page, $event: Event) {
+  let value: any = ($event.target as HTMLInputElement).value;
+  if (['width', 'height'].includes(key)) {
+    value = parseInt(value);
+  }
   pageStore.updatePageProperties(props.page.id, { [key]: value });
 }
 
 // 更新内边距
-function updatePadding(side: 'top' | 'right' | 'bottom' | 'left', value: number) {
+function updatePadding(side: 'top' | 'right' | 'bottom' | 'left', $event: Event) {
+  const value = ($event.target as HTMLInputElement).value;
   const currentPadding = props.page.padding || { top: 20, right: 20, bottom: 20, left: 20 };
-  const newPadding = { ...currentPadding, [side]: value };
+  const newPadding = { ...currentPadding, [side]: parseInt(value) };
   pageStore.updatePageProperties(props.page.id, { padding: newPadding });
 }
 
 // 更新SEO设置
-function updateSEO(key: 'title' | 'description' | 'keywords', value: string) {
-  const currentSEO = props.page.seo || { title: '', description: '', keywords: '' };
-  const newSEO = { ...currentSEO, [key]: value };
-  pageStore.updatePageProperties(props.page.id, { seo: newSEO });
-}
+// function updateSEO(key: 'title' | 'description' | 'keywords', value: string) {
+//   const currentSEO = props.page.seo || { title: '', description: '', keywords: '' };
+//   const newSEO = { ...currentSEO, [key]: value };
+//   pageStore.updatePageProperties(props.page.id, { seo: newSEO });
+// }
 
 // 格式化日期
 function formatDate(date: Date | string): string {

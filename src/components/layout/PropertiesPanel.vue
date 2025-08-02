@@ -161,21 +161,6 @@ function addEvent(eventName: string) {
   // TODO: 实现事件添加逻辑
 }
 
-// 移除重复的声明：
-// const pageStore = usePageStore(); // 删除这行重复的声明
-// const activeTab = ref('properties'); // 删除这行重复的声明
-
-// 计算当前编辑的页面
-const selectedPageForEdit = computed(() => pageStore.selectedPageForEdit);
-const editingPage = computed(() => {
-  if (!selectedPageForEdit.value) return null;
-  return pageStore.pages.find(p => p.id === selectedPageForEdit.value);
-});
-
-// 关闭页面编辑
-function closePageEdit() {
-  pageStore.selectPageForEdit(null);
-}
 </script>
 
 <style scoped>

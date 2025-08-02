@@ -15,14 +15,14 @@
         <label class="checkbox-label">
           <input type="checkbox" 
                  :checked="(widthMode || 'auto') === 'auto'" 
-                 @change="emit('update', { widthMode: $event.target.checked ? 'auto' : 'fixed' })" />
+                 @change="emit('update', { widthMode: ($event.target as HTMLInputElement).checked ? 'auto' : 'fixed' })" />
           <span>自动宽度</span>
         </label>
 
         <label class="checkbox-label">
           <input type="checkbox" 
                  :checked="autoHeight !== false" 
-                 @change="emit('update', { autoHeight: $event.target.checked })" />
+                 @change="emit('update', { autoHeight: ($event.target as HTMLInputElement).checked })" />
           <span>自动高度</span>
         </label>
       </div>

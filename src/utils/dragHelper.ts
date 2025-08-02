@@ -4,6 +4,7 @@ import type { CompProps } from '../components/comps/base'
 import { useSnaplineStore } from '../stores/snapline'
 // 新增：导入 usePageStore
 import { usePageStore } from '../stores/page'
+import { HandleDir } from '@/stores/control'
 
 interface DragState {
   isDragging: boolean
@@ -224,7 +225,7 @@ export function useResizable(options: ResizeOptions = {}) {
     const updates: Partial<CompProps> = {}
 
     switch (resizeState.value.handle) {
-      case 'top-left':
+      case HandleDir.TOP_LEFT:
         const newWidthTL = Math.max(minWidth, resizeState.value.startWidth - deltaX)
         const newHeightTL = Math.max(minHeight, resizeState.value.startHeight - deltaY)
         updates.width = newWidthTL
@@ -232,26 +233,26 @@ export function useResizable(options: ResizeOptions = {}) {
         updates.x = resizeState.value.startPosX + resizeState.value.startWidth - newWidthTL
         updates.y = resizeState.value.startPosY + resizeState.value.startHeight - newHeightTL
         break
-      case 'top-right':
+      case HandleDir.TOP_RIGHT:
         updates.width = Math.max(minWidth, resizeState.value.startWidth + deltaX)
         updates.height = Math.max(minHeight, resizeState.value.startHeight - deltaY)
         updates.y = resizeState.value.startPosY + resizeState.value.startHeight - updates.height
         break
-      case 'bottom-left':
+      case HandleDir.BOTTOM_LEFT:
         updates.width = Math.max(minWidth, resizeState.value.startWidth - deltaX)
         updates.height = Math.max(minHeight, resizeState.value.startHeight + deltaY)
         updates.x = resizeState.value.startPosX + resizeState.value.startWidth - updates.width
         break
-      case 'bottom-right':
+      case HandleDir.BOTTOM_RIGHT:
         updates.width = Math.max(minWidth, resizeState.value.startWidth + deltaX)
         updates.height = Math.max(minHeight, resizeState.value.startHeight + deltaY)
         break
       // 新增：右侧手柄 - 只调整宽度
-      case 'right':
+      case HandleDir.RIGHT:
         updates.width = Math.max(minWidth, resizeState.value.startWidth + deltaX)
         break
       // 新增：底部手柄 - 只调整高度
-      case 'bottom':
+      case HandleDir.BOTTOM:
         updates.height = Math.max(minHeight, resizeState.value.startHeight + deltaY)
         break
     }

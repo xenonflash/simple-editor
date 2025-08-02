@@ -198,11 +198,6 @@ function hasUnsavedChanges(page: Page): boolean {
 document.addEventListener('click', () => {
   hideContextMenu();
 });
-
-// 移除不需要的代码
-// const selectedPageForEdit = computed(() => pageStore.selectedPageForEdit);
-// function editPageProperties(pageId: string) { ... }
-// function editPagePropertiesInMenu() { ... }
 </script>
 
 <style scoped>

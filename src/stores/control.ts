@@ -4,6 +4,17 @@ import type { Comp } from '../components/comps/base'
 import { usePageStore } from './page'
 import { CompType } from '../components/comps/base'
 
+export enum HandleDir {
+  TOP_LEFT = 'top-left',
+  TOP_RIGHT = 'top-right',
+  BOTTOM_LEFT = 'bottom-left',
+  BOTTOM_RIGHT = 'bottom-right',
+  TOP = 'top',
+  RIGHT = 'right',
+  BOTTOM = 'bottom',
+  LEFT = 'left',
+}
+
 export interface ControlPoint {
   id: string
   type: 'selection' | 'resize'
@@ -12,7 +23,7 @@ export interface ControlPoint {
   y: number
   width: number
   height: number
-  handle?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'right' | 'bottom' | 'left'
+  handle?: HandleDir
 }
 
 // 计算文字实际宽度（复制Text组件的逻辑）
@@ -111,20 +122,20 @@ export const useControlStore = defineStore('control', () => {
       
       // 调整手柄（仅单选时显示）
       if (selectedComps.length === 1) {
-        let handles = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
+        let handles = [HandleDir.TOP_LEFT, HandleDir.TOP_RIGHT, HandleDir.BOTTOM_LEFT, HandleDir.BOTTOM_RIGHT]
         
         if (comp.type === CompType.TEXT) {
           const isAutoWidth = comp.props.widthMode === 'auto'
           const isAutoHeight = comp.props.autoHeight
-          handles = ["right", "bottom"]
+          handles = [HandleDir.RIGHT, HandleDir.BOTTOM]
           
           // 如果宽度或高度任一为自动，则不显示调整手柄
           // 因为四角手柄会同时影响宽度和高度
           if (isAutoWidth) {
-            handles = handles.filter(h => h !== "right")
+            handles = handles.filter(h => h !== HandleDir.RIGHT)
           }
           if (isAutoHeight) {
-            handles = handles.filter(h => h !== "bottom")
+            handles = handles.filter(h => h !== HandleDir.BOTTOM)
           }
         }
         

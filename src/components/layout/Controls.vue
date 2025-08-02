@@ -25,6 +25,7 @@ import { computed } from 'vue'
 import { useControlStore } from '../../stores/control'
 import { useResizable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
+import { HandleDir } from '../../stores/control'
 
 // 手柄尺寸常量配置
 const HANDLE_CONFIG = {
@@ -88,29 +89,29 @@ function getResizeHandleStyle(control: any) {
   let left = 0, top = 0
   
   switch (control.handle) {
-    case 'top-left':
+    case HandleDir.TOP_LEFT:
       left = x - HANDLE_CONFIG.HALF_SIZE
       top = y - HANDLE_CONFIG.HALF_SIZE
       break
-    case 'top-right':
+    case HandleDir.TOP_RIGHT:
       left = x + width - HANDLE_CONFIG.HALF_SIZE
       top = y - HANDLE_CONFIG.HALF_SIZE
       break
-    case 'bottom-left':
+    case HandleDir.BOTTOM_LEFT:
       left = x - HANDLE_CONFIG.HALF_SIZE
       top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
-    case 'bottom-right':
+    case HandleDir.BOTTOM_RIGHT:
       left = x + width - HANDLE_CONFIG.HALF_SIZE
       top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
     // 新增：右侧手柄
-    case 'right':
+    case HandleDir.RIGHT:
       left = x + width - HANDLE_CONFIG.HALF_SIZE
       top = y + height / 2 - HANDLE_CONFIG.HALF_SIZE
       break
     // 新增：底部手柄
-    case 'bottom':
+    case HandleDir.BOTTOM:
       left = x + width / 2 - HANDLE_CONFIG.HALF_SIZE
       top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
@@ -124,14 +125,16 @@ function getResizeHandleStyle(control: any) {
 }
 
 // 获取调整手柄的鼠标样式
-function getResizeCursor(handle: string) {
-  const cursorMap: Record<string, string> = {
-    'top-left': 'nw-resize',
-    'top-right': 'ne-resize',
-    'bottom-left': 'sw-resize',
-    'bottom-right': 'se-resize',
-    'right': 'e-resize',
-    'bottom': 's-resize'
+function getResizeCursor(handle: HandleDir) {
+  const cursorMap: Record<HandleDir, string> = {
+    [HandleDir.TOP_LEFT]: 'nw-resize',
+    [HandleDir.TOP_RIGHT]: 'ne-resize',
+    [HandleDir.BOTTOM_LEFT]: 'sw-resize',
+    [HandleDir.BOTTOM_RIGHT]: 'se-resize',
+    [HandleDir.RIGHT]: 'e-resize',
+    [HandleDir.BOTTOM]: 's-resize',
+    [HandleDir.LEFT]: 'w-resize',
+    [HandleDir.TOP]: 'n-resize'
   }
   return cursorMap[handle] || 'default'
 }
