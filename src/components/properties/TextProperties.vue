@@ -7,7 +7,8 @@
     <div class="section-content">
       <!-- 文字内容 -->
       <div class="property-row">
-        <input type="text" 
+        <textarea 
+               class="text-content"
                :value="content" 
                @input="updateValue('content', $event)" 
                placeholder="输入文字内容..." />
@@ -21,10 +22,7 @@
                  @change="emit('update', { widthMode: $event.target.checked ? 'auto' : 'fixed' })" />
           <span>自动宽度</span>
         </label>
-      </div>
-      
-      <!-- 自动高度开关 -->
-      <div class="property-row">
+
         <label class="checkbox-label">
           <input type="checkbox" 
                  :checked="autoHeight !== false" 
@@ -32,7 +30,6 @@
           <span>自动高度</span>
         </label>
       </div>
-      
       <!-- 字体设置 -->
       <div class="property-row controls">
         <select :value="fontFamily" 
@@ -94,9 +91,6 @@ const props = defineProps<{
   height?: number;
   widthMode?: 'auto' | 'fixed';
   autoHeight?: boolean;
-  // 移除以下两行
-  // minWidth?: number;
-  // maxWidth?: number;
 }>();
 
 const emit = defineEmits(['update']);
@@ -184,18 +178,31 @@ function toggleDecoration(value: string) {
 }
 
 .checkbox-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
   font-size: 11px;
   color: #333;
+  margin: 0 5px;
 }
 
 .checkbox-label input[type="checkbox"] {
   width: auto;
   height: auto;
   margin: 0;
+}
+
+.text-content {
+  max-width: 100%;
+  max-height: 100px;
+  min-width: 100%;
+  min-height: 30px;
+  border-color: #ccc;
+  font-size: 12px;
+}
+.text-content:focus-visible {
+  outline: none
 }
 
 input[type="text"],
