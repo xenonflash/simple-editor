@@ -3,28 +3,28 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>The Editor</h1>
+        <h1>K-CREATOR</h1>
       </div>
       
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
-          <label for="username">用户名</label>
+          <label for="username">Username</label>
           <input
             id="username"
             v-model="loginForm.username"
             type="text"
-            placeholder="请输入用户名"
+            placeholder="Please input your username"
             required
           />
         </div>
         
         <div class="form-group">
-          <label for="password">密码</label>
+          <label for="password">Password</label>
           <input
             id="password"
             v-model="loginForm.password"
             type="password"
-            placeholder="请输入密码"
+            placeholder="Please input your password"
             required
           />
         </div>
@@ -34,7 +34,7 @@
           class="login-btn"
           :disabled="userStore.isLoading"
         >
-          {{ userStore.isLoading ? '登录中...' : '登录' }}
+          {{ userStore.isLoading ? 'logining...' : 'Login' }}
         </button>
         
         <div v-if="errorMessage" class="error-message">
@@ -100,6 +100,7 @@ onMounted(() => {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+  transform: translateY(-10%);
 }
 
 .login-header {
@@ -155,7 +156,7 @@ onMounted(() => {
 .login-btn {
   width: 100%;
   padding: 12px;
-  background: #667eea;
+  background: #000000;
   color: white;
   border: none;
   border-radius: 8px;
@@ -166,7 +167,7 @@ onMounted(() => {
 }
 
 .login-btn:hover:not(:disabled) {
-  background: #5a6fd8;
+  background: #4d4d4d;
 }
 
 .login-btn:disabled {
