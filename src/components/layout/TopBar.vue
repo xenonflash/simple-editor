@@ -1,6 +1,6 @@
 <template>
   <div class="topbar">
-    <div class="logo">Hello</div>
+    <div class="logo">K-CREATOR</div>
     <div class="actions">
       <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
       <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">流程</router-link>

@@ -218,8 +218,8 @@ export function useResizable(options: ResizeOptions = {}) {
     const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1
     const deltaX = (e.clientX - resizeState.value.startX) / scale
     const deltaY = (e.clientY - resizeState.value.startY) / scale
-    const minWidth = options.minWidth || 50
-    const minHeight = options.minHeight || 50
+    const minWidth = options.minWidth || 1
+    const minHeight = options.minHeight || 1
 
     const updates: Partial<CompProps> = {}
 
