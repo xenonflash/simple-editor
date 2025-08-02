@@ -86,9 +86,6 @@
     
     <!-- 页面属性编辑（当无选中组件时自动显示） -->
     <div v-else-if="currentPage" class="panel-content">
-      <div class="panel-header">
-        <h3>页面属性</h3>
-      </div>
       <PageProperties :page="currentPage" />
     </div>
     

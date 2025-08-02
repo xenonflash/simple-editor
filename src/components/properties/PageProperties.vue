@@ -27,16 +27,6 @@
             rows="3"
           ></textarea>
         </div>
-        
-        <div class="form-group">
-          <label>创建时间</label>
-          <div class="readonly-value">{{ formatDate(page.createdAt) }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label>更新时间</label>
-          <div class="readonly-value">{{ formatDate(page.updatedAt) }}</div>
-        </div>
       </div>
     </div>
 
@@ -191,6 +181,15 @@
         </div>
       </div>
     </div>
+    <div class="form-group">
+          <label>创建时间</label>
+          <div class="readonly-value">{{ formatDate(page.createdAt) }}</div>
+        </div>
+        
+        <div class="form-group">
+          <label>更新时间</label>
+          <div class="readonly-value">{{ formatDate(page.updatedAt) }}</div>
+        </div>
   </div>
 </template>
 

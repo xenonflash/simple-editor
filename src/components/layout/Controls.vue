@@ -174,8 +174,6 @@ function handleResizeStart(control: any, e: MouseEvent) {
 }
 
 .selection-border {
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.8);
-  animation: selectionFadeIn 0.2s ease-out;
 }
 
 .resize-handle {
@@ -185,14 +183,5 @@ function handleResizeStart(control: any, e: MouseEvent) {
 .resize-handle:hover {
   background: #1890ff !important;
   transform: scale(1.2);
-}
-
-@keyframes selectionFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 </style>
