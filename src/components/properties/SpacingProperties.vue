@@ -176,8 +176,8 @@ function updateMargin(key: string, event: Event) {
   display: grid;
   grid-template-columns: 24px 32px 24px;
   grid-template-rows: 16px 32px 16px;
-  background: #fafafa;
-  border: 1px solid #e5e5e5;
+  /* background: #fafafa;
+  border: 1px solid #e5e5e5; */
   border-radius: 3px;
 }
 
@@ -238,8 +238,8 @@ function updateMargin(key: string, event: Event) {
 }
 
 .icon-box {
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   background: #fff;
   border: 1px solid #d9d9d9;
   border-radius: 2px;

@@ -35,25 +35,17 @@ const snapLines = computed(() => {
 function getLineStyle(line: SnapLine): Record<string, string> {
   if (line.type === 'horizontal') {
     return {
-      position: 'absolute',
       left: '0px',
       top: `${line.y1}px`,
-      width: '100%',
-      height: '1px',
-      backgroundColor: '#ff6b6b',
-      zIndex: '1000',
-      pointerEvents: 'none'
+      width: "100%",
+      height: "1px"
     }
   } else {
     return {
-      position: 'absolute',
       left: `${line.x1}px`,
       top: '0px',
       width: '1px',
-      height: '100%',
-      backgroundColor: '#ff6b6b',
-      zIndex: '1000',
-      pointerEvents: 'none'
+      height: '100%'
     }
   }
 }
@@ -71,18 +63,10 @@ function getLineStyle(line: SnapLine): Record<string, string> {
 }
 
 .snap-line {
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.8);
-  animation: snapFadeIn 0.15s ease-out;
-}
-
-@keyframes snapFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  position: absolute;
+  
+  background-color: rgba(202, 126, 237, 0.886);
+  z-index: 1000;
+  pointer-events: none
 }
 </style>
