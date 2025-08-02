@@ -72,14 +72,14 @@ const selectionBoxStyle = computed(() => {
   const height = Math.abs(endCanvas.y - startCanvas.y)
   
   return {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: `${left}px`,
     top: `${top}px`,
     width: `${width}px`,
     height: `${height}px`,
     border: '1px dashed #1890ff',
     backgroundColor: 'rgba(24, 144, 255, 0.1)',
-    pointerEvents: 'none',
+    pointerEvents: 'none' as const,
     zIndex: '1002'
   }
 })
@@ -90,7 +90,7 @@ const previewStyle = computed(() => {
   const canvasPos = canvasToWorld(selectionState.currentX, selectionState.currentY)
   
   return {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: `${canvasPos.x + 10}px`,
     top: `${canvasPos.y - 25}px`,
     padding: '2px 8px',
@@ -98,7 +98,7 @@ const previewStyle = computed(() => {
     color: 'white',
     fontSize: '12px',
     borderRadius: '4px',
-    pointerEvents: 'none',
+    pointerEvents: 'none' as const,
     zIndex: '1003'
   }
 })

@@ -59,13 +59,13 @@ const resizeControls = computed(() =>
 // 选中边框样式
 function getSelectionStyle(control: any) {
   return {
-    position: 'absolute',
+    position: 'absolute' as const,
     left: `${control.x - 1}px`,
     top: `${control.y - 1}px`,
     width: `${control.width + 2}px`,
     height: `${control.height + 2}px`,
     border: '1px solid #1890ff',
-    pointerEvents: 'none',
+    pointerEvents: 'none' as const,
     zIndex: '1000'
   }
 }
@@ -73,7 +73,7 @@ function getSelectionStyle(control: any) {
 // 调整手柄样式
 function getResizeHandleStyle(control: any) {
   const baseStyle = {
-    position: 'absolute',
+    position: 'absolute' as const,
     width: `${HANDLE_CONFIG.SIZE}px`,
     height: `${HANDLE_CONFIG.SIZE}px`,
     background: '#fff',

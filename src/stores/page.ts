@@ -9,6 +9,8 @@ export const usePageStore = defineStore('page', () => {
   const pages = ref<Page[]>([]);
   const currentPageId = ref<string | null>(null);
   const selectedComps = ref<Comp[]>([]);
+  // 新增：页面编辑状态
+  const selectedPageForEdit = ref<Page | null>(null);
 
   // ==================== 计算属性 ====================
   const currentPage = computed(() => {
@@ -224,12 +226,31 @@ export const usePageStore = defineStore('page', () => {
     }
   }
 
+  // ==================== 页面编辑方法 ====================
+  function selectPageForEdit(page: Page | null) {
+    selectedPageForEdit.value = page;
+  }
+
+  function closePageEdit() {
+    selectedPageForEdit.value = null;
+  }
+
+  // ==================== 页面属性编辑方法 ====================
+  function updatePageProperties(pageId: string, updates: Partial<Page>) {
+    const page = pages.value.find(p => p.id === pageId);
+    if (page) {
+      Object.assign(page, updates);
+      page.updatedAt = new Date();
+    }
+  }
+
   // ==================== 导出 ====================
   return {
     // 状态
     pages,
     currentPageId,
     selectedComps,
+    selectedPageForEdit, // 新增导出
     
     // 计算属性
     currentPage,
@@ -258,6 +279,10 @@ export const usePageStore = defineStore('page', () => {
     updateComponentPosition,
     
     // 页面属性编辑方法
-    updatePageProperties
+    updatePageProperties,
+    
+    // 页面编辑方法
+    selectPageForEdit, // 新增导出
+    closePageEdit      // 新增导出
   };
 });
