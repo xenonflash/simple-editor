@@ -2,19 +2,43 @@
 import TopBar from './components/layout/TopBar.vue';
 import { useUserStore } from './stores/user'
 import { ref, onBeforeMount } from 'vue'
+import { NConfigProvider, type GlobalThemeOverrides, NThemeEditor } from 'naive-ui'
 
 const userStore = useUserStore()
 onBeforeMount(() => {
   userStore.initAuth()
 })
+
+const themeOverrides: GlobalThemeOverrides = {
+  common: {
+    primaryColor: '#000',
+    primaryColorHover: '#666',
+  },
+  Input: {
+    textColor: '#333',
+    focusColor: '#000',
+    boxShadowFocus: '0 0 0 3px #ddd',
+    borderColor: '#000',
+    hoverBorderColor: '#000',
+    activeBorderColor: '#000',
+    borderHoverColor: '#000',
+  },
+}
+
 const showTopbar = ref(!/\/login/.test(location.pathname))
 </script>
-
 <template>
-  <div class="app">
-    <TopBar v-if="showTopbar"/>
-    <router-view />
-  </div>
+  <n-config-provider :theme-overrides="themeOverrides">
+    <n-message-provider>
+      <n-theme-editor>
+        <div class="app">
+          <TopBar v-if="showTopbar" />
+          <router-view />
+        </div>
+      </n-theme-editor>
+
+    </n-message-provider>
+  </n-config-provider>
 </template>
 
 <style>
@@ -22,7 +46,6 @@ const showTopbar = ref(!/\/login/.test(location.pathname))
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f0f2f5;
 }
 
 body {

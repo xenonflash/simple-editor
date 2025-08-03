@@ -1,7 +1,6 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import PageView from '../views/PageView.vue'
 import LoginView from '../views/LoginView.vue'
 
 const router = createRouter({
@@ -10,7 +9,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'page',
-      component: PageView,
+      component: () => import('../views/PageView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -29,6 +28,12 @@ const router = createRouter({
       path: '/data',
       name: 'data',
       component: () => import('../views/DataView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/debug',
+      name: 'debug',
+      component: () => import('../views/DebugView.vue'),
       meta: { requiresAuth: true }
     },
   ],
