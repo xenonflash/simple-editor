@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
@@ -176,9 +176,9 @@ function log(...args: any[]) {
   if (DEBUG) console.log('[Board]', ...args);
 }
 
-// 画布尺寸常量
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
+// 使用页面的动态尺寸
+const canvasWidth = computed(() => pageStore.currentPage?.width || 1280);
+const canvasHeight = computed(() => pageStore.currentPage?.height || 800);
 
 // 缩放相关
 const scale = ref(1);
@@ -231,6 +231,13 @@ const hasSelection = computed(() => {
 watch(() => props.components, (newComponents) => {
   snaplineStore.updateAllComponents(newComponents);
 }, { immediate: true, deep: true });
+
+// 监听页面尺寸变化，重新初始化画布
+watch([canvasWidth, canvasHeight], () => {
+  nextTick(() => {
+    initializeCanvas();
+  });
+});
 
 // 处理空格键
 function handleKeyDown(e: KeyboardEvent) {
@@ -375,9 +382,9 @@ const canvasStyle = computed(() => ({
   position: 'absolute' as const,
   left: `${panOffset.value.x}px`,
   top: `${panOffset.value.y}px`,
-  width: `${CANVAS_WIDTH}px`,
-  height: `${CANVAS_HEIGHT}px`,
-  background: 'white',
+  width: `${canvasWidth.value}px`,
+  height: `${canvasHeight.value}px`,
+  background: pageStore.currentPage?.backgroundColor || 'white',
   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
 }));
 
@@ -494,21 +501,25 @@ function initializeCanvas() {
   
   const rect = wrapperRef.value.getBoundingClientRect();
   
+  // 使用动态画布尺寸
+  const currentCanvasWidth = canvasWidth.value;
+  const currentCanvasHeight = canvasHeight.value;
+  
   // 计算适合视口的缩放比例，留出边距
   const padding = 80; // 边距
   const availableWidth = rect.width - padding * 2;
   const availableHeight = rect.height - padding * 2;
   
-  const scaleX = availableWidth / CANVAS_WIDTH;
-  const scaleY = availableHeight / CANVAS_HEIGHT;
+  const scaleX = availableWidth / currentCanvasWidth;
+  const scaleY = availableHeight / currentCanvasHeight;
   const fitScale = Math.min(scaleX, scaleY, 1); // 最大不超过100%
   
   // 设置缩放
   scale.value = fitScale;
   
   // 计算缩放后的画布尺寸
-  const scaledWidth = CANVAS_WIDTH * fitScale;
-  const scaledHeight = CANVAS_HEIGHT * fitScale;
+  const scaledWidth = currentCanvasWidth * fitScale;
+  const scaledHeight = currentCanvasHeight * fitScale;
   
   // 计算居中位置（画布左上角的位置）
   const centerX = (rect.width - scaledWidth) / 2;
@@ -518,7 +529,7 @@ function initializeCanvas() {
   if (DEBUG) {
     console.log('[Board] Canvas initialization:', {
       wrapperSize: { width: rect.width, height: rect.height },
-      canvasSize: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      canvasSize: { width: currentCanvasWidth, height: currentCanvasHeight },
       scaledSize: { width: scaledWidth, height: scaledHeight },
       scale: fitScale,
       centerPosition: { x: centerX, y: centerY }

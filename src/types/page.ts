@@ -30,7 +30,7 @@ export function createPage(name: string = '新页面', description: string = '')
     createdAt: now,
     updatedAt: now,
     width: 1280,
-    height: 720,
+    height: 800, // 从 720 改为 800
     padding: {
       top: 0,
       right: 0,
