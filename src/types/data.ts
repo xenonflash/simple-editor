@@ -21,6 +21,22 @@ export interface DataField {
   required: boolean
   defaultValue?: any
   description?: string
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+// 更新工厂函数
+export function createDataField(name: string, type: FieldType, required: boolean = false, defaultValue?: any): DataField {
+  const now = new Date()
+  return {
+    id: `field_${Date.now()}`,
+    name,
+    type,
+    required,
+    defaultValue: defaultValue !== undefined ? defaultValue : getDefaultValueByType(type),
+    createdAt: now,
+    updatedAt: now
+  }
 }
 
 // 运行时变量接口
@@ -64,7 +80,7 @@ export function createVariable(name: string, type: FieldType, value: any): Varia
   }
 }
 
-export function createDataTable(name: string, description?: string): DataTable {
+export function createDataTable({ name, description }: { name: string, description?: string }): DataTable {
   return {
     id: `table_${Date.now()}_${name}`,
     name,
@@ -73,16 +89,6 @@ export function createDataTable(name: string, description?: string): DataTable {
     records: [],
     createdAt: new Date(),
     updatedAt: new Date()
-  }
-}
-
-export function createDataField(name: string, type: FieldType): DataField {
-  return {
-    id: `field_${Date.now()}`,
-    name,
-    type,
-    required: false,
-    defaultValue: getDefaultValueByType(type)
   }
 }
 

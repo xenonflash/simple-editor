@@ -1,25 +1,15 @@
 <template>
   <div class="data-view">
-    <DataToolbar 
-      @add-variable="handleAddVariable"
-      @add-table="handleAddTable"
-      @import="handleImport"
-      @export="handleExport"
-    />
-    
-    <div class="data-main">
-      <DataSidebar 
-        :variables="variables"
+    <div class="data-container">
+      <!-- 左侧面板 -->
+      <DataLeftPanel 
         :tables="tables"
         :current-table-id="currentTableId"
         @select-table="selectTable"
-        @edit-variable="handleEditVariable"
-        @delete-variable="deleteVariable"
-        @edit-table="handleEditTable"
-        @delete-table="deleteTable"
-      />
+        @add-table="showAddTableModal = true" />
       
-      <DataContent 
+      <!-- 右侧内容 -->
+      <TableContent 
         :current-table="currentTable"
         @update-table="handleUpdateTable"
         @add-field="handleAddField"
@@ -27,107 +17,68 @@
         @delete-field="handleDeleteField"
         @add-record="handleAddRecord"
         @update-record="handleUpdateRecord"
-        @delete-record="handleDeleteRecord"
-      />
+        @delete-record="handleDeleteRecord" />
     </div>
+    
+    <!-- 新增数据表弹窗 -->
+    <AddDataTable 
+      v-model:show="showAddTableModal"
+      @confirm="handleAddTableConfirm" />
   </div>
 </template>
 
-<style scoped>
-.data-view {
-  height: calc(100vh - 48px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #f8f9fa;
-}
-
-.data-main {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  background: #ffffff;
-  border-radius: 0 8px 8px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-</style>
-
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDataStore } from '../stores/data'
-import { FieldType, type DataTable, type DataField } from '../types/data'  // Use type-only imports
-import DataToolbar from '../components/data/DataToolbar.vue'
-import DataSidebar from '../components/data/DataSidebar.vue'
-import DataContent from '../components/data/DataContent.vue'
+import { FieldType, type DataTable, type DataField } from '../types/data'
+import DataLeftPanel from '../components/data/DataLeftPanel.vue'
+import TableContent from '../components/data/TableContent.vue'
+import AddDataTable from '../components/data/AddDataTable.vue'
 
 const dataStore = useDataStore()
-const { variables, tables, currentTableId, currentTable } = storeToRefs(dataStore)
+const { tables, currentTableId, currentTable } = storeToRefs(dataStore)
+const showAddTableModal = ref(false)
+
+// 添加调试监听
+watch(tables, (newTables) => {
+  console.log('Tables changed:', newTables)
+}, { deep: true })
+
+// 处理新增数据表确认
+const handleAddTableConfirm = (data: { name: string; description: string }) => {
+  console.log('handleAddTableConfirm called with:', data)
+  const table = dataStore.addTable(data.name, data.description)
+  console.log('Table created:', table)
+  console.log('Current tables:', dataStore.tables)
+  dataStore.selectTable(table.id)
+}
 
 // 初始化演示数据
 onMounted(() => {
   dataStore.initDemoData()
 })
 
-// 工具栏事件处理
-const handleAddVariable = () => {
-  const name = prompt('请输入变量名称:')
-  if (name && name.trim()) {
-    try {
-      dataStore.addVariable(name.trim(), FieldType.STRING, '')
-    } catch (error) {
-      console.error('添加变量失败:', error)
-      alert('添加变量失败，请重试')
-    }
-  }
+// 事件处理
+const selectTable = (tableId: string) => {
+  dataStore.selectTable(tableId)
 }
 
-const handleAddTable = () => {
-  const name = prompt('请输入数据表名称:')
-  if (name) {
-    const table = dataStore.addTable(name)
-    dataStore.selectTable(table.id)
-  }
-}
-
-const handleImport = () => {
-  // TODO: 实现导入功能
-  console.log('导入数据')
-}
-
-const handleExport = () => {
-  // TODO: 实现导出功能
-  console.log('导出数据')
-}
-
-// 侧边栏事件处理
-const handleEditVariable = (id: string) => {
-  // TODO: 实现变量编辑
-  console.log('编辑变量:', id)
-}
-
-const handleEditTable = (id: string) => {
-  // TODO: 实现表编辑
-  console.log('编辑表:', id)
-}
-
-// 内容区事件处理
-// 更精确的类型定义
 const handleUpdateTable = (updates: Partial<Pick<DataTable, 'name' | 'description'>>) => {
   if (currentTableId.value) {
     dataStore.updateTable(currentTableId.value, updates)
   }
 }
 
-const handleUpdateField = (fieldId: string, updates: Partial<DataField>) => {
-  if (currentTableId.value) {
-    dataStore.updateField(currentTableId.value, fieldId, updates)
-  }
-}
-
 const handleAddField = (name: string, type: FieldType) => {
   if (currentTableId.value) {
     dataStore.addField(currentTableId.value, name, type)
+  }
+}
+
+const handleUpdateField = (fieldId: string, updates: Partial<DataField>) => {
+  if (currentTableId.value) {
+    dataStore.updateField(currentTableId.value, fieldId, updates)
   }
 }
 
@@ -154,17 +105,18 @@ const handleDeleteRecord = (index: number) => {
     dataStore.deleteRecord(currentTableId.value, index)
   }
 }
-
-// Add missing method definitions
-const selectTable = (tableId: string) => {
-  dataStore.selectTable(tableId)
-}
-
-const deleteVariable = (variableId: string) => {
-  dataStore.deleteVariable(variableId)
-}
-
-const deleteTable = (tableId: string) => {
-  dataStore.deleteTable(tableId)
-}
 </script>
+
+<style scoped>
+.data-view {
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.data-container {
+  height: 100%;
+  display: flex;
+  gap: 1px;
+  background: #e0e0e0;
+}
+</style>

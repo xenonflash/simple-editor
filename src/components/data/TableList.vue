@@ -1,218 +1,134 @@
 <template>
   <div class="table-list">
-    <div class="section-header">
-      <h3>数据表</h3>
-      <span class="count">{{ tables.length }}</span>
-    </div>
-    
-    <div class="list-content">
-      <div 
-        v-for="table in tables" 
-        :key="table.id"
-        class="table-item"
-        :class="{ active: table.id === currentTableId }"
-        @click="$emit('select-table', table.id)"
-      >
-        <div class="table-info">
-          <span class="table-name">{{ table.name }}</span>
-          <span class="table-meta">
-            {{ table.fields.length }} 字段 · {{ table.records.length }} 记录
-          </span>
-          <span v-if="table.description" class="table-description">
-            {{ table.description }}
-          </span>
+    <n-scrollbar>
+      <div class="table-items">
+        <div 
+          v-for="table in tables" 
+          :key="table.id"
+          class="table-item"
+          :class="{ active: table.id === currentTableId }"
+          @click="$emit('select-table', table.id)">
+          <div class="table-info">
+            <div class="table-name">{{ table.name }}</div>
+            <div class="table-meta">
+              <span class="field-count">
+                <n-icon size="12"><ListOutline /></n-icon>
+                {{ table.fields.length }} 个字段
+              </span>
+              <span class="record-count">
+                <n-icon size="12"><DocumentOutline /></n-icon>
+                {{ table.records.length }} 条记录
+              </span>
+            </div>
+          </div>
         </div>
-        <div class="table-actions">
-          <button 
-            class="action-btn edit"
-            @click.stop="$emit('edit', table.id)"
-            title="编辑表信息"
-          >
-            ✏️
-          </button>
-          <button 
-            class="action-btn delete"
-            @click.stop="$emit('delete', table.id)"
-            title="删除数据表"
-          >
-            ✕
-          </button>
+        
+        <!-- 空状态 -->
+        <div v-if="tables.length === 0" class="empty-state">
+          <n-empty description="暂无数据表">
+            <template #icon>
+              <n-icon size="48"><GridOutline /></n-icon>
+            </template>
+          </n-empty>
         </div>
       </div>
-      
-      <div v-if="tables.length === 0" class="empty-state">
-        <p>暂无数据表</p>
-        <small>点击工具栏的"添加数据表"按钮创建第一个数据表</small>
-      </div>
-    </div>
+    </n-scrollbar>
   </div>
 </template>
 
 <script setup lang="ts">
+import { GridOutline, ListOutline, DocumentOutline } from '@vicons/ionicons5'
 import type { DataTable } from '../../types/data'
 
-interface Props {
+defineProps<{
   tables: DataTable[]
   currentTableId: string | null
-}
-
-defineProps<Props>()
+}>()
 
 defineEmits<{
-  'select-table': [id: string]
-  edit: [id: string]
-  delete: [id: string]
+  'select-table': [tableId: string]
 }>()
 </script>
 
 <style scoped>
 .table-list {
-  padding: 8px 12px;
+  height: 100%;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.count {
-  background: #10b981;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 600;
-  min-width: 16px;
-  text-align: center;
+.table-items {
+  padding: 8px;
 }
 
 .table-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px;
-  margin-bottom: 4px;
-  background: white;
-  border: 1px solid #f3f4f6;
+  padding: 12px;
+  margin-bottom: 10px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  background: white;
+  border: 1px solid #e8e8e8;
 }
 
 .table-item:hover {
-  border-color: #10b981;
-  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .table-item.active {
-  background: rgba(16, 185, 129, 0.05);
-  border-color: #10b981;
+  background: #e6f7ff;
+  border-color: #1890ff;
+  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.2);
+}
+
+.table-icon {
+  margin-right: 12px;
+  color: #666;
+}
+
+.table-item.active .table-icon {
+  color: #1890ff;
 }
 
 .table-info {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 
 .table-name {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
-  color: #111827;
-  line-height: 1.3;
+  color: #333;
+  margin-bottom: 4px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.table-item.active .table-name {
+  color: #1890ff;
 }
 
 .table-meta {
-  font-size: 10px;
-  color: #6b7280;
-  font-weight: 400;
-}
-
-.table-description {
-  font-size: 10px;
-  color: #9ca3af;
-  font-style: italic;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.table-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.table-item:hover .table-actions {
-  opacity: 1;
-}
-
-.action-btn {
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  transition: all 0.15s ease;
+  gap: 12px;
+  font-size: 12px;
+  color: #999;
 }
 
-.action-btn.edit {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.action-btn.edit:hover {
-  background: #10b981;
-  color: white;
-}
-
-.action-btn.delete {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.action-btn.delete:hover {
-  background: #ef4444;
-  color: white;
+.field-count,
+.record-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .empty-state {
+  padding: 40px 20px;
   text-align: center;
-  padding: 24px 16px;
-  color: #9ca3af;
-}
-
-.empty-state p {
-  margin: 0 0 4px 0;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.empty-state small {
-  font-size: 10px;
-  color: #d1d5db;
 }
 </style>

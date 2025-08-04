@@ -20,7 +20,7 @@ export const useDataStore = defineStore('data', () => {
   const initDemoData = () => {
     if (tables.value.length === 0) {
       // 创建用户表
-      const userTable = createDataTable('用户表', '存储用户基本信息')
+      const userTable = createDataTable({ name: '用户表', description: '存储用户基本信息' })
       userTable.fields = [
         { id: 'field_1', name: '用户名', type: FieldType.STRING, required: true, defaultValue: '' },
         { id: 'field_2', name: '邮箱', type: FieldType.STRING, required: true, defaultValue: '' },
@@ -36,7 +36,7 @@ export const useDataStore = defineStore('data', () => {
       tables.value.push(userTable)
       
       // 创建产品表
-      const productTable = createDataTable('产品表', '存储产品信息')
+      const productTable = createDataTable({ name: '产品表', description: '存储产品信息' })
       productTable.fields = [
         { id: 'field_6', name: '产品名称', type: FieldType.STRING, required: true, defaultValue: '' },
         { id: 'field_7', name: '价格', type: FieldType.NUMBER, required: true, defaultValue: 0 },
@@ -87,9 +87,14 @@ export const useDataStore = defineStore('data', () => {
   }
 
   // 数据表管理
-  function addTable(name: string, description?: string): DataTable {
-    const table = createDataTable(name, description)
-    tables.value.push(table)
+  // 添加数据表
+  function addTable(name: string, description: string = ''): DataTable {
+    const table = createDataTable({
+      name,
+      description
+    })
+    
+    tables.value.push(table)  // 修复：使用正确的响应式引用
     return table
   }
 
@@ -121,11 +126,11 @@ export const useDataStore = defineStore('data', () => {
   }
 
   // 字段管理
-  function addField(tableId: string, name: string, type: FieldType): DataField | null {
+  function addField(tableId: string, name: string, type: FieldType, required: boolean = false, defaultValue?: any): DataField | null {
     const table = tables.value.find(t => t.id === tableId)
     if (!table) return null
     
-    const field = createDataField(name, type)
+    const field = createDataField(name, type, required, defaultValue)
     table.fields.push(field)
     table.updatedAt = new Date()
     return field
@@ -138,7 +143,7 @@ export const useDataStore = defineStore('data', () => {
     const field = table.fields.find(f => f.id === fieldId)
     if (!field) return false
     
-    Object.assign(field, updates)
+    Object.assign(field, updates, { updatedAt: new Date() })
     table.updatedAt = new Date()
     return true
   }
@@ -192,36 +197,32 @@ export const useDataStore = defineStore('data', () => {
 
   // 在 return 中添加所有函数
   return {
-  // 状态
-  variables,
-  tables,
-  currentTableId,
-  
-  // 计算属性
-  currentTable,
-  
-  // 变量管理
-  addVariable,
-  updateVariable,
-  deleteVariable,
-  
-  // 数据表管理
-  addTable,
-  updateTable,
-  deleteTable,
-  selectTable,
-  
-  // 字段管理
-  addField,
-  updateField,
-  deleteField,
-  
-  // 记录管理
-  addRecord,
-  updateRecord,
-  deleteRecord,
-  
-  // 初始化函数
-  initDemoData
-}
+    // 状态
+    variables,
+    tables,
+    currentTableId,
+    currentTable,
+    
+    // 方法
+    addVariable,
+    updateVariable,
+    deleteVariable,
+    addTable,
+    updateTable,
+    deleteTable,
+    selectTable,
+    
+    // 字段管理
+    addField,
+    updateField,
+    deleteField,
+    
+    // 记录管理
+    addRecord,
+    updateRecord,
+    deleteRecord,
+    
+    // 初始化函数
+    initDemoData
+  }
 })

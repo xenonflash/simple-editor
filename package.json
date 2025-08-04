@@ -19,6 +19,7 @@
     "@vue-flow/core": "^1.45.0",
     "@vue-flow/minimap": "^1.5.3",
     "axios": "^1.11.0",
+    "date-fns": "^4.1.0",
     "naive-ui": "^2.42.0",
     "pinia": "^2.3.1",
     "unplugin-auto-import": "^19.3.0",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.10.7",
+    "@vicons/ionicons5": "^0.13.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vitejs/plugin-vue-jsx": "^4.1.1",
     "@vue/tsconfig": "^0.7.0",
