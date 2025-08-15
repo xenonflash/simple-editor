@@ -1,16 +1,23 @@
 <template>
   <div class="topbar">
     <div class="logo">K-CREATOR</div>
-    <div class="actions">
-      <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
-      <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">行为</router-link>
-      <router-link to="/data" class="action-btn" :class="{ active: $route.path === '/data' }">数据</router-link>
-      <!-- <router-link to="/debug" class="action-btn" :class="{ active: $route.path === '/debug' }">debug</router-link> -->
+    <div class="right-section">
+      <div class="actions">
+        <router-link to="/" class="action-btn" :class="{ active: $route.path === '/' }">页面</router-link>
+        <router-link to="/flow" class="action-btn" :class="{ active: $route.path === '/flow' }">行为</router-link>
+        <router-link to="/data" class="action-btn" :class="{ active: $route.path === '/data' }">数据</router-link>
+        <!-- <router-link to="/debug" class="action-btn" :class="{ active: $route.path === '/debug' }">debug</router-link> -->
+      </div>
+      <UserAvatar v-if="userStore.isLoggedIn" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useUserStore } from '@/stores/user'
+import UserAvatar from './UserAvatar.vue'
+
+const userStore = useUserStore()
 </script>
 
 <style scoped>
@@ -27,6 +34,12 @@
 .logo {
   font-size: 16px;
   font-weight: bold;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .actions {
