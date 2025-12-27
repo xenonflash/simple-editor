@@ -73,6 +73,10 @@
           <div class="section">
             <div class="section-header">
               <span>事件列表</span>
+              <n-button size="tiny" secondary type="info" @click="showFlowEditor = true">
+                <template #icon><n-icon><GitNetwork /></n-icon></template>
+                逻辑编排
+              </n-button>
             </div>
             <div class="section-content">
               <div class="event-list">
@@ -81,29 +85,48 @@
                      class="event-item">
                   <div class="event-header">
                     <span>{{ eventDef.label }} ({{ eventDef.value }})</span>
-                    <n-button size="tiny" secondary type="primary" @click="addEventAction(eventDef.value)">
-                      <template #icon><n-icon><Add /></n-icon></template>
-                    </n-button>
                   </div>
                   
-                  <!-- 已配置的动作列表 -->
-                  <div v-if="getActionsForEvent(eventDef.value).length > 0" class="action-list">
-                    <div v-for="(action, index) in getActionsForEvent(eventDef.value)" :key="index" class="action-item">
-                      <div class="action-header">
-                        <span class="action-type">{{ getActionLabel(action.type) }}</span>
-                        <div class="action-tools">
-                          <n-button size="tiny" quaternary circle @click="editAction(eventDef.value, index)">
-                            <template #icon><n-icon><Create /></n-icon></template>
-                          </n-button>
-                          <n-button size="tiny" quaternary circle type="error" @click="removeAction(eventDef.value, index)">
-                            <template #icon><n-icon><Trash /></n-icon></template>
-                          </n-button>
+                  <!-- Flow 绑定 -->
+                  <div class="flow-binding" style="padding: 8px; border-bottom: 1px solid #eee;">
+                    <n-select 
+                      size="small" 
+                      placeholder="绑定逻辑流" 
+                      :options="flowOptions" 
+                      :value="getFlowForEvent(eventDef.value)"
+                      @update:value="(val) => updateEventFlow(eventDef.value, val)"
+                      clearable
+                    />
+                  </div>
+
+                  <!-- 已配置的动作列表 (保留以兼容旧数据，或者作为 Flow 的补充) -->
+                  <div v-if="!getFlowForEvent(eventDef.value)">
+                    <div class="action-list-header" style="padding: 4px 8px; display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-size: 10px; color: #999;">或直接添加动作:</span>
+                      <n-button size="tiny" secondary type="primary" @click="addEventAction(eventDef.value)">
+                        <template #icon><n-icon><Add /></n-icon></template>
+                      </n-button>
+                    </div>
+                    <div v-if="getActionsForEvent(eventDef.value).length > 0" class="action-list">
+                      <div v-for="(action, index) in getActionsForEvent(eventDef.value)" :key="index" class="action-item">
+                        <div class="action-header">
+                          <span class="action-type">{{ getActionLabel(action.type) }}</span>
+                          <div class="action-tools">
+                            <n-button size="tiny" quaternary circle @click="editAction(eventDef.value, index)">
+                              <template #icon><n-icon><Create /></n-icon></template>
+                            </n-button>
+                            <n-button size="tiny" quaternary circle type="error" @click="removeAction(eventDef.value, index)">
+                              <template #icon><n-icon><Trash /></n-icon></template>
+                            </n-button>
+                          </div>
                         </div>
+                        <div class="action-desc">{{ getActionDesc(action) }}</div>
                       </div>
-                      <div class="action-desc">{{ getActionDesc(action) }}</div>
                     </div>
                   </div>
-                  <div v-else class="no-actions">暂无动作</div>
+                  <div v-else class="flow-active-tip" style="padding: 8px; font-size: 11px; color: #1890ff; background: #e6f7ff;">
+                    已绑定逻辑流，直接动作将被忽略
+                  </div>
                 </div>
               </div>
             </div>
@@ -123,6 +146,9 @@
       <p>暂无内容</p>
       <small>创建页面或添加组件开始编辑</small>
     </div>
+
+    <!-- Flow 编辑器弹窗 -->
+    <FlowEditorModal v-model:show="showFlowEditor" />
 
     <!-- 动作配置弹窗 -->
     <n-modal v-model:show="showActionModal" preset="dialog" :title="editingActionIndex === -1 ? '添加动作' : '编辑动作'">
@@ -161,7 +187,7 @@ import { ref, computed, watch } from 'vue';
 import { 
   NButton, NIcon, NModal, NForm, NFormItem, NSelect, NInput, NInputNumber, NSwitch 
 } from 'naive-ui';
-import { Add, Trash, Create } from '@vicons/ionicons5';
+import { Add, Trash, Create, GitNetwork } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
@@ -171,6 +197,7 @@ import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
 import DynamicProperties from '../properties/DynamicProperties.vue';
 import PageProperties from '../properties/PageProperties.vue';
+import FlowEditorModal from '../flow/FlowEditorModal.vue';
 import { getNaiveConfig } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
 import type { Comp } from '../comps/base';
@@ -187,6 +214,48 @@ const currentPage = computed(() => pageStore.currentPage);
 
 const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
+
+// Flow 相关
+const showFlowEditor = ref(false);
+const flows = computed(() => currentPage.value?.flows || []);
+const flowOptions = computed(() => [
+  { label: '不绑定', value: null },
+  ...flows.value.map(f => ({ label: f.name, value: f.id }))
+]);
+
+function getFlowForEvent(eventName: string) {
+  if (!props.component || !props.component.events) return null;
+  const event = props.component.events[eventName];
+  if (Array.isArray(event)) {
+    const handler = event.find(e => e.trigger === eventName);
+    return handler?.flowId || null;
+  }
+  return null;
+}
+
+function updateEventFlow(eventName: string, flowId: string | null) {
+  if (!props.component) return;
+  
+  const newEvents = { ...(props.component.events || {}) };
+  
+  if (!newEvents[eventName]) {
+    newEvents[eventName] = [{ trigger: eventName, actions: [] }];
+  }
+  
+  const handler = newEvents[eventName].find(e => e.trigger === eventName);
+  if (!handler) {
+    newEvents[eventName].push({ trigger: eventName, actions: [] });
+  }
+  
+  const targetHandler = newEvents[eventName].find(e => e.trigger === eventName)!;
+  targetHandler.flowId = flowId || undefined;
+  
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    events: newEvents
+  });
+}
 
 // 事件相关
 const supportedEvents = computed(() => naiveConfig.value?.events || []);
@@ -445,39 +514,88 @@ function updateBindings(updates: Record<string, string | null>) {
 .event-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .event-item {
   border: 1px solid #e5e5e5;
-  border-radius: 2px;
+  border-radius: 4px;
   background: white;
+  overflow: hidden;
 }
 
 .event-header {
-  padding: 6px 8px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #f9f9f9;
+  border-bottom: 1px solid #eee;
 }
 
 .event-header span {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   color: #333;
 }
 
-.add-button {
-  padding: 2px 8px;
-  border: 1px solid #e5e5e5;
-  border-radius: 2px;
-  background: white;
-  font-size: 11px;
-  color: #333;
-  cursor: pointer;
+.action-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.add-button:hover {
-  border-color: #000;
-  color: #000;
+.action-item {
+  background: #fff;
+  border-radius: 4px;
+  padding: 8px 10px;
+  border: 1px solid #eee;
+  transition: all 0.2s;
+}
+
+.action-item:hover {
+  border-color: #d9d9d9;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.action-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.action-tools {
+  display: flex;
+  gap: 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.action-item:hover .action-tools {
+  opacity: 1;
+}
+
+.action-desc {
+  font-size: 11px;
+  color: #666;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.no-actions {
+  padding: 16px;
+  text-align: center;
+  font-size: 11px;
+  color: #999;
+  background: #fff;
 }
 </style>

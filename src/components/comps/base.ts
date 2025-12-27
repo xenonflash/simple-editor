@@ -26,6 +26,7 @@ export interface CompEventAction {
 export interface CompEvent {
   trigger: string; // 'click', 'hover', etc.
   actions: CompEventAction[];
+  flowId?: string; // 绑定的逻辑流 ID
 }
 
 // 组件样式接口

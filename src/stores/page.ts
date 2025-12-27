@@ -264,6 +264,19 @@ export const usePageStore = defineStore('page', () => {
     return true;
   }
 
+  function getVariableValue(name: string) {
+    const v = currentPage.value?.variables.find(v => v.name === name);
+    return v ? v.defaultValue : undefined;
+  }
+
+  function updateVariableValue(name: string, value: any) {
+    if (!currentPage.value) return;
+    const v = currentPage.value.variables.find(v => v.name === name);
+    if (v) {
+      v.defaultValue = value;
+    }
+  }
+
   // ==================== 导出 ====================
   return {
     // 状态
@@ -303,6 +316,8 @@ export const usePageStore = defineStore('page', () => {
     // 变量管理方法
     addVariable,
     updateVariable,
-    deleteVariable
+    deleteVariable,
+    getVariableValue,
+    updateVariableValue
   };
 });

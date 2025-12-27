@@ -6,6 +6,13 @@ export interface PageVariable {
   defaultValue: any;
 }
 
+export interface PageFlow {
+  id: string;
+  name: string;
+  nodes: any[];
+  edges: any[];
+}
+
 // 页面接口
 export interface Page {
   id: string;
@@ -13,6 +20,7 @@ export interface Page {
   description: string;
   components: Comp[];
   variables: PageVariable[];
+  flows: PageFlow[];
   createdAt: Date;
   updatedAt: Date;
   width: number;
@@ -35,6 +43,7 @@ export function createPage(name: string = '新页面', description: string = '')
     description,
     components: [],
     variables: [],
+    flows: [],
     createdAt: now,
     updatedAt: now,
     width: 1280,

@@ -6,6 +6,9 @@ import { MiniMap } from '@vue-flow/minimap'
 import { Background } from '@vue-flow/background'
 import CustomNode from './nodes/CustomNode.vue'
 import FormNode from './nodes/FormNode.vue'
+import LogicStartNode from './nodes/LogicStartNode.vue'
+import LogicActionNode from './nodes/LogicActionNode.vue'
+import LogicConditionNode from './nodes/LogicConditionNode.vue'
 import type { NodeTypesObject } from '@vue-flow/core'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -29,7 +32,10 @@ const emit = defineEmits<{
 // 注册自定义节点类型
 const nodeTypes: NodeTypesObject = {
   custom: CustomNode as any,
-  form: FormNode as any
+  form: FormNode as any,
+  logicStart: LogicStartNode as any,
+  logicAction: LogicActionNode as any,
+  logicCondition: LogicConditionNode as any
 }
 
 const isDragOver = ref(false)
@@ -98,23 +104,37 @@ const handleDrop = (event: DragEvent) => {
   event.preventDefault()
   isDragOver.value = false
   
-  const nodeData = event.dataTransfer?.getData('application/vueflow')
-  if (nodeData) {
-    const nodeType = JSON.parse(nodeData)
+  const transferData = event.dataTransfer?.getData('application/vueflow')
+  if (transferData) {
+    const payload = JSON.parse(transferData)
     const position = screenToFlowCoordinate({
       x: event.clientX,
       y: event.clientY
     })
     
-    const newNode = {
-      type: nodeType.type,
-      data: {
-        label: nodeType.name,
-        description: `新建的${nodeType.name}`,
-        ...nodeType.data
-      },
-      style: nodeType.style,
-      position
+    const newNode: any = {
+      id: `node_${Date.now()}`,
+      type: payload.type,
+      position,
+      data: {}
+    }
+
+    if (payload.type === 'logicAction') {
+      newNode.data = {
+        actionType: payload.actionType
+      }
+    } else if (payload.type === 'logicCondition') {
+      newNode.data = {
+        label: '条件判断'
+      }
+    } else {
+       // Fallback for existing logic
+       newNode.data = {
+         label: payload.name || '新节点',
+         description: `新建的${payload.name || '节点'}`,
+         ...payload.data
+       }
+       if (payload.style) newNode.style = payload.style
     }
     
     emit('addNode', newNode)

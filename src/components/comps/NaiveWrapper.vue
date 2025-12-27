@@ -105,6 +105,7 @@ import { CompType } from '../../types/component';
 import { useDraggable } from '../../utils/dragHelper';
 import { usePageStore } from '../../stores/page';
 import { useEventRunner } from '../../utils/eventRunner';
+import { useFlowRunner } from '../../utils/flowRunner';
 
 const props = defineProps<{
   comp: Comp;
@@ -119,7 +120,9 @@ let resizeObserver: ResizeObserver | null = null;
 // 事件运行器
 const message = useMessage();
 const { runEvents, setMessageApi } = useEventRunner();
+const { executeFlow: runFlow, setMessageApi: setFlowMessageApi } = useFlowRunner();
 setMessageApi(message);
+setFlowMessageApi(message);
 
 const componentMap: Record<string, any> = {
   [CompType.N_BUTTON]: NButton,
@@ -181,11 +184,15 @@ const eventHandlers = computed(() => {
   if (props.comp.events) {
     Object.entries(props.comp.events).forEach(([eventName, eventDef]) => {
       // 兼容旧结构：如果 eventDef 是数组，说明是 CompEvent[]
-      const actions = Array.isArray(eventDef) ? eventDef.find(e => e.trigger === eventName)?.actions : [];
+      const eventConfig = Array.isArray(eventDef) ? eventDef.find(e => e.trigger === eventName) : null;
       
-      if (actions && actions.length > 0) {
+      if (eventConfig) {
         handlers[eventName] = (e: any) => {
-           runEvents(actions);
+           if (eventConfig.flowId) {
+             runFlow(eventConfig.flowId, { event: e });
+           } else if (eventConfig.actions && eventConfig.actions.length > 0) {
+             runEvents(eventConfig.actions);
+           }
         };
       }
     });
