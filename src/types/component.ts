@@ -23,5 +23,6 @@ export enum CompType {
   N_BREADCRUMB = 'n-breadcrumb',
   N_STEPS = 'n-steps',
   N_TABS = 'n-tabs',
-  N_CAROUSEL = 'n-carousel'
+  N_CAROUSEL = 'n-carousel',
+  N_LIST = 'n-list'
 }

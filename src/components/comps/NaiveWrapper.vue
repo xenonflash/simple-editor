@@ -6,17 +6,18 @@
        @click.stop>
     <component :is="componentMap[comp.type]" 
                v-bind="naiveProps"
+               v-on="eventHandlers"
                @update:value="handleUpdateValue"
                @update:checked="handleUpdateValue"
                @update:show="handleUpdateValue">
       <!-- 默认文本内容 -->
       <template v-if="textContentComponents.includes(comp.type)">
-        {{ comp.props.content }}
+        {{ effectiveProps.content }}
       </template>
 
       <!-- Radio Group -->
       <template v-if="comp.type === CompType.N_RADIO_GROUP">
-        <n-radio v-for="opt in comp.props.options" 
+        <n-radio v-for="opt in effectiveProps.options" 
                  :key="opt.value" 
                  :value="opt.value"
                  :label="opt.label" />
@@ -24,7 +25,7 @@
 
       <!-- Breadcrumb -->
       <template v-if="comp.type === CompType.N_BREADCRUMB">
-        <n-breadcrumb-item v-for="(item, index) in comp.props.items" 
+        <n-breadcrumb-item v-for="(item, index) in effectiveProps.items" 
                            :key="index" 
                            :href="item.href">
           {{ item.label }}
@@ -33,7 +34,7 @@
 
       <!-- Timeline -->
       <template v-if="comp.type === CompType.N_TIMELINE">
-        <n-timeline-item v-for="(item, index) in comp.props.items"
+        <n-timeline-item v-for="(item, index) in effectiveProps.items"
                          :key="index"
                          :type="item.type"
                          :title="item.title"
@@ -43,7 +44,7 @@
 
       <!-- Steps -->
       <template v-if="comp.type === CompType.N_STEPS">
-        <n-step v-for="(item, index) in comp.props.items"
+        <n-step v-for="(item, index) in effectiveProps.items"
                 :key="index"
                 :title="item.title"
                 :description="item.description" />
@@ -51,7 +52,7 @@
 
       <!-- Tabs -->
       <template v-if="comp.type === CompType.N_TABS">
-        <n-tab-pane v-for="item in comp.props.items"
+        <n-tab-pane v-for="item in effectiveProps.items"
                     :key="item.name"
                     :name="item.name"
                     :tab="item.tab">
@@ -61,10 +62,19 @@
 
       <!-- Carousel -->
       <template v-if="comp.type === CompType.N_CAROUSEL">
-        <img v-for="(item, index) in comp.props.items"
+        <img v-for="(item, index) in effectiveProps.items"
              :key="index"
              class="carousel-img"
              :src="item.src" />
+      </template>
+
+      <!-- List -->
+      <template v-if="comp.type === CompType.N_LIST">
+        <n-list-item v-for="(item, index) in effectiveProps.items" :key="index">
+          <n-thing :title="item.title" :description="item.description">
+            {{ item.content }}
+          </n-thing>
+        </n-list-item>
       </template>
     </component>
   </div>
@@ -86,12 +96,15 @@ import {
   NCheckbox, NRadioGroup, NColorPicker, NCascader,
   NRate, NSlider, NImage, NTimeline, NBreadcrumb, NSteps,
   NRadio, NTimelineItem, NBreadcrumbItem, NStep,
-  NTabs, NTabPane, NCarousel
+  NTabs, NTabPane, NCarousel,
+  NList, NListItem, NThing,
+  useMessage
 } from 'naive-ui';
 import type { Comp } from './base';
 import { CompType } from '../../types/component';
 import { useDraggable } from '../../utils/dragHelper';
 import { usePageStore } from '../../stores/page';
+import { useEventRunner } from '../../utils/eventRunner';
 
 const props = defineProps<{
   comp: Comp;
@@ -102,6 +115,11 @@ const emit = defineEmits(['update']);
 const pageStore = usePageStore();
 const wrapperRef = ref<HTMLElement | null>(null);
 let resizeObserver: ResizeObserver | null = null;
+
+// 事件运行器
+const message = useMessage();
+const { runEvents, setMessageApi } = useEventRunner();
+setMessageApi(message);
 
 const componentMap: Record<string, any> = {
   [CompType.N_BUTTON]: NButton,
@@ -124,12 +142,30 @@ const componentMap: Record<string, any> = {
   [CompType.N_BREADCRUMB]: NBreadcrumb,
   [CompType.N_STEPS]: NSteps,
   [CompType.N_TABS]: NTabs,
-  [CompType.N_CAROUSEL]: NCarousel
+  [CompType.N_CAROUSEL]: NCarousel,
+  [CompType.N_LIST]: NList
 };
+
+// 计算生效的属性（合并静态属性和绑定变量）
+const effectiveProps = computed(() => {
+  const rawProps = { ...props.comp.props };
+  
+  if (props.comp.bindings) {
+    const variables = pageStore.currentPage?.variables || [];
+    Object.entries(props.comp.bindings).forEach(([propName, varName]) => {
+      const variable = variables.find(v => v.name === varName);
+      if (variable) {
+        // 使用变量的值进行预览
+        rawProps[propName] = variable.defaultValue;
+      }
+    });
+  }
+  return rawProps;
+});
 
 // 提取 Naive UI 组件需要的 props (过滤掉布局属性)
 const naiveProps = computed(() => {
-  const { x, y, width, height, content, items, options, ...rest } = props.comp.props;
+  const { x, y, width, height, content, items, options, ...rest } = effectiveProps.value;
   
   // 对于需要 options 的组件，手动放回去
   if ([CompType.N_MENU, CompType.N_SELECT, CompType.N_CASCADER].includes(props.comp.type)) {
@@ -137,6 +173,24 @@ const naiveProps = computed(() => {
   }
   
   return rest;
+});
+
+// 计算事件处理器
+const eventHandlers = computed(() => {
+  const handlers: Record<string, Function> = {};
+  if (props.comp.events) {
+    Object.entries(props.comp.events).forEach(([eventName, eventDef]) => {
+      // 兼容旧结构：如果 eventDef 是数组，说明是 CompEvent[]
+      const actions = Array.isArray(eventDef) ? eventDef.find(e => e.trigger === eventName)?.actions : [];
+      
+      if (actions && actions.length > 0) {
+        handlers[eventName] = (e: any) => {
+           runEvents(actions);
+        };
+      }
+    });
+  }
+  return handlers;
 });
 
 // 需要渲染文本内容的组件

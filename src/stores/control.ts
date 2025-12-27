@@ -147,7 +147,7 @@ export const useControlStore = defineStore('control', () => {
           )
         } else if ([
           CompType.N_TREE, CompType.N_MENU, CompType.N_IMAGE, CompType.N_TIMELINE,
-          CompType.N_TABS, CompType.N_CAROUSEL
+          CompType.N_TABS, CompType.N_CAROUSEL, CompType.N_LIST
         ].includes(comp.type as CompType)) {
           // 容器/列表/图片类组件允许自由调整大小
           result.push(

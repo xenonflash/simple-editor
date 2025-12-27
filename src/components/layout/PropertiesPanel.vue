@@ -31,8 +31,10 @@
           <template v-if="naiveConfig">
             <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">组件属性</div>
             <DynamicProperties :modelValue="props.component.props"
+                               :bindings="props.component.bindings || {}"
                                :propsSchema="naiveConfig.propsSchema"
-                               @change="updateProps" />
+                               @change="updateProps"
+                               @update:bindings="updateBindings" />
           </template>
 
           <SpacingProperties v-bind="props.component.props"
@@ -74,15 +76,34 @@
             </div>
             <div class="section-content">
               <div class="event-list">
-                <div v-for="event in events" 
-                     :key="event.name" 
+                <div v-for="eventDef in supportedEvents" 
+                     :key="eventDef.value" 
                      class="event-item">
                   <div class="event-header">
-                    <span>{{ event.label }}</span>
-                    <button class="add-button" @click="addEvent(event.name)">
-                      添加
-                    </button>
+                    <span>{{ eventDef.label }} ({{ eventDef.value }})</span>
+                    <n-button size="tiny" secondary type="primary" @click="addEventAction(eventDef.value)">
+                      <template #icon><n-icon><Add /></n-icon></template>
+                    </n-button>
                   </div>
+                  
+                  <!-- 已配置的动作列表 -->
+                  <div v-if="getActionsForEvent(eventDef.value).length > 0" class="action-list">
+                    <div v-for="(action, index) in getActionsForEvent(eventDef.value)" :key="index" class="action-item">
+                      <div class="action-header">
+                        <span class="action-type">{{ getActionLabel(action.type) }}</span>
+                        <div class="action-tools">
+                          <n-button size="tiny" quaternary circle @click="editAction(eventDef.value, index)">
+                            <template #icon><n-icon><Create /></n-icon></template>
+                          </n-button>
+                          <n-button size="tiny" quaternary circle type="error" @click="removeAction(eventDef.value, index)">
+                            <template #icon><n-icon><Trash /></n-icon></template>
+                          </n-button>
+                        </div>
+                      </div>
+                      <div class="action-desc">{{ getActionDesc(action) }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="no-actions">暂无动作</div>
                 </div>
               </div>
             </div>
@@ -102,51 +123,185 @@
       <p>暂无内容</p>
       <small>创建页面或添加组件开始编辑</small>
     </div>
+
+    <!-- 动作配置弹窗 -->
+    <n-modal v-model:show="showActionModal" preset="dialog" :title="editingActionIndex === -1 ? '添加动作' : '编辑动作'">
+      <n-form size="small" label-placement="left" label-width="80">
+        <n-form-item label="动作类型">
+          <n-select v-model:value="currentAction.type" :options="actionTypeOptions" @update:value="handleActionTypeChange" />
+        </n-form-item>
+        
+        <!-- 动态渲染参数表单 -->
+        <template v-if="currentActionDef">
+          <n-form-item v-for="(schema, key) in currentActionDef.paramsSchema" :key="key" :label="schema.label">
+            <!-- 变量选择特殊处理 -->
+            <n-select v-if="key === 'variableName'" 
+                      v-model:value="currentAction.params[key]" 
+                      :options="variableOptions" 
+                      placeholder="选择变量" />
+            
+            <n-input v-else-if="schema.type === 'text'" v-model:value="currentAction.params[key]" />
+            <n-input-number v-else-if="schema.type === 'number'" v-model:value="currentAction.params[key]" />
+            <n-switch v-else-if="schema.type === 'boolean'" v-model:value="currentAction.params[key]" />
+            <n-select v-else-if="schema.type === 'select'" v-model:value="currentAction.params[key]" :options="schema.options" />
+            <n-input v-else-if="schema.type === 'json'" type="textarea" v-model:value="currentAction.params[key]" placeholder="JSON/代码" />
+          </n-form-item>
+        </template>
+      </n-form>
+      <template #action>
+        <n-button size="small" @click="showActionModal = false">取消</n-button>
+        <n-button size="small" type="primary" @click="saveAction">保存</n-button>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { Comp } from '../comps/base';
+import { ref, computed, watch } from 'vue';
+import { 
+  NButton, NIcon, NModal, NForm, NFormItem, NSelect, NInput, NInputNumber, NSwitch 
+} from 'naive-ui';
+import { Add, Trash, Create } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
+import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
 import ShadowProperties from '../properties/ShadowProperties.vue';
 import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
-import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
-import { usePageStore } from '../../stores/page';
-import PageProperties from '../properties/PageProperties.vue';
-import AppIcon from '../icons/AppIcon.vue';
-import { getNaiveConfig } from '../../config/naive-ui-registry';
 import DynamicProperties from '../properties/DynamicProperties.vue';
+import PageProperties from '../properties/PageProperties.vue';
+import { getNaiveConfig } from '../../config/naive-ui-registry';
+import { usePageStore } from '../../stores/page';
+import type { Comp } from '../comps/base';
+import type { CompEventAction } from '../comps/base';
+import { actionRegistry } from '../../config/actions';
 
 const props = defineProps<{
   component: Comp | null;
 }>();
 
 const emit = defineEmits(['update']);
-
-// 只保留一个 pageStore 声明
 const pageStore = usePageStore();
-
-// 简化：直接使用当前页面
 const currentPage = computed(() => pageStore.currentPage);
 
-const naiveConfig = computed(() => {
-  if (!props.component) return null;
-  return getNaiveConfig(props.component.type);
+const activeTab = ref('properties');
+const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
+
+// 事件相关
+const supportedEvents = computed(() => naiveConfig.value?.events || []);
+
+// 动作编辑状态
+const showActionModal = ref(false);
+const currentEventName = ref('');
+const editingActionIndex = ref(-1);
+const currentAction = ref<CompEventAction>({ id: '', type: 'setVar', params: {} });
+
+const actionTypeOptions = actionRegistry.map(a => ({ label: a.label, value: a.type }));
+const currentActionDef = computed(() => actionRegistry.find(a => a.type === currentAction.value.type));
+
+const variableOptions = computed(() => {
+  return (pageStore.currentPage?.variables || []).map(v => ({ label: v.name, value: v.name }));
 });
 
-// 标签页状态
-const activeTab = ref('properties');
+function getActionsForEvent(eventName: string) {
+  if (!props.component || !props.component.events) return [];
+  const event = props.component.events[eventName];
+  
+  if (Array.isArray(event)) {
+    const handler = event.find(e => e.trigger === eventName);
+    return handler ? handler.actions : [];
+  }
+  return [];
+}
 
-// 事件列表
-const events = [
-  { name: 'click', label: '点击' },
-  { name: 'dblclick', label: '双击' },
-  { name: 'mouseover', label: '悬停' }
-];
+function getActionLabel(type: string) {
+  return actionRegistry.find(a => a.type === type)?.label || type;
+}
+
+function getActionDesc(action: CompEventAction) {
+  if (action.type === 'setVar') return `${action.params.variableName} = ${action.params.value}`;
+  if (action.type === 'pushVar') return `Push to ${action.params.variableName}`;
+  if (action.type === 'toast') return `Toast: ${action.params.content}`;
+  return JSON.stringify(action.params);
+}
+
+function addEventAction(eventName: string) {
+  currentEventName.value = eventName;
+  editingActionIndex.value = -1;
+  currentAction.value = { id: Date.now().toString(), type: 'setVar', params: {} };
+  handleActionTypeChange('setVar');
+  showActionModal.value = true;
+}
+
+function editAction(eventName: string, index: number) {
+  currentEventName.value = eventName;
+  editingActionIndex.value = index;
+  const actions = getActionsForEvent(eventName);
+  if (actions[index]) {
+    currentAction.value = JSON.parse(JSON.stringify(actions[index]));
+  }
+  showActionModal.value = true;
+}
+
+function handleActionTypeChange(type: string) {
+  const def = actionRegistry.find(a => a.type === type);
+  const newParams: Record<string, any> = {};
+  if (def) {
+    Object.keys(def.paramsSchema).forEach(key => {
+      if (key === 'valueType') newParams[key] = 'string';
+    });
+  }
+  currentAction.value.params = newParams;
+}
+
+function saveAction() {
+  if (!props.component) return;
+  
+  const eventName = currentEventName.value;
+  const newEvents = { ...(props.component.events || {}) };
+  
+  if (!newEvents[eventName]) {
+    newEvents[eventName] = [{ trigger: eventName, actions: [] }];
+  }
+  
+  const handler = newEvents[eventName].find(e => e.trigger === eventName);
+  if (!handler) {
+    newEvents[eventName].push({ trigger: eventName, actions: [] });
+  }
+  
+  const targetHandler = newEvents[eventName].find(e => e.trigger === eventName)!;
+  
+  if (editingActionIndex.value === -1) {
+    targetHandler.actions.push({ ...currentAction.value });
+  } else {
+    targetHandler.actions[editingActionIndex.value] = { ...currentAction.value };
+  }
+  
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    events: newEvents
+  });
+  
+  showActionModal.value = false;
+}
+
+function removeAction(eventName: string, index: number) {
+  if (!props.component) return;
+  
+  const newEvents = { ...(props.component.events || {}) };
+  const handler = newEvents[eventName]?.find(e => e.trigger === eventName);
+  
+  if (handler) {
+    handler.actions.splice(index, 1);
+    emit('update', {
+      id: props.component.id,
+      type: props.component.type,
+      events: newEvents
+    });
+  }
+}
 
 // 更新属性
 function updateProps(updates: Record<string, any>) {
@@ -169,12 +324,26 @@ function updateProps(updates: Record<string, any>) {
   });
 }
 
-// 添加事件
-function addEvent(eventName: string) {
-  console.log('添加事件:', eventName);
-  // TODO: 实现事件添加逻辑
-}
+// 更新绑定
+function updateBindings(updates: Record<string, string | null>) {
+  if (!props.component) return;
+  
+  const newBindings = { ...(props.component.bindings || {}) };
+  
+  Object.entries(updates).forEach(([key, value]) => {
+    if (value === null) {
+      delete newBindings[key];
+    } else {
+      newBindings[key] = value;
+    }
+  });
 
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    bindings: newBindings
+  });
+}
 </script>
 
 <style scoped>

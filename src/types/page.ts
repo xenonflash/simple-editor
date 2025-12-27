@@ -1,11 +1,18 @@
 import type { Comp } from '../components/comps/base';
 
+export interface PageVariable {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  defaultValue: any;
+}
+
 // 页面接口
 export interface Page {
   id: string;
   name: string;
   description: string;
   components: Comp[];
+  variables: PageVariable[];
   createdAt: Date;
   updatedAt: Date;
   width: number;
@@ -27,6 +34,7 @@ export function createPage(name: string = '新页面', description: string = '')
     name,
     description,
     components: [],
+    variables: [],
     createdAt: now,
     updatedAt: now,
     width: 1280,

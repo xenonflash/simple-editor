@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
-import type { Page, PageState } from '../types/page';
+import type { Page, PageState, PageVariable } from '../types/page';
 import { createPage } from '../types/page';
 import type { Comp } from '../components/comps/base';
 
@@ -223,6 +223,47 @@ export const usePageStore = defineStore('page', () => {
     }
   }
 
+  // ==================== 变量管理方法 ====================
+  function addVariable(variable: PageVariable) {
+    if (!currentPage.value) return false;
+    
+    // 检查重名
+    if (currentPage.value.variables.some(v => v.name === variable.name)) {
+      return false;
+    }
+    
+    currentPage.value.variables.push(variable);
+    currentPage.value.updatedAt = new Date();
+    return true;
+  }
+
+  function updateVariable(oldName: string, newVariable: PageVariable) {
+    if (!currentPage.value) return false;
+    
+    const index = currentPage.value.variables.findIndex(v => v.name === oldName);
+    if (index === -1) return false;
+    
+    // 如果改了名字，检查新名字是否冲突
+    if (oldName !== newVariable.name && currentPage.value.variables.some(v => v.name === newVariable.name)) {
+      return false;
+    }
+    
+    currentPage.value.variables.splice(index, 1, newVariable);
+    currentPage.value.updatedAt = new Date();
+    return true;
+  }
+
+  function deleteVariable(name: string) {
+    if (!currentPage.value) return false;
+    
+    const index = currentPage.value.variables.findIndex(v => v.name === name);
+    if (index === -1) return false;
+    
+    currentPage.value.variables.splice(index, 1);
+    currentPage.value.updatedAt = new Date();
+    return true;
+  }
+
   // ==================== 导出 ====================
   return {
     // 状态
@@ -258,5 +299,10 @@ export const usePageStore = defineStore('page', () => {
     
     // 页面属性编辑方法
     updatePageProperties,
+
+    // 变量管理方法
+    addVariable,
+    updateVariable,
+    deleteVariable
   };
 });

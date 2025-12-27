@@ -13,6 +13,7 @@ export interface NaiveCompConfig {
   icon: string; // FontAwesome icon name
   defaultProps: Record<string, any>;
   propsSchema: Record<string, PropSchema>;
+  events?: { label: string; value: string }[]; // Supported events
 }
 
 export const naiveComponentRegistry: NaiveCompConfig[] = [
@@ -30,6 +31,9 @@ export const naiveComponentRegistry: NaiveCompConfig[] = [
       secondary: false,
       tertiary: false
     },
+    events: [
+      { label: '点击', value: 'click' }
+    ],
     propsSchema: {
       content: { label: '内容', type: 'text', default: '按钮' },
       type: {
@@ -73,6 +77,12 @@ export const naiveComponentRegistry: NaiveCompConfig[] = [
       clearable: true,
       round: false
     },
+    events: [
+      { label: '输入', value: 'input' },
+      { label: '聚焦', value: 'focus' },
+      { label: '失焦', value: 'blur' },
+      { label: '值改变', value: 'change' }
+    ],
     propsSchema: {
       placeholder: { label: '占位符', type: 'text' },
       type: {
@@ -674,6 +684,26 @@ export const naiveComponentRegistry: NaiveCompConfig[] = [
           { label: '右', value: 'right' }
         ]
       }
+    }
+  },
+  {
+    type: CompType.N_LIST,
+    name: 'N列表',
+    icon: 'list',
+    defaultProps: {
+      bordered: true,
+      hoverable: false,
+      clickable: false,
+      items: [
+        { title: '待办事项 1', description: '2025-12-27', content: '完成列表组件集成' },
+        { title: '待办事项 2', description: '2025-12-28', content: '设计变量功能' }
+      ]
+    },
+    propsSchema: {
+      bordered: { label: '边框', type: 'boolean' },
+      hoverable: { label: '悬停效果', type: 'boolean' },
+      clickable: { label: '可点击', type: 'boolean' },
+      items: { label: '列表项', type: 'json' }
     }
   }
 ];

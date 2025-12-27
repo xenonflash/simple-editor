@@ -17,9 +17,9 @@ export interface CompProp {
 
 // 组件事件动作接口
 export interface CompEventAction {
-  type: 'flow' | 'script' | 'link';
-  targetId: string; // flowId 或 url
-  params?: Record<string, any>;
+  id: string;
+  type: string; // 'setVar' | 'script' | 'link' | 'toast' etc.
+  params: Record<string, any>;
 }
 
 // 组件事件接口
@@ -45,6 +45,7 @@ export interface Comp {
   name: string;
   type: CompType;
   props: Record<string, any>;
+  bindings?: Record<string, string>; // 属性绑定: propName -> variableName
   events: Record<string, CompEvent[]>; // 支持多个动作
   style: CompStyle;
   /** @deprecated Use props.width and props.height instead */
