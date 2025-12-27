@@ -57,6 +57,10 @@
                         v-bind="comp.props"
                         :scale="scale"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                  <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
+                        :comp="comp"
+                        :scale="scale"
+                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 </div>
               </template>
               
@@ -146,13 +150,16 @@ import SnapLines from './SnapLines.vue';
 import Controls from './Controls.vue';
 import MultiSelect from './MultiSelect.vue';
 import type { Comp } from '../comps/base';
-import { CompType, createComp } from '../comps/base';
+import { createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
 
 import BoardToolbar from './BoardToolbar.vue';
 import { useSnaplineStore } from '../../stores/snapline';
 import { usePageStore } from '../../stores/page';
+
+import NaiveWrapper from '../comps/NaiveWrapper.vue';
+import { CompType } from '../../types/component';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -203,6 +210,10 @@ const panState = reactive({
   spaceKeyPressed: false
 });
 
+function isNaiveComp(type: CompType) {
+  return type.startsWith('n-');
+}
+
 // 画布偏移（画布左上角相对于wrapper的位置）
 const panOffset = ref({ x: 0, y: 0 });
 
@@ -241,6 +252,16 @@ watch([canvasWidth, canvasHeight], () => {
 
 // 处理空格键
 function handleKeyDown(e: KeyboardEvent) {
+  // 如果正在输入框中输入，不触发快捷键
+  const activeElement = document.activeElement as HTMLElement;
+  if (activeElement && (
+    activeElement.tagName === 'INPUT' || 
+    activeElement.tagName === 'TEXTAREA' || 
+    activeElement.isContentEditable
+  )) {
+    return;
+  }
+
   if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
     panState.spaceKeyPressed = true;
     document.body.style.cursor = 'grab';

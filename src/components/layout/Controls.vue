@@ -115,6 +115,16 @@ function getResizeHandleStyle(control: any) {
       left = x + width / 2 - HANDLE_CONFIG.HALF_SIZE
       top = y + height - HANDLE_CONFIG.HALF_SIZE
       break
+    // 新增：顶部手柄
+    case HandleDir.TOP:
+      left = x + width / 2 - HANDLE_CONFIG.HALF_SIZE
+      top = y - HANDLE_CONFIG.HALF_SIZE
+      break
+    // 新增：左侧手柄
+    case HandleDir.LEFT:
+      left = x - HANDLE_CONFIG.HALF_SIZE
+      top = y + height / 2 - HANDLE_CONFIG.HALF_SIZE
+      break
   }
   
   return {

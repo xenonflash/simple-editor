@@ -28,6 +28,13 @@
             :height="props.component.props.height"
             @update="updateProps" />
 
+          <template v-if="naiveConfig">
+            <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">组件属性</div>
+            <DynamicProperties :modelValue="props.component.props"
+                               :propsSchema="naiveConfig.propsSchema"
+                               @change="updateProps" />
+          </template>
+
           <SpacingProperties v-bind="props.component.props"
                            @update="updateProps" />
 
@@ -111,6 +118,8 @@ import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
 import { usePageStore } from '../../stores/page';
 import PageProperties from '../properties/PageProperties.vue';
 import AppIcon from '../icons/AppIcon.vue';
+import { getNaiveConfig } from '../../config/naive-ui-registry';
+import DynamicProperties from '../properties/DynamicProperties.vue';
 
 const props = defineProps<{
   component: Comp | null;
@@ -123,6 +132,11 @@ const pageStore = usePageStore();
 
 // 简化：直接使用当前页面
 const currentPage = computed(() => pageStore.currentPage);
+
+const naiveConfig = computed(() => {
+  if (!props.component) return null;
+  return getNaiveConfig(props.component.type);
+});
 
 // 标签页状态
 const activeTab = ref('properties');

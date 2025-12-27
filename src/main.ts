@@ -10,6 +10,7 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+app.use(fontAwesomePlugin)
 
 // Mock 状态提示
 const { isMockEnabled } = await import('./mock')

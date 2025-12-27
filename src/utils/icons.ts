@@ -25,7 +25,11 @@ import {
   faCopy,
   faTable,
   faHammer,
-  faWrench
+  faWrench,
+  faSquare,
+  faFont,
+  faTag,
+  faToggleOn
 } from '@fortawesome/free-solid-svg-icons'
 
 // 图标库初始化
@@ -55,7 +59,11 @@ export function initIcons() {
     faCopy,
     faTable,
     faHammer,
-    faWrench
+    faWrench,
+    faSquare,
+    faFont,
+    faTag,
+    faToggleOn
   )
 }
 

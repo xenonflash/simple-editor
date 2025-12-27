@@ -1,10 +1,8 @@
-// 组件类型枚举
-export enum CompType {
-  CONTAINER = 'container',
-  BUTTON = 'button',
-  TEXT = 'text',
-  // 后续可以添加更多组件类型
-}
+import { CompType } from '../../types/component';
+import { getNaiveConfig } from '../../config/naive-ui-registry';
+
+// 导出 CompType 以保持兼容性
+export { CompType };
 
 // 基础类型
 export type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
@@ -17,15 +15,22 @@ export interface CompProp {
   default?: any;
 }
 
+// 组件事件动作接口
+export interface CompEventAction {
+  type: 'flow' | 'script' | 'link';
+  targetId: string; // flowId 或 url
+  params?: Record<string, any>;
+}
+
 // 组件事件接口
 export interface CompEvent {
-  name: string;
-  handler: (...args: any[]) => void;
+  trigger: string; // 'click', 'hover', etc.
+  actions: CompEventAction[];
 }
 
 // 组件样式接口
 export interface CompStyle {
-  [key: string]: string | number;
+  [key: string]: string | number | undefined;
 }
 
 // 组件尺寸接口
@@ -40,19 +45,18 @@ export interface Comp {
   name: string;
   type: CompType;
   props: Record<string, any>;
-  events: Record<string, CompEvent>;
+  events: Record<string, CompEvent[]>; // 支持多个动作
   style: CompStyle;
-  size: CompSize;
+  /** @deprecated Use props.width and props.height instead */
+  size?: CompSize;
   children: Comp[];
   isContainer?: boolean;
   icon?: string;
   description?: string;
 }
 
-// 组件属性定义
-export interface CompProps {
-  id: string;
-  type: CompType;
+// 组件属性定义 (标准属性集合)
+export interface CompStandardProps {
   x: number;
   y: number;
   width?: number;
@@ -131,6 +135,28 @@ export function createComp(type: CompType, name: string): Comp {
     shadowColor: '#000000',
     zIndex: 1
   };
+
+  // 检查是否为 Naive UI 组件
+  const naiveConfig = getNaiveConfig(type);
+  if (naiveConfig) {
+    return {
+      id: `${type}_${Date.now()}`,
+      name,
+      type,
+      props: {
+        ...baseProps,
+        width: 120, // 默认宽度
+        height: 34, // 默认高度
+        ...naiveConfig.defaultProps
+      },
+      events: {},
+      style: {},
+      size: { width: 120, height: 34 },
+      children: [],
+      icon: naiveConfig.icon,
+      description: `Naive UI ${naiveConfig.name}`
+    };
+  }
 
   switch (type) {
     case CompType.CONTAINER:
@@ -213,6 +239,18 @@ export function createComp(type: CompType, name: string): Comp {
         },
         children: [],
       };
+    default:
+      // 默认返回一个空容器，防止报错
+      return {
+        id: `${type}_${Date.now()}`,
+        name,
+        type,
+        props: { ...baseProps },
+        events: {},
+        style: {},
+        size: { width: 100, height: 100 },
+        children: []
+      };
   }
 }
 
@@ -222,7 +260,7 @@ export interface ComponentMeta {
   name: string;
   framework: Framework;
   props?: Record<string, CompProp>;
-  events?: Record<string, CompEvent>;
+  events?: string[]; // 支持的事件名称列表
   defaultSize?: CompSize;
 }
 
@@ -235,3 +273,4 @@ export function registerComponent(meta: ComponentMeta) {
 export function getComponentMeta(type: CompType): ComponentMeta | undefined {
   return componentRegistry.get(type);
 }
+export type CompProps = CompStandardProps;

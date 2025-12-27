@@ -1,0 +1,27 @@
+export enum CompType {
+  CONTAINER = 'container',
+  BUTTON = 'button',
+  TEXT = 'text',
+  // Naive UI Components
+  N_BUTTON = 'n-button',
+  N_INPUT = 'n-input',
+  N_TAG = 'n-tag',
+  N_SELECT = 'n-select',
+  N_SWITCH = 'n-switch',
+  N_DATE_PICKER = 'n-date-picker',
+  N_TIME_PICKER = 'n-time-picker',
+  N_TREE = 'n-tree',
+  N_MENU = 'n-menu',
+  N_CHECKBOX = 'n-checkbox',
+  N_RADIO_GROUP = 'n-radio-group',
+  N_COLOR_PICKER = 'n-color-picker',
+  N_CASCADER = 'n-cascader',
+  N_RATE = 'n-rate',
+  N_SLIDER = 'n-slider',
+  N_IMAGE = 'n-image',
+  N_TIMELINE = 'n-timeline',
+  N_BREADCRUMB = 'n-breadcrumb',
+  N_STEPS = 'n-steps',
+  N_TABS = 'n-tabs',
+  N_CAROUSEL = 'n-carousel'
+}
