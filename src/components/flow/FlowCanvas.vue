@@ -27,6 +27,7 @@ const emit = defineEmits<{
   addEdge: [edge: any]
   updateNode: [nodeId: string, updates: any]
   addNode: [nodeData: any]
+  nodesChange: [changes: any[]]
 }>()
 
 // 注册自定义节点类型
@@ -39,55 +40,46 @@ const nodeTypes: NodeTypesObject = {
 }
 
 const isDragOver = ref(false)
-
-const { 
-  onPaneReady, 
-  onNodeDragStop, 
-  onConnect, 
-  setViewport, 
-  onNodeClick, 
-  onEdgeClick,
-  onPaneClick,
-  screenToFlowCoordinate
-} = useVueFlow()
+const vueFlowInstance = ref<any>(null)
 
 // 连接节点时添加边
-onConnect((connection) => {
+const onConnect = (connection: any) => {
   emit('addEdge', connection)
-})
+}
 
 // 节点拖拽结束事件
-onNodeDragStop((event) => {
+const onNodeDragStop = (event: any) => {
   if (event.node) {
     emit('updateNode', event.node.id, {
       position: event.node.position
     })
   }
-})
+}
 
 // 节点点击事件
-onNodeClick((event) => {
+const onNodeClick = (event: any) => {
   emit('nodeSelect', event.node)
-})
+}
 
 // 边点击事件
-onEdgeClick((event) => {
+const onEdgeClick = (event: any) => {
   emit('edgeSelect', event.edge)
-})
+}
 
 // 画布点击事件（取消选择）
-onPaneClick(() => {
+const onPaneClick = () => {
   emit('nodeSelect', null)
   emit('edgeSelect', null)
-})
+}
 
 // 画布准备就绪事件
-onPaneReady((instance) => {
+const onPaneReady = (instance: any) => {
   console.log('Vue Flow 准备就绪:', instance)
+  vueFlowInstance.value = instance
   setTimeout(() => {
-    setViewport({ x: 50, y: 20, zoom: 1 })
+    instance.setViewport({ x: 50, y: 20, zoom: 1 })
   }, 100)
-})
+}
 
 // 拖拽相关事件处理
 const handleDragOver = (event: DragEvent) => {
@@ -105,9 +97,9 @@ const handleDrop = (event: DragEvent) => {
   isDragOver.value = false
   
   const transferData = event.dataTransfer?.getData('application/vueflow')
-  if (transferData) {
+  if (transferData && vueFlowInstance.value) {
     const payload = JSON.parse(transferData)
-    const position = screenToFlowCoordinate({
+    const position = vueFlowInstance.value.screenToFlowCoordinate({
       x: event.clientX,
       y: event.clientY
     })
@@ -159,6 +151,13 @@ const handleDrop = (event: DragEvent) => {
       :max-zoom="4"
       :snap-to-grid="true"
       :snap-grid="[20, 20]"
+      @pane-ready="onPaneReady"
+      @node-drag-stop="onNodeDragStop"
+      @connect="onConnect"
+      @node-click="onNodeClick"
+      @edge-click="onEdgeClick"
+      @pane-click="onPaneClick"
+      @nodes-change="(changes) => emit('nodesChange', changes)"
     >
       <!-- 网格背景 -->
       <Background pattern-color="#e0e0e0" :gap="20" />
@@ -188,7 +187,8 @@ const handleDrop = (event: DragEvent) => {
 
 <style scoped>
 .canvas-container {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   position: relative;
   transition: all 0.3s ease;
 }

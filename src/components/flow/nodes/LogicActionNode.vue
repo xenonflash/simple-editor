@@ -34,19 +34,28 @@ const actionDesc = computed(() => {
 
 <template>
   <div class="logic-node action-node" :class="{ selected }">
-    <Handle type="target" :position="Position.Left" />
+    <Handle 
+      type="target" 
+      :position="Position.Left" 
+      style="left: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #555; border-radius: 50%;" 
+    />
     
     <div class="node-header">
       <div class="node-title">{{ actionLabel }}</div>
     </div>
     <div v-if="actionDesc" class="node-desc">{{ actionDesc }}</div>
     
-    <Handle type="source" :position="Position.Right" />
+    <Handle 
+      type="source" 
+      :position="Position.Right" 
+      style="right: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #555; border-radius: 50%;" 
+    />
   </div>
 </template>
 
 <style scoped>
 .logic-node {
+  position: relative;
   padding: 8px 12px;
   border-radius: 4px;
   background: #fff;

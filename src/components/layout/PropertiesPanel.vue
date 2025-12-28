@@ -73,10 +73,6 @@
           <div class="section">
             <div class="section-header">
               <span>事件列表</span>
-              <n-button size="tiny" secondary type="info" @click="showFlowEditor = true">
-                <template #icon><n-icon><GitNetwork /></n-icon></template>
-                逻辑编排
-              </n-button>
             </div>
             <div class="section-content">
               <div class="event-list">
@@ -88,7 +84,7 @@
                   </div>
                   
                   <!-- Flow 绑定 -->
-                  <div class="flow-binding" style="padding: 8px; border-bottom: 1px solid #eee;">
+                  <div class="flow-binding" style="padding: 8px; border-bottom: 1px solid #eee; display: flex; gap: 4px;">
                     <n-select 
                       size="small" 
                       placeholder="绑定逻辑流" 
@@ -96,7 +92,13 @@
                       :value="getFlowForEvent(eventDef.value)"
                       @update:value="(val) => updateEventFlow(eventDef.value, val)"
                       clearable
+                      style="flex: 1"
                     />
+                    <n-button size="small" secondary type="info" 
+                              :disabled="!getFlowForEvent(eventDef.value)"
+                              @click="openFlowEditor(getFlowForEvent(eventDef.value))">
+                      <template #icon><n-icon><Create /></n-icon></template>
+                    </n-button>
                   </div>
 
                   <!-- 已配置的动作列表 (保留以兼容旧数据，或者作为 Flow 的补充) -->
@@ -147,9 +149,6 @@
       <small>创建页面或添加组件开始编辑</small>
     </div>
 
-    <!-- Flow 编辑器弹窗 -->
-    <FlowEditorModal v-model:show="showFlowEditor" />
-
     <!-- 动作配置弹窗 -->
     <n-modal v-model:show="showActionModal" preset="dialog" :title="editingActionIndex === -1 ? '添加动作' : '编辑动作'">
       <n-form size="small" label-placement="left" label-width="80">
@@ -197,7 +196,6 @@ import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
 import DynamicProperties from '../properties/DynamicProperties.vue';
 import PageProperties from '../properties/PageProperties.vue';
-import FlowEditorModal from '../flow/FlowEditorModal.vue';
 import { getNaiveConfig } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
 import type { Comp } from '../comps/base';
@@ -208,7 +206,7 @@ const props = defineProps<{
   component: Comp | null;
 }>();
 
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update', 'open-flow-editor']);
 const pageStore = usePageStore();
 const currentPage = computed(() => pageStore.currentPage);
 
@@ -216,12 +214,15 @@ const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
 
 // Flow 相关
-const showFlowEditor = ref(false);
 const flows = computed(() => currentPage.value?.flows || []);
 const flowOptions = computed(() => [
   { label: '不绑定', value: null },
   ...flows.value.map(f => ({ label: f.name, value: f.id }))
 ]);
+
+function openFlowEditor(flowId?: string) {
+  emit('open-flow-editor', flowId);
+}
 
 function getFlowForEvent(eventName: string) {
   if (!props.component || !props.component.events) return null;

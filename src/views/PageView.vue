@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import LeftPanel from '../components/layout/LeftPanel.vue';
 import PropertiesPanel from '../components/layout/PropertiesPanel.vue';
 import Board from '../components/layout/Board.vue';
+import FlowEditorModal from '../components/flow/FlowEditorModal.vue';
 import { usePageStore } from '../stores/page';
 import type { Comp } from '../components/comps/base';
 
 // 页面store
 const pageStore = usePageStore();
+
+// Flow 编辑器状态
+const showFlowEditor = ref(false);
+const currentFlowId = ref<string | null>(null);
+
+function handleOpenFlowEditor(flowId?: string) {
+  currentFlowId.value = flowId || null;
+  showFlowEditor.value = true;
+}
 
 // 计算属性 - 直接从 store 获取
 const components = computed(() => pageStore.currentComponents);
@@ -50,7 +60,7 @@ function handleDeleteComponent(id: string) {
 <template>
   <div class="editor-container">
     <div class="main">
-      <LeftPanel />
+      <LeftPanel @open-flow-editor="handleOpenFlowEditor" />
       <Board 
              :components="components"
              @select="handleSelect"
@@ -58,8 +68,14 @@ function handleDeleteComponent(id: string) {
              @add="handleAddComponent"
              @delete="handleDeleteComponent" />
       <PropertiesPanel :component="selectedComponent"
-                      @update="handleUpdate" />
+                      @update="handleUpdate"
+                      @open-flow-editor="handleOpenFlowEditor" />
     </div>
+    
+    <FlowEditorModal 
+      v-model:show="showFlowEditor" 
+      :flowId="currentFlowId" 
+    />
   </div>
 </template>
 

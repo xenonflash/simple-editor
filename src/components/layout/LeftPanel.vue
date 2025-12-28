@@ -89,6 +89,44 @@
           </div>
         </div>
       </n-tab-pane>
+
+      <n-tab-pane name="flows" tab="逻辑">
+        <div class="variables-content">
+          <div class="var-header">
+            <n-button block dashed @click="startAddFlow">
+              <template #icon><n-icon><Add /></n-icon></template>
+              添加逻辑流
+            </n-button>
+          </div>
+
+          <div class="var-list">
+            <div v-for="flow in flows" :key="flow.id" class="var-item" @click="openFlow(flow.id)" style="cursor: pointer">
+              <div class="var-info">
+                <div class="var-name" style="display: flex; align-items: center; gap: 6px;">
+                  <n-icon><GitNetwork /></n-icon>
+                  {{ flow.name }}
+                </div>
+              </div>
+              <div class="var-actions">
+                <n-button size="tiny" quaternary circle @click.stop="openFlow(flow.id)">
+                  <template #icon><n-icon><Create /></n-icon></template>
+                </n-button>
+                <n-popconfirm @positive-click="deleteFlow(flow.id)">
+                  <template #trigger>
+                    <n-button size="tiny" quaternary circle type="error" @click.stop>
+                      <template #icon><n-icon><Trash /></n-icon></template>
+                    </n-button>
+                  </template>
+                  确定删除逻辑流 {{ flow.name }}?
+                </n-popconfirm>
+              </div>
+            </div>
+            <div v-if="flows.length === 0" class="empty-tip">
+              暂无逻辑流
+            </div>
+          </div>
+        </div>
+      </n-tab-pane>
     </n-tabs>
 
     <!-- 变量编辑弹窗 -->
@@ -110,6 +148,19 @@
       </template>
     </n-modal>
 
+    <!-- 逻辑流创建弹窗 -->
+    <n-modal v-model:show="showFlowModal" preset="dialog" title="新建逻辑流">
+      <n-form size="small">
+        <n-form-item label="名称">
+          <n-input v-model:value="newFlowName" placeholder="例如: 提交表单" />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button size="small" @click="showFlowModal = false">取消</n-button>
+        <n-button size="small" type="primary" @click="createFlow">创建</n-button>
+      </template>
+    </n-modal>
+
     <!-- 页面管理区域 -->
     <div class="panel-section fixed-section">
       <PageManagerVertical />
@@ -121,18 +172,63 @@
 import { ref, computed } from 'vue';
 import { 
   NTabs, NTabPane, NButton, NInput, NSelect, 
-  NSpace, NTag, NPopconfirm, NIcon, NForm, NFormItem, NModal
+  NSpace, NTag, NPopconfirm, NIcon, NForm, NFormItem, NModal,
+  NList, NListItem
 } from 'naive-ui';
-import { Add, Trash, Create, Save, Close } from '@vicons/ionicons5';
+import { Add, Trash, Create, Save, Close, GitNetwork } from '@vicons/ionicons5';
 import { CompType } from '../comps/base';
 import PageManagerVertical from './PageManagerVertical.vue';
 import { naiveComponentRegistry } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
-import type { PageVariable } from '../../types/page';
+import type { PageVariable, PageFlow } from '../../types/page';
+
+const emit = defineEmits(['open-flow-editor']);
 
 const pageStore = usePageStore();
 const currentPage = computed(() => pageStore.currentPage);
 const variables = computed(() => currentPage.value?.variables || []);
+const flows = computed(() => currentPage.value?.flows || []);
+
+// Flow 操作
+const showFlowModal = ref(false);
+const newFlowName = ref('');
+
+function startAddFlow() {
+  showFlowModal.value = true;
+  newFlowName.value = '';
+}
+
+function createFlow() {
+  if (!newFlowName.value) return;
+  const newFlow: PageFlow = {
+    id: `flow_${Date.now()}`,
+    name: newFlowName.value,
+    nodes: [
+      {
+        id: 'start',
+        type: 'logicStart',
+        position: { x: 100, y: 100 },
+        data: { label: '开始' }
+      }
+    ],
+    edges: []
+  };
+  
+  const updatedFlows = [...flows.value, newFlow];
+  pageStore.updatePageProperties(currentPage.value!.id, { flows: updatedFlows });
+  
+  showFlowModal.value = false;
+  emit('open-flow-editor', newFlow.id);
+}
+
+function deleteFlow(id: string) {
+  const updatedFlows = flows.value.filter(f => f.id !== id);
+  pageStore.updatePageProperties(currentPage.value!.id, { flows: updatedFlows });
+}
+
+function openFlow(id: string) {
+  emit('open-flow-editor', id);
+}
 
 // 变量编辑状态
 const showModal = ref(false);
