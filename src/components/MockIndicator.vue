@@ -19,9 +19,9 @@ onMounted(async () => {
 .mock-indicator {
   position: fixed;
   top: 10px;
-  left: 50%;
+  left: 200px;
   transform: translateX(-50%);
-  z-index: 9999;
+  /* z-index: 9999; */
   pointer-events: none; /* 避免阻挡点击事件 */
 }
 

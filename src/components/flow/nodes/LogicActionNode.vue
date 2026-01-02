@@ -6,6 +6,7 @@ import { actionRegistry } from '../../../config/actions'
 interface Props {
   id: string
   data: {
+    actionLabel?: string
     actionType: string
     params?: any
   }
@@ -30,18 +31,24 @@ const actionDesc = computed(() => {
   }
   return ''
 })
+
+const isScript = computed(() => props.data.actionType === 'script')
 </script>
 
 <template>
   <div class="logic-node action-node" :class="{ selected }">
-    <div class="pill">变量操作</div>
+    <div class="pill">{{ data.actionLabel || '动作' }}</div>
     <div class="node-header">
       <div class="node-title">{{ actionLabel }}</div>
       <div v-if="actionDesc" class="node-desc">{{ actionDesc }}</div>
     </div>
 
     <Handle class="handle handle-in" type="target" :position="Position.Left" />
-    <Handle class="handle handle-out" type="source" :position="Position.Right" />
+    <template v-if="isScript">
+      <Handle class="handle handle-out handle-out-success" id="success" type="source" :position="Position.Right" />
+      <Handle class="handle handle-out handle-out-failure" id="failure" type="source" :position="Position.Right" />
+    </template>
+    <Handle v-else class="handle handle-out" type="source" :position="Position.Right" />
   </div>
 </template>
 
@@ -120,5 +127,15 @@ const actionDesc = computed(() => {
   top: 50%;
   transform: translate(50%, -50%);
   background: #1890ff;
+}
+
+.handle-out-success {
+  top: 38%;
+  background: #52c41a;
+}
+
+.handle-out-failure {
+  top: 62%;
+  background: #ff4d4f;
 }
 </style>

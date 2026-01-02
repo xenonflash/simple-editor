@@ -81,5 +81,41 @@ export const actionRegistry: ActionDefinition[] = [
     paramsSchema: {
       code: { label: '代码', type: 'json' } // Using json type for textarea input
     }
+  },
+  {
+    type: 'httpRequest',
+    label: 'HTTP 请求',
+    description: '发送 HTTP 请求并可将响应写入变量',
+    paramsSchema: {
+      method: { label: '方法', type: 'select', options: [
+        { label: 'GET', value: 'GET' },
+        { label: 'POST', value: 'POST' },
+        { label: 'PUT', value: 'PUT' },
+        { label: 'PATCH', value: 'PATCH' },
+        { label: 'DELETE', value: 'DELETE' }
+      ]},
+      url: { label: 'URL', type: 'text' },
+      headers: { label: 'Headers(JSON)', type: 'json' },
+      body: { label: 'Body(JSON)', type: 'json' },
+      targetVar: { label: '保存到变量', type: 'text' }
+    }
+  },
+  {
+    type: 'sendEmail',
+    label: '发送邮件',
+    description: '发送邮件通知（示例动作）',
+    paramsSchema: {
+      to: { label: '收件人', type: 'text' },
+      subject: { label: '主题', type: 'text' },
+      body: { label: '正文', type: 'json' }
+    }
+  },
+  {
+    type: 'executeFlow',
+    label: '执行子流程',
+    description: '调用另一个 Flow',
+    paramsSchema: {
+      flowId: { label: '目标 Flow', type: 'text' }
+    }
   }
 ];

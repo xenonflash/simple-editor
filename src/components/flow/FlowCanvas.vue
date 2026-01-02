@@ -113,7 +113,10 @@ const handleDrop = (event: DragEvent) => {
 
     if (payload.type === 'logicAction') {
       newNode.data = {
-        actionType: payload.actionType
+        label: payload.name || '动作节点',
+        actionLabel: payload.name || '动作节点',
+        actionType: payload.actionType,
+        params: payload.params || {}
       }
     } else if (payload.type === 'logicCondition') {
       newNode.data = {

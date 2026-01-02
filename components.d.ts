@@ -75,6 +75,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Ruler: typeof import('./src/components/layout/Ruler.vue')['default']
+    ScriptCodeEditor: typeof import('./src/components/flow/ScriptCodeEditor.vue')['default']
     ShadowProperties: typeof import('./src/components/properties/ShadowProperties.vue')['default']
     SnapLines: typeof import('./src/components/layout/SnapLines.vue')['default']
     SpacingProperties: typeof import('./src/components/properties/SpacingProperties.vue')['default']

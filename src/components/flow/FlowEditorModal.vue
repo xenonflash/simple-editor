@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { NModal, NCard, NButton, NList, NListItem, NInput, NSpace, NIcon, NForm, NFormItem, NSelect, useMessage } from 'naive-ui'
+import { NModal, NCard, NButton, NList, NListItem, NInput, NInputNumber, NSpace, NIcon, NForm, NFormItem, NSelect, NTag, useMessage } from 'naive-ui'
 import { Add, Trash, Play, GitNetwork, Close, Save } from '@vicons/ionicons5'
 import FlowCanvas from './FlowCanvas.vue'
+import ScriptCodeEditor from './ScriptCodeEditor.vue'
 import { usePageStore } from '../../stores/page'
 import type { PageFlow } from '../../types/page'
 import { actionRegistry } from '../../config/actions'
@@ -42,6 +43,89 @@ const variableOptions = computed(() => {
 });
 
 const actionTypeOptions = actionRegistry.map(a => ({ label: a.label, value: a.type }));
+const actionLabelMap = computed(() => actionRegistry.reduce((acc, cur) => { acc[cur.type] = cur.label; return acc; }, {} as Record<string, string>));
+const flowOptions = computed(() => (flows.value || []).map(f => ({ label: f.name, value: f.id })));
+
+const defaultScriptTemplate = `/**
+ * 函数节点（Coder Mode）
+ *
+ * 可用对象：
+ * - context: 运行上下文（会在节点间传递）
+ *   - context.prevResult: 上一个节点的输出（若存在）
+ *   - context.lastError: 上一个节点的错误（若存在）
+ * - event: 事件对象（若存在）
+ * - pageStore: 页面变量读写（getVariableValue / updateVariableValue）
+ * - messageApi: 提示（info/success/warning/error）
+ * - fetch: 网络请求
+ *
+ * 输出流转：
+ * - 正常执行：走「成功」连线
+ * - throw/异常：走「失败」连线
+ */
+
+// 提示：你可以直接 return 值，后续节点用 context.prevResult 读取
+// 也可以用 pageStore.updateVariableValue 写回页面变量
+
+const input = context?.input
+
+// TODO: 在这里编写你的逻辑
+return { input }
+`;
+
+const scriptCodeModel = computed<string>({
+  get() {
+    if (selectedNode.value?.type !== 'logicAction') return ''
+    if (selectedNode.value?.data?.actionType !== 'script') return ''
+    return selectedNode.value?.data?.params?.code || ''
+  },
+  set(v: string) {
+    if (selectedNode.value?.type !== 'logicAction') return
+    if (selectedNode.value?.data?.actionType !== 'script') return
+    updateNodeParam('code', v)
+  }
+})
+
+
+const variableTree = computed(() => {
+  const pageVars = (pageStore.currentPage?.variables || []).map((v) => ({
+    label: `${v.name} (${v.type})`,
+    key: `page-${v.name}`,
+    isLeaf: true,
+    desc: '页面变量',
+    snippet: `pageStore.getVariableValue('${v.name}')`
+  }));
+
+  const globals: any[] = [
+    {
+      label: 'messageApi',
+      key: 'global-messageApi',
+      isLeaf: true,
+      desc: '提示 API',
+      snippet: 'messageApi.success("提示内容")'
+    },
+    {
+      label: 'fetch',
+      key: 'global-fetch',
+      isLeaf: true,
+      desc: '网络请求',
+      snippet: 'const res = await fetch("https://api.example.com")'
+    }
+  ];
+
+  const ctxNodes: any[] = [
+    { label: 'context.input', key: 'ctx-input', isLeaf: true, desc: '节点入参', snippet: 'context.input' },
+    { label: 'context.prevResult', key: 'ctx-prev', isLeaf: true, desc: '上个节点输出', snippet: 'context.prevResult' },
+    { label: 'context.lastError', key: 'ctx-err', isLeaf: true, desc: '上个节点错误', snippet: 'context.lastError' },
+    { label: 'context.__flowId', key: 'ctx-flow', isLeaf: true, desc: '当前 Flow 标识', snippet: 'context.__flowId' },
+    { label: 'event', key: 'ctx-event', isLeaf: true, desc: '事件对象（若存在）', snippet: 'event' }
+  ];
+
+  return [
+    { label: '页面变量', key: 'page-vars', children: pageVars },
+    { label: '全局能力', key: 'global', children: globals },
+    { label: '上下文', key: 'context', children: ctxNodes }
+  ];
+});
 
 function updatePageFlows(newFlows: PageFlow[]) {
   if (!currentPage.value) return
@@ -53,6 +137,14 @@ const selectedNode = ref<any>(null)
 
 function handleNodeSelect(node: any) {
   selectedNode.value = node
+
+  // 选中脚本节点时：若为空，自动填充默认模板（避免空白编辑器）
+  if (node?.type === 'logicAction' && node?.data?.actionType === 'script') {
+    const code = node?.data?.params?.code
+    if (!code || !String(code).trim()) {
+      updateNodeParam('code', defaultScriptTemplate)
+    }
+  }
 }
 
 function updateNodeData(key: string, value: any) {
@@ -70,6 +162,7 @@ function updateNodeParam(key: string, value: any) {
   const newParams = { ...currentParams, [key]: value }
   updateNodeData('params', newParams)
 }
+
 
 function handleSave() {
   message.success('保存成功')
@@ -135,11 +228,13 @@ function updateCurrentFlow(updates: Partial<PageFlow>) {
 }
 
 // 拖拽添加节点
-function onDragStart(event: DragEvent, nodeType: string, actionType?: string) {
+function onDragStart(event: DragEvent, nodeType: string, actionType?: string, name?: string, params?: Record<string, any>) {
   if (event.dataTransfer) {
     event.dataTransfer.setData('application/vueflow', JSON.stringify({
       type: nodeType,
-      actionType
+      actionType,
+      name,
+      params
     }))
     event.dataTransfer.effectAllowed = 'move'
   }
@@ -186,13 +281,29 @@ function onDrop(event: DragEvent) {
             
             <div class="node-category">
               <div class="category-title">动作节点</div>
-              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'setVar')">
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'setVar', '变量操作')">
                 <div class="node-preview action">V</div>
                 <span>变量操作</span>
               </div>
-              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'toast')">
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'toast', '消息提示')">
                 <div class="node-preview action">T</div>
                 <span>消息提示</span>
+              </div>
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'script', '函数执行', { code: defaultScriptTemplate })">
+                <div class="node-preview action">F</div>
+                <span>函数执行</span>
+              </div>
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'httpRequest', 'HTTP 请求', { method: 'GET' })">
+                <div class="node-preview action">H</div>
+                <span>HTTP 请求</span>
+              </div>
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'sendEmail', '发送邮件')">
+                <div class="node-preview action">M</div>
+                <span>发送邮件</span>
+              </div>
+              <div class="node-item" draggable="true" @dragstart="onDragStart($event, 'logicAction', 'executeFlow', '执行 Flow')">
+                <div class="node-preview action">↻</div>
+                <span>执行 Flow</span>
               </div>
             </div>
           </div>
@@ -232,26 +343,94 @@ function onDrop(event: DragEvent) {
 
               <!-- 动作节点配置 -->
               <template v-if="selectedNode.type === 'logicAction'">
-                <template v-if="selectedNode.data.actionType === 'setVar' || selectedNode.data.actionType === 'pushVar'">
-                    <n-form-item label="操作类型">
-                      <n-select :value="selectedNode.data.actionType" 
-                                :options="[{label: '设置变量', value: 'setVar'}, {label: '追加变量', value: 'pushVar'}]" 
-                                @update:value="v => updateNodeData('actionType', v)" />
-                    </n-form-item>
+                <n-form-item label="动作类型">
+                  <div class="action-type-row">
+                    <NTag type="info" size="small">{{ actionLabelMap[selectedNode.data.actionType] || selectedNode.data.actionType }}</NTag>
+                  </div>
+                </n-form-item>
+
+                <template v-if="selectedNode.data.actionType === 'setVar' || selectedNode.data.actionType === 'pushVar' || selectedNode.data.actionType === 'removeVar'">
                   <n-form-item label="目标变量">
                     <n-select :value="selectedNode.data.params?.variableName" :options="variableOptions" @update:value="v => updateNodeParam('variableName', v)" />
                   </n-form-item>
-                  <n-form-item label="值">
-                    <n-input :value="selectedNode.data.params?.value" @update:value="v => updateNodeParam('value', v)" />
+                  <n-form-item v-if="selectedNode.data.actionType !== 'removeVar'" label="值">
+                    <n-space vertical size="small" style="width: 100%;">
+                      <n-select
+                        :value="selectedNode.data.params?.valueSource || 'literal'"
+                        :options="[
+                          { label: '固定值', value: 'literal' },
+                          { label: '上个节点输出 (context.prevResult)', value: 'prevResult' },
+                          { label: '上个节点错误 (context.lastError)', value: 'lastError' }
+                        ]"
+                        @update:value="v => updateNodeParam('valueSource', v)"
+                      />
+                      <n-input
+                        v-if="(selectedNode.data.params?.valueSource || 'literal') === 'literal'"
+                        :value="selectedNode.data.params?.value"
+                        placeholder="固定值（字符串/JSON 由节点自身处理）"
+                        @update:value="v => updateNodeParam('value', v)"
+                      />
+                    </n-space>
+                  </n-form-item>
+                  <n-form-item v-if="selectedNode.data.actionType === 'removeVar'" label="索引">
+                    <n-input-number :value="selectedNode.data.params?.index" @update:value="v => updateNodeParam('index', Number(v))" />
                   </n-form-item>
                 </template>
 
-                <template v-if="selectedNode.data.actionType === 'toast'">
+                <template v-else-if="selectedNode.data.actionType === 'toast'">
                   <n-form-item label="消息内容">
                     <n-input :value="selectedNode.data.params?.content" @update:value="v => updateNodeParam('content', v)" />
                   </n-form-item>
                   <n-form-item label="类型">
                     <n-select :value="selectedNode.data.params?.type" :options="[{label:'Info',value:'info'},{label:'Success',value:'success'},{label:'Warning',value:'warning'},{label:'Error',value:'error'}]" @update:value="v => updateNodeParam('type', v)" />
+                  </n-form-item>
+                </template>
+
+                <template v-else-if="selectedNode.data.actionType === 'script'">
+                  <n-form-item label="JS 代码">
+                    <ScriptCodeEditor v-model="scriptCodeModel" :variable-tree="variableTree" />
+                  </n-form-item>
+                </template>
+
+                <template v-else-if="selectedNode.data.actionType === 'httpRequest'">
+                  <n-form-item label="URL">
+                    <n-input :value="selectedNode.data.params?.url" placeholder="https://api.example.com" @update:value="v => updateNodeParam('url', v)" />
+                  </n-form-item>
+                  <n-form-item label="方法">
+                    <n-select :value="selectedNode.data.params?.method || 'GET'" :options="[
+                      {label:'GET',value:'GET'},
+                      {label:'POST',value:'POST'},
+                      {label:'PUT',value:'PUT'},
+                      {label:'PATCH',value:'PATCH'},
+                      {label:'DELETE',value:'DELETE'}
+                    ]" @update:value="v => updateNodeParam('method', v)" />
+                  </n-form-item>
+                  <n-form-item label="Headers (JSON)">
+                    <n-input type="textarea" :value="selectedNode.data.params?.headers" @update:value="v => updateNodeParam('headers', v)" />
+                  </n-form-item>
+                  <n-form-item label="Body (JSON)">
+                    <n-input type="textarea" :value="selectedNode.data.params?.body" @update:value="v => updateNodeParam('body', v)" />
+                  </n-form-item>
+                  <n-form-item label="保存到变量">
+                    <n-select :value="selectedNode.data.params?.targetVar" :options="variableOptions" @update:value="v => updateNodeParam('targetVar', v)" />
+                  </n-form-item>
+                </template>
+
+                <template v-else-if="selectedNode.data.actionType === 'sendEmail'">
+                  <n-form-item label="收件人">
+                    <n-input :value="selectedNode.data.params?.to" @update:value="v => updateNodeParam('to', v)" />
+                  </n-form-item>
+                  <n-form-item label="主题">
+                    <n-input :value="selectedNode.data.params?.subject" @update:value="v => updateNodeParam('subject', v)" />
+                  </n-form-item>
+                  <n-form-item label="正文">
+                    <n-input type="textarea" :value="selectedNode.data.params?.body" @update:value="v => updateNodeParam('body', v)" />
+                  </n-form-item>
+                </template>
+
+                <template v-else-if="selectedNode.data.actionType === 'executeFlow'">
+                  <n-form-item label="目标 Flow">
+                    <n-select :value="selectedNode.data.params?.flowId" :options="flowOptions" @update:value="v => updateNodeParam('flowId', v)" />
                   </n-form-item>
                 </template>
               </template>
@@ -273,7 +452,7 @@ function onDrop(event: DragEvent) {
 <style scoped>
 .flow-editor-layout {
   display: flex;
-  height: calc(90vh - 60px); /* 减去 modal header */
+  height: calc(90vh - 60px);
   border: 1px solid #eee;
 }
 
@@ -372,7 +551,7 @@ function onDrop(event: DragEvent) {
 
 .node-item:hover {
   border-color: #1890ff;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .node-preview {
