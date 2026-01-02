@@ -160,6 +160,7 @@ import { usePageStore } from '../../stores/page';
 
 import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
+import { resolveBindingRef } from '../../utils/bindingRef';
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -191,21 +192,11 @@ const renderedPropsMap = computed(() => {
   const variables = pageStore.currentPage?.variables || [];
   const components = pageStore.currentPage?.components || [];
 
-  function resolveBindingRef(bindingRef: string): any {
-    if (!bindingRef) return undefined;
-
-    if (bindingRef.startsWith('comp:')) {
-      const rest = bindingRef.slice('comp:'.length);
-      const parts = rest.split(':');
-      const componentId = parts[0];
-      const propKey = parts.slice(1).join(':');
-      const comp = components.find(c => c.id === componentId);
-      return comp?.props?.[propKey];
-    }
-
-    const varName = bindingRef.startsWith('var:') ? bindingRef.slice('var:'.length) : bindingRef;
-    const v = variables.find(vv => vv.name === varName);
-    return v?.defaultValue;
+  function resolveBinding(bindingRef: string): any {
+    return resolveBindingRef(bindingRef, {
+      getVarValue: (name) => pageStore.getVariableValue(name),
+      getCompProp: (componentId, propKey) => components.find(c => c.id === componentId)?.props?.[propKey]
+    })
   }
 
   for (const comp of props.components) {
@@ -213,7 +204,7 @@ const renderedPropsMap = computed(() => {
     if (comp.bindings) {
       for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
         if (typeof bindingRef !== 'string') continue;
-        raw[propName] = resolveBindingRef(bindingRef);
+        raw[propName] = resolveBinding(bindingRef);
       }
     }
     map.set(comp.id, raw);

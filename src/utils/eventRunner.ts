@@ -46,7 +46,7 @@ export function useEventRunner() {
     const variables = pageStore.currentPage?.variables || [];
     // 构建上下文：包含所有变量
     const context = variables.reduce((acc, v) => {
-      acc[v.name] = v.defaultValue; // 注意：这里应该取当前运行时的值，但目前我们直接修改的是 defaultValue (作为即时值)
+      acc[v.name] = pageStore.getVariableValue(v.name);
       return acc;
     }, {} as Record<string, any>);
 
@@ -55,45 +55,34 @@ export function useEventRunner() {
     switch (action.type) {
       case 'setVar': {
         const { variableName, value, valueType } = action.params;
-        const targetVar = variables.find(v => v.name === variableName);
-        if (targetVar) {
+        if (variableName) {
           const newValue = parseValue(value, valueType, context);
-          // 更新变量
-          // 目前我们的 store 只有 updateVariable，它接受完整的 PageVariable
-          // 为了简化，我们直接修改 defaultValue (在实际运行模式下应该有独立的 runtime state)
-          // 这里为了演示效果，直接修改 store 中的定义
-          pageStore.updateVariable(variableName, {
-            ...targetVar,
-            defaultValue: newValue
-          });
+          pageStore.updateVariableValue(variableName, newValue);
         }
         break;
       }
       case 'pushVar': {
         const { variableName, value, valueType } = action.params;
-        const targetVar = variables.find(v => v.name === variableName);
-        if (targetVar && (targetVar.type === 'array' || Array.isArray(targetVar.defaultValue))) {
-          const itemToAdd = parseValue(value, valueType, context);
-          const newArray = [...(targetVar.defaultValue || []), itemToAdd];
-          pageStore.updateVariable(variableName, {
-            ...targetVar,
-            defaultValue: newArray
-          });
+        if (variableName) {
+          const current = pageStore.getVariableValue(variableName);
+          if (Array.isArray(current)) {
+            const itemToAdd = parseValue(value, valueType, context);
+            pageStore.updateVariableValue(variableName, [...current, itemToAdd]);
+          }
         }
         break;
       }
       case 'removeVar': {
         const { variableName, index } = action.params;
-        const targetVar = variables.find(v => v.name === variableName);
-        if (targetVar && Array.isArray(targetVar.defaultValue)) {
-          const idx = Number(index);
-          if (!isNaN(idx) && idx >= 0 && idx < targetVar.defaultValue.length) {
-            const newArray = [...targetVar.defaultValue];
-            newArray.splice(idx, 1);
-            pageStore.updateVariable(variableName, {
-              ...targetVar,
-              defaultValue: newArray
-            });
+        if (variableName) {
+          const current = pageStore.getVariableValue(variableName);
+          if (Array.isArray(current)) {
+            const idx = Number(index);
+            if (!isNaN(idx) && idx >= 0 && idx < current.length) {
+              const next = [...current]
+              next.splice(idx, 1)
+              pageStore.updateVariableValue(variableName, next)
+            }
           }
         }
         break;

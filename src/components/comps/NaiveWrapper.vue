@@ -106,6 +106,7 @@ import { useDraggable } from '../../utils/dragHelper';
 import { usePageStore } from '../../stores/page';
 import { useEventRunner } from '../../utils/eventRunner';
 import { useFlowRunner } from '../../utils/flowRunner';
+import { resolveBindingRef } from '../../utils/bindingRef'
 
 const props = defineProps<{
   comp: Comp;
@@ -154,29 +155,15 @@ const effectiveProps = computed(() => {
   const rawProps = { ...props.comp.props };
   
   if (props.comp.bindings) {
-    const variables = pageStore.currentPage?.variables || [];
     Object.entries(props.comp.bindings).forEach(([propName, bindingRef]) => {
       if (typeof bindingRef !== 'string' || !bindingRef) return;
-
-      // 组件属性绑定：comp:<componentId>:<prop>
-      if (bindingRef.startsWith('comp:')) {
-        const rest = bindingRef.slice('comp:'.length);
-        const parts = rest.split(':');
-        const componentId = parts[0];
-        const propKey = parts.slice(1).join(':');
-        rawProps[propName] = (pageStore as any).getComponentProp
+      rawProps[propName] = resolveBindingRef(bindingRef, {
+        getVarValue: (name) => pageStore.getVariableValue(name),
+        getCompProp: (componentId, propKey) => (pageStore as any).getComponentProp
           ? (pageStore as any).getComponentProp(componentId, propKey)
-          : pageStore.currentPage?.components?.find(c => c.id === componentId)?.props?.[propKey];
-        return;
-      }
-
-      // 页面变量绑定：var:<name> 或旧格式：<name>
-      const varName = bindingRef.startsWith('var:') ? bindingRef.slice('var:'.length) : bindingRef;
-      const variable = variables.find(v => v.name === varName);
-      if (variable) {
-        rawProps[propName] = variable.defaultValue;
-      }
-    });
+          : pageStore.currentPage?.components?.find(c => c.id === componentId)?.props?.[propKey]
+      })
+    })
   }
   return rawProps;
 });

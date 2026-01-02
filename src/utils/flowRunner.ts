@@ -92,8 +92,7 @@ export function useFlowRunner() {
     // 注入变量上下文
     const variables = pageStore.currentPage?.variables || [];
     const varContext = variables.reduce((acc, v) => {
-      acc[v.name] = v.defaultValue; // 注意：这里应该取实时值，但目前 store 里只有 defaultValue? 
-      // 实际上 pageStore 应该维护变量的运行时状态，或者我们在 context 里维护
+      acc[v.name] = pageStore.getVariableValue(v.name);
       return acc;
     }, {} as Record<string, any>);
     

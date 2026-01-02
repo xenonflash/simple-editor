@@ -9,6 +9,7 @@ import { usePageStore } from '../../stores/page'
 import type { PageFlow } from '../../types/page'
 import { actionRegistry } from '../../config/actions'
 import { buildScriptVariableTree, buildValueRefTree } from './variableTree'
+import { formatBindingRefDisplay } from '../../utils/bindingRef'
 
 const props = defineProps<{
   show: boolean
@@ -102,22 +103,12 @@ function getValueMode(params: any): 'literal' | 'ref' {
 }
 
 function formatValueRefDisplay(refStr: string): string {
-  if (!refStr) return ''
-  if (refStr.startsWith('var:')) return refStr.slice('var:'.length)
-  if (refStr.startsWith('comp:')) {
-    const rest = refStr.slice('comp:'.length)
-    const parts = rest.split(':')
-    const componentId = parts[0]
-    const propName = parts.slice(1).join(':')
-    const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
-    const compLabel = comp?.name || componentId
-    return `${compLabel}.${propName}`
-  }
-  if (refStr.startsWith('ctx:')) {
-    const k = refStr.slice('ctx:'.length)
-    return `context.${k}`
-  }
-  return refStr
+  return formatBindingRefDisplay(refStr, {
+    getComponentLabel: (componentId) => {
+      const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+      return comp?.name || componentId
+    }
+  })
 }
 
 function updatePageFlows(newFlows: PageFlow[]) {

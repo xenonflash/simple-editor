@@ -10,6 +10,45 @@ export const usePageStore = defineStore('page', () => {
   const currentPageId = ref<string | null>(null);
   const selectedComps = ref<Comp[]>([]);
 
+  // 运行时变量值（按页面隔离）：pageId -> { varName: value }
+  const runtimeVarValuesByPageId = ref<Record<string, Record<string, any>>>({});
+
+  function cloneValue<T = any>(v: T): T {
+    try {
+      // 浏览器环境通常可用
+      return structuredClone(v);
+    } catch (e) {
+      try {
+        return JSON.parse(JSON.stringify(v));
+      } catch (e2) {
+        return v;
+      }
+    }
+  }
+
+  function ensureRuntimeVarsForPage(page: Page) {
+    if (!page) return;
+    const existing = runtimeVarValuesByPageId.value[page.id];
+    const next: Record<string, any> = { ...(existing || {}) };
+    for (const def of page.variables || []) {
+      if (!(def.name in next)) {
+        next[def.name] = cloneValue(def.defaultValue);
+      }
+    }
+    // 清理已删除的变量
+    const definedNames = new Set((page.variables || []).map(v => v.name));
+    for (const k of Object.keys(next)) {
+      if (!definedNames.has(k)) delete next[k];
+    }
+    runtimeVarValuesByPageId.value[page.id] = next;
+  }
+
+  function ensureCurrentRuntimeVars() {
+    const page = currentPage.value;
+    if (!page) return;
+    ensureRuntimeVarsForPage(page);
+  }
+
   // ==================== 计算属性 ====================
   const currentPage = computed(() => {
     if (!currentPageId.value) return null;
@@ -34,12 +73,14 @@ export const usePageStore = defineStore('page', () => {
       const defaultPage = createPage('页面 1', '默认页面');
       pages.value.push(defaultPage);
       currentPageId.value = defaultPage.id;
+      ensureRuntimeVarsForPage(defaultPage);
     }
   }
 
   function addPage(name?: string, description?: string): Page {
     const newPage = createPage(name, description);
     pages.value.push(newPage);
+    ensureRuntimeVarsForPage(newPage);
     return newPage;
   }
 
@@ -51,17 +92,24 @@ export const usePageStore = defineStore('page', () => {
       if (pages.value.length > 1) {
         const nextIndex = index < pages.value.length - 1 ? index + 1 : index - 1;
         currentPageId.value = pages.value[nextIndex].id;
+        ensureCurrentRuntimeVars();
       } else {
         const defaultPage = createPage('页面 1', '默认页面');
         pages.value = [defaultPage];
         currentPageId.value = defaultPage.id;
         selectedComps.value = [];
+        runtimeVarValuesByPageId.value = { [defaultPage.id]: {} };
+        ensureRuntimeVarsForPage(defaultPage);
         return true;
       }
     }
 
     pages.value.splice(index, 1);
     selectedComps.value = [];
+    // 清理该页面的运行时变量
+    if (runtimeVarValuesByPageId.value[pageId]) {
+      delete runtimeVarValuesByPageId.value[pageId];
+    }
     return true;
   }
 
@@ -79,6 +127,7 @@ export const usePageStore = defineStore('page', () => {
     
     currentPageId.value = pageId;
     selectedComps.value = [];
+    ensureRuntimeVarsForPage(page);
     return true;
   }
 
@@ -98,6 +147,7 @@ export const usePageStore = defineStore('page', () => {
     });
 
     pages.value.push(newPage);
+    ensureRuntimeVarsForPage(newPage);
     return newPage;
   }
 
@@ -234,6 +284,11 @@ export const usePageStore = defineStore('page', () => {
     
     currentPage.value.variables.push(variable);
     currentPage.value.updatedAt = new Date();
+
+    // 初始化运行时值
+    ensureCurrentRuntimeVars();
+    const pageId = currentPage.value.id;
+    runtimeVarValuesByPageId.value[pageId][variable.name] = cloneValue(variable.defaultValue);
     return true;
   }
 
@@ -250,6 +305,20 @@ export const usePageStore = defineStore('page', () => {
     
     currentPage.value.variables.splice(index, 1, newVariable);
     currentPage.value.updatedAt = new Date();
+
+    // 同步运行时值：
+    // - 重命名：保留旧运行时值（若存在），否则使用新 defaultValue
+    // - 未重命名：更新为新 defaultValue（定义变更视为重置）
+    ensureCurrentRuntimeVars();
+    const pageId = currentPage.value.id;
+    const runtime = runtimeVarValuesByPageId.value[pageId];
+    if (oldName !== newVariable.name) {
+      const existing = runtime?.[oldName];
+      delete runtime[oldName];
+      runtime[newVariable.name] = existing !== undefined ? existing : cloneValue(newVariable.defaultValue);
+    } else {
+      runtime[newVariable.name] = cloneValue(newVariable.defaultValue);
+    }
     return true;
   }
 
@@ -261,11 +330,21 @@ export const usePageStore = defineStore('page', () => {
     
     currentPage.value.variables.splice(index, 1);
     currentPage.value.updatedAt = new Date();
+
+    // 清理运行时值
+    ensureCurrentRuntimeVars();
+    const pageId = currentPage.value.id;
+    delete runtimeVarValuesByPageId.value[pageId][name];
     return true;
   }
 
   function getVariableValue(name: string) {
-    const v = currentPage.value?.variables.find(v => v.name === name);
+    if (!currentPage.value) return undefined;
+    ensureCurrentRuntimeVars();
+    const pageId = currentPage.value.id;
+    const runtime = runtimeVarValuesByPageId.value[pageId] || {};
+    if (name in runtime) return runtime[name];
+    const v = currentPage.value.variables.find(v => v.name === name);
     return v ? v.defaultValue : undefined;
   }
 
@@ -283,10 +362,9 @@ export const usePageStore = defineStore('page', () => {
 
   function updateVariableValue(name: string, value: any) {
     if (!currentPage.value) return;
-    const v = currentPage.value.variables.find(v => v.name === name);
-    if (v) {
-      v.defaultValue = value;
-    }
+    ensureCurrentRuntimeVars();
+    const pageId = currentPage.value.id;
+    runtimeVarValuesByPageId.value[pageId][name] = value;
   }
 
   // ==================== 导出 ====================
@@ -331,6 +409,10 @@ export const usePageStore = defineStore('page', () => {
     deleteVariable,
     getVariableValue,
     updateVariableValue,
+
+    // 运行时变量（高级用法/调试）
+    runtimeVarValuesByPageId,
+    ensureCurrentRuntimeVars,
 
     // 组件属性读取（供脚本/可用变量面板使用）
     getComponentById,

@@ -98,6 +98,7 @@ import type { PropSchema } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
 import VariablePanel from '../flow/VariablePanel.vue'
 import { buildPageVariableTree } from '../flow/variableTree'
+import { formatBindingRefDisplay } from '../../utils/bindingRef'
 
 const props = defineProps<{
   modelValue: Record<string, any>;
@@ -136,19 +137,12 @@ function handleBindPick(key: string, value: string) {
 }
 
 function formatBindingDisplay(binding: string): string {
-  if (!binding) return ''
-  if (binding.startsWith('var:')) return binding.slice('var:'.length)
-  if (binding.startsWith('comp:')) {
-    const rest = binding.slice('comp:'.length)
-    const parts = rest.split(':')
-    const componentId = parts[0]
-    const propName = parts.slice(1).join(':')
-    const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
-    const compLabel = comp?.name || componentId
-    return `${compLabel}.${propName}`
-  }
-  // 兼容旧数据：直接存变量名
-  return binding
+  return formatBindingRefDisplay(binding, {
+    getComponentLabel: (componentId) => {
+      const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+      return comp?.name || componentId
+    }
+  })
 }
 </script>
 

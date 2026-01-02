@@ -46,7 +46,7 @@ export interface Comp {
   name: string;
   type: CompType;
   props: Record<string, any>;
-  bindings?: Record<string, string>; // 属性绑定: propName -> variableName
+  bindings?: Record<string, string>; // 属性绑定: propName -> 绑定引用（var:<name> / comp:<id>:<prop>，兼容旧: <name>）
   events: Record<string, CompEvent[]>; // 支持多个动作
   style: CompStyle;
   /** @deprecated Use props.width and props.height instead */
