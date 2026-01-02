@@ -218,12 +218,12 @@ const wrapperStyle = computed(() => {
     left: props.inFlowLayout ? 'auto' : `${x}px`,
     top: props.inFlowLayout ? 'auto' : `${y}px`,
     width: widthSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${x}px)`)
+      ? '100%'
       : widthSizing === 'content'
         ? 'fit-content'
         : (props.comp.props.width ? `${props.comp.props.width}px` : 'auto'),
     height: heightSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${y}px)`)
+      ? '100%'
       : heightSizing === 'content'
         ? 'fit-content'
         : (props.comp.props.height ? `${props.comp.props.height}px` : 'auto'),

@@ -1,6 +1,34 @@
 <template>
   <div class="left-panel">
     <n-tabs type="segment" class="main-tabs" animated>
+      <n-tab-pane name="page" tab="页面">
+        <div class="page-tab-content">
+          <div class="page-tab-half">
+            <div class="tree-content">
+              <n-tree
+                block-line
+                :data="componentTreeData"
+                :selected-keys="selectedTreeKeys"
+                :multiple="true"
+                default-expand-all
+                @update:selected-keys="handleTreeSelect"
+              />
+              <div v-if="componentTreeData.length === 0" class="empty-tip">
+                暂无组件
+              </div>
+            </div>
+          </div>
+
+          <div class="page-tab-divider" />
+
+          <div class="page-tab-half">
+            <div class="page-manager-wrap">
+              <PageManagerVertical />
+            </div>
+          </div>
+        </div>
+      </n-tab-pane>
+
       <n-tab-pane name="components" tab="组件">
         <div class="scroll-content">
           <!-- 组件区域 -->
@@ -161,10 +189,6 @@
       </template>
     </n-modal>
 
-    <!-- 页面管理区域 -->
-    <div class="panel-section fixed-section">
-      <PageManagerVertical />
-    </div>
   </div>
 </template>
 
@@ -173,9 +197,11 @@ import { ref, computed } from 'vue';
 import { 
   NTabs, NTabPane, NButton, NInput, NSelect, 
   NSpace, NTag, NPopconfirm, NIcon, NForm, NFormItem, NModal,
+  NTree,
   NList, NListItem
 } from 'naive-ui';
 import { Add, Trash, Create, Save, Close, GitNetwork } from '@vicons/ionicons5';
+import type { Comp } from '../comps/base'
 import { CompType } from '../comps/base';
 import PageManagerVertical from './PageManagerVertical.vue';
 import { naiveComponentRegistry } from '../../config/naive-ui-registry';
@@ -188,6 +214,49 @@ const pageStore = usePageStore();
 const currentPage = computed(() => pageStore.currentPage);
 const variables = computed(() => currentPage.value?.variables || []);
 const flows = computed(() => currentPage.value?.flows || []);
+
+type ComponentTreeNode = {
+  key: string
+  label: string
+  children?: ComponentTreeNode[]
+}
+
+function getComponentLabel(comp: Comp): string {
+  if (comp.type === CompType.CONTAINER) return '容器'
+  if (comp.type === CompType.TEXT) return '文字'
+  if (comp.type === CompType.BUTTON) return '按钮'
+  if (typeof comp.type === 'string' && comp.type.startsWith('n-')) {
+    const hit = naiveComponentRegistry.find((x) => x.type === comp.type)
+    return hit?.name || comp.type
+  }
+  return String(comp.type)
+}
+
+function buildTreeNode(comp: Comp): ComponentTreeNode {
+  const children = (comp.children || []).map(buildTreeNode)
+  const node: ComponentTreeNode = {
+    key: comp.id,
+    label: getComponentLabel(comp)
+  }
+  if (children.length > 0) node.children = children
+  return node
+}
+
+const componentTreeData = computed<ComponentTreeNode[]>(() => {
+  const roots = currentPage.value?.components || []
+  return roots.map(buildTreeNode)
+})
+
+const selectedTreeKeys = computed(() => pageStore.selectedComps.map((c) => c.id))
+
+function handleTreeSelect(keys: Array<string | number>, options: any) {
+  const lastKey = keys[keys.length - 1]
+  const lastNode = Array.isArray(options) ? options[options.length - 1] : options
+  const isLeaf = !lastNode?.children || lastNode.children.length === 0
+  if (isLeaf && typeof lastKey === 'string') {
+    pageStore.selectComponent(lastKey)
+  }
+}
 
 // Flow 操作
 const showFlowModal = ref(false);
@@ -316,7 +385,7 @@ function parseDefaultValue(value: string, type: string) {
 
 <style scoped>
 .left-panel {
-  width: 240px;
+  width: 300px;
   height: 100vh; /* 使用视口高度 */
   max-height: 100vh; /* 限制最大高度 */
   border-right: 1px solid #f0f0f0;
@@ -446,6 +515,35 @@ function parseDefaultValue(value: string, type: string) {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
+}
+
+.tree-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.page-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.page-tab-half {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-tab-divider {
+  height: 1px;
+  background: #f0f0f0;
+}
+
+.page-manager-wrap {
+  height: 100%;
+  overflow: hidden;
 }
 
 .var-header {

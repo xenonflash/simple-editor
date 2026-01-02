@@ -191,12 +191,12 @@ const containerStyle = computed(() => {
   const style: Record<string, string> = {
     position: props.inFlowLayout ? 'relative' : 'absolute',
     width: props.widthSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.x || 0}px)`)
+      ? '100%'
       : props.widthSizing === 'content'
         ? 'fit-content'
         : `${props.width || 100}px`,
     height: props.heightSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.y || 0}px)`)
+      ? '100%'
       : props.heightSizing === 'content'
         ? 'fit-content'
         : `${props.height || 100}px`,

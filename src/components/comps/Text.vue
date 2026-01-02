@@ -232,13 +232,13 @@ const style = computed(() => {
 
   // 宽高 sizing（优先级高于 widthMode/autoHeight）
   if (props.widthSizing === 'fill') {
-    styleObj.width = props.inFlowLayout ? '100%' : `calc(100% - ${currentX.value}px)`;
+    styleObj.width = '100%';
   } else if (props.widthSizing === 'content') {
     styleObj.width = 'fit-content';
   }
 
   if (props.heightSizing === 'fill') {
-    styleObj.height = props.inFlowLayout ? '100%' : `calc(100% - ${currentY.value}px)`;
+    styleObj.height = '100%';
   } else if (props.heightSizing === 'content') {
     styleObj.height = 'fit-content';
   }

@@ -103,12 +103,12 @@ const buttonStyle = computed(() => {
     position: props.inFlowLayout ? 'relative' : 'absolute',
     transform: props.inFlowLayout ? 'none' : `translate(${props.x}px, ${props.y}px)`,
     width: props.widthSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.x}px)`)
+      ? '100%'
       : props.widthSizing === 'content'
         ? 'fit-content'
         : `${props.width || 100}px`,
     height: props.heightSizing === 'fill'
-      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.y}px)`)
+      ? '100%'
       : props.heightSizing === 'content'
         ? 'fit-content'
         : `${props.height || 32}px`,

@@ -203,6 +203,10 @@ document.addEventListener('click', () => {
 <style scoped>
 .page-manager-vertical {
   position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .panel-title {
@@ -237,7 +241,8 @@ document.addEventListener('click', () => {
 
 .page-list {
   padding: 30px 16px;
-  max-height: 300px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #d9d9d9 transparent;

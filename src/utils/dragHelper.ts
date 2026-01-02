@@ -40,6 +40,16 @@ export function useDraggable(options: DragOptions = {}) {
   // 重要：必须用稳定的函数引用绑定/解绑 window 事件，否则多次拖动会累积监听器导致重复更新和运行时异常
   let groupStartPositions: Map<string, { x: number; y: number }> | null = null
 
+  function getAxisLock(componentId: string): { lockX: boolean; lockY: boolean } {
+    const comp = pageStore.getComponentById(componentId)
+    const widthSizing = (comp?.props as any)?.widthSizing as string | undefined
+    const heightSizing = (comp?.props as any)?.heightSizing as string | undefined
+    return {
+      lockX: widthSizing === 'fill',
+      lockY: heightSizing === 'fill'
+    }
+  }
+
   function onWindowMouseMove(e: MouseEvent) {
     handleMouseMove(e, groupStartPositions || undefined)
   }
@@ -78,8 +88,14 @@ export function useDraggable(options: DragOptions = {}) {
     if (!dragState.value.isDragging) return
 
     const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1
-    const deltaX = (e.clientX - dragState.value.startX) / scale
-    const deltaY = (e.clientY - dragState.value.startY) / scale
+    let deltaX = (e.clientX - dragState.value.startX) / scale
+    let deltaY = (e.clientY - dragState.value.startY) / scale
+
+    if (options.componentId) {
+      const { lockX, lockY } = getAxisLock(options.componentId)
+      if (lockX) deltaX = 0
+      if (lockY) deltaY = 0
+    }
 
     const selectedComponents = pageStore.selectedComps
     
@@ -92,8 +108,9 @@ export function useDraggable(options: DragOptions = {}) {
         selectedComponents.forEach(comp => {
           const startPos = groupStartPositions.get(comp.id)
           if (startPos) {
-            const newX = startPos.x + deltaX
-            const newY = startPos.y + deltaY
+            const { lockX, lockY } = getAxisLock(comp.id)
+            const newX = lockX ? startPos.x : startPos.x + deltaX
+            const newY = lockY ? startPos.y : startPos.y + deltaY
             
             // 触发每个组件的更新
             if (comp.id === options.componentId) {

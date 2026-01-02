@@ -83,10 +83,20 @@ function updateValue(key: string, event: Event) {
 
 function toggleSizing(axis: 'width' | 'height', mode: 'fill' | 'content') {
   if (axis === 'width') {
-    emit('update', { widthSizing: effectiveWidthSizing.value === mode ? 'fixed' : mode });
+    const next = effectiveWidthSizing.value === mode ? 'fixed' : mode
+    if (next === 'fill') {
+      emit('update', { widthSizing: next, x: 0 })
+      return
+    }
+    emit('update', { widthSizing: next });
     return;
   }
-  emit('update', { heightSizing: effectiveHeightSizing.value === mode ? 'fixed' : mode });
+  const next = effectiveHeightSizing.value === mode ? 'fixed' : mode
+  if (next === 'fill') {
+    emit('update', { heightSizing: next, y: 0 })
+    return
+  }
+  emit('update', { heightSizing: next });
 }
 </script>
 

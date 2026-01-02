@@ -43,12 +43,13 @@
                         :key="comp.id">
                 <div class="component-wrapper"
                    :style="{ zIndex: getRenderedProps(comp).zIndex || index + 1000 }"
-                     @contextmenu.prevent="showContextMenu($event, comp)">
+                   >
                   <Container v-if="comp.type === 'container'"
                             :id="comp.id"
                         :comp="comp"
                       v-bind="getRenderedProps(comp)"
                             :scale="scale"
+                  @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
                   <Text v-else-if="comp.type === 'text'"
                         :id="comp.id"
@@ -57,6 +58,7 @@
                   :y="getRenderedProps(comp).y || 0"
                   v-bind="getRenderedProps(comp)"
                         :scale="scale"
+                  @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Button v-else-if="comp.type === 'button'"
                         :id="comp.id"
@@ -64,10 +66,12 @@
                   :y="getRenderedProps(comp).y || 0"
                   v-bind="getRenderedProps(comp)"
                         :scale="scale"
+                  @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
                         :comp="comp"
                         :scale="scale"
+                  @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 </div>
               </template>
@@ -1449,7 +1453,8 @@ function sendSelectedToBack() {
 
 /* 组件包装器 */
 .component-wrapper {
-  position: relative;
+  position: absolute;
+  inset: 0;
 }
 
 /* 右键菜单 */
