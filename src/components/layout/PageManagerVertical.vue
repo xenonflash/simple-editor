@@ -245,11 +245,11 @@ document.addEventListener('click', () => {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #d9d9d9 transparent;
+  scrollbar-color: #e0e0e0 transparent;
 }
 
 .page-list::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .page-list::-webkit-scrollbar-track {
@@ -257,13 +257,11 @@ document.addEventListener('click', () => {
 }
 
 .page-list::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
-  border-radius: 2px;
+  background: #e0e0e0;
+  border-radius: 3px;
 }
 
-.page-list::-webkit-scrollbar-thumb:hover {
-  background: #bfbfbf;
-}
+
 
 .page-item {
   display: flex;

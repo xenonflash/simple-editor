@@ -514,7 +514,12 @@ const contentStyle = computed(() => ({
 function handleCanvasClick(e: MouseEvent) {
   // MultiSelect 组件会处理框选逻辑
   // 这里只处理简单的取消选中
-  if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('canvas-content')) {
+  const targetEl = e.target as HTMLElement
+  if (
+    e.target === e.currentTarget ||
+    targetEl.classList.contains('canvas-content') ||
+    targetEl.classList.contains('component-wrapper')
+  ) {
     if (!e.ctrlKey && !e.metaKey) {
       pageStore.selectComponent(null);
     }
@@ -788,23 +793,28 @@ const canRedo = computed(() => history.canRedo());
 
 // 删除选中的组件（已支持多选）
 function deleteSelectedComponent() {
-  if (pageStore.selectedComps.length > 0) {
-    pageStore.selectedComps.forEach(comp => {
-      const parentContainerId = pageStore.findParentContainerId(comp.id);
-      // 记录删除操作
-      history.addAction({
-        type: ActionType.DELETE,
-        componentId: comp.id,
-        data: {
-          before: comp,
-          parentContainerId: typeof parentContainerId === 'string' ? parentContainerId : null
-        } as any
-      });
-      
-      // 发出删除事件
-      emit('delete', comp.id);
-    });
+  const selectedSnapshot = [...pageStore.selectedComps]
+  if (selectedSnapshot.length === 0) return
+
+  // 重要：emit('delete') 会触发外部更新组件树/选中状态，
+  // 不能直接遍历 pageStore.selectedComps（会被边删边改导致只删一个或跳删）。
+  for (const comp of selectedSnapshot) {
+    const parentContainerId = pageStore.findParentContainerId(comp.id)
+
+    history.addAction({
+      type: ActionType.DELETE,
+      componentId: comp.id,
+      data: {
+        before: comp,
+        parentContainerId: typeof parentContainerId === 'string' ? parentContainerId : null
+      } as any
+    })
+
+    emit('delete', comp.id)
   }
+
+  // 删除后清空选中，避免残留引用
+  pageStore.selectComponent(null)
 }
 
 // 撤销
@@ -1455,6 +1465,11 @@ function sendSelectedToBack() {
 .component-wrapper {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+
+.component-wrapper > * {
+  pointer-events: auto;
 }
 
 /* 右键菜单 */

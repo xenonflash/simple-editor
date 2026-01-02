@@ -29,7 +29,23 @@ import {
   faSquare,
   faFont,
   faTag,
-  faToggleOn
+  faToggleOn,
+  faCaretSquareDown,
+  faCalendar,
+  faClock,
+  faTree,
+  faList,
+  faCheckSquare,
+  faDotCircle,
+  faPalette,
+  faStream,
+  faStar,
+  faSlidersH,
+  faImage,
+  faAngleRight,
+  faShoePrints,
+  faFolder,
+  faImages
 } from '@fortawesome/free-solid-svg-icons'
 
 // 图标库初始化
@@ -63,7 +79,23 @@ export function initIcons() {
     faSquare,
     faFont,
     faTag,
-    faToggleOn
+    faToggleOn,
+    faCaretSquareDown,
+    faCalendar,
+    faClock,
+    faTree,
+    faList,
+    faCheckSquare,
+    faDotCircle,
+    faPalette,
+    faStream,
+    faStar,
+    faSlidersH,
+    faImage,
+    faAngleRight,
+    faShoePrints,
+    faFolder,
+    faImages
   )
 }
 
