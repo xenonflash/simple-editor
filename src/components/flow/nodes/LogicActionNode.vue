@@ -34,63 +34,91 @@ const actionDesc = computed(() => {
 
 <template>
   <div class="logic-node action-node" :class="{ selected }">
-    <Handle 
-      type="target" 
-      :position="Position.Left" 
-      style="left: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #555; border-radius: 50%;" 
-    />
-    
+    <div class="pill">变量操作</div>
     <div class="node-header">
       <div class="node-title">{{ actionLabel }}</div>
+      <div v-if="actionDesc" class="node-desc">{{ actionDesc }}</div>
     </div>
-    <div v-if="actionDesc" class="node-desc">{{ actionDesc }}</div>
-    
-    <Handle 
-      type="source" 
-      :position="Position.Right" 
-      style="right: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #555; border-radius: 50%;" 
-    />
+
+    <Handle class="handle handle-in" type="target" :position="Position.Left" />
+    <Handle class="handle handle-out" type="source" :position="Position.Right" />
   </div>
 </template>
 
 <style scoped>
 .logic-node {
   position: relative;
-  padding: 8px 12px;
-  border-radius: 4px;
-  background: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ffffff;
   border: 1px solid #e5e5e5;
-  min-width: 120px;
-  max-width: 200px;
-  transition: all 0.2s;
+  min-width: 160px;
+  max-width: 240px;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 
 .logic-node.selected {
   border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.18), 0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
 .action-node {
-  border-left: 3px solid #1890ff;
+  border-left: 4px solid #1890ff;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f0f5ff;
+  color: #1d39c4;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
 .node-header {
   display: flex;
-  align-items: center;
-  margin-bottom: 4px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .node-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f1f1f;
 }
 
 .node-desc {
-  font-size: 10px;
-  color: #666;
+  font-size: 11px;
+  color: #595959;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.handle-in {
+  left: 4px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #8c8c8c;
+}
+
+.handle-out {
+  right: 4px;
+  top: 50%;
+  transform: translate(50%, -50%);
+  background: #1890ff;
 }
 </style>

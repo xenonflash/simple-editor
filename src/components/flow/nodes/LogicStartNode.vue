@@ -14,37 +14,47 @@ defineProps<Props>()
 
 <template>
   <div class="logic-node start-node" :class="{ selected }">
+    <div class="pill">开始</div>
     <div class="node-content">
       <div class="icon">▶</div>
-      <div class="label">开始</div>
+      <div class="label">启动流程</div>
     </div>
-    <Handle 
-      type="source" 
-      :position="Position.Right" 
-      style="right: -5px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: #555; border-radius: 50%; z-index: 10;" 
-    />
+    <Handle class="handle handle-out" type="source" :position="Position.Right" />
   </div>
 </template>
 
 <style scoped>
 .logic-node {
   position: relative;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ffffff;
   border: 1px solid #e5e5e5;
-  min-width: 100px;
-  transition: all 0.2s;
+  min-width: 140px;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 
 .logic-node.selected {
   border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.18), 0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
 .start-node {
-  background: #f0f9eb;
-  border-color: #b7eb8f;
+  border-left: 4px solid #52c41a;
+  background: linear-gradient(135deg, #f6ffed, #eaffd9);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f6ffed;
+  color: #237804;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
 
 .node-content {
@@ -55,13 +65,29 @@ defineProps<Props>()
 }
 
 .icon {
-  font-size: 12px;
-  color: #52c41a;
+  font-size: 14px;
+  color: #389e0d;
 }
 
 .label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.handle-out {
+  right: 4px;
+  top: 50%;
+  transform: translate(50%, -50%);
+  background: #52c41a;
 }
 </style>

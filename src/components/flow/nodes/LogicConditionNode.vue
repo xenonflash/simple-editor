@@ -15,39 +15,34 @@ defineProps<Props>()
 
 <template>
   <div class="logic-node-wrapper" :class="{ selected }">
-    <!-- Diamond Shape Background -->
     <div class="node-shape"></div>
-    
-    <!-- Content -->
+
     <div class="node-content">
-      <div class="icon">◇</div>
+      <div class="pill">条件</div>
       <div class="label">{{ data.label || '条件判断' }}</div>
       <div class="expression" v-if="data.expression">{{ data.expression }}</div>
     </div>
-    
-    <!-- Input Handle -->
-    <Handle 
-      type="target" 
-      :position="Position.Left" 
-      style="left: 0; top: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: #555; border-radius: 50%;" 
+
+    <Handle
+      class="handle handle-in"
+      type="target"
+      :position="Position.Left"
     />
-    
-    <!-- True Output -->
+
     <div class="handle-label true-label">是</div>
-    <Handle 
-      id="true" 
-      type="source" 
-      :position="Position.Right" 
-      style="right: 0; top: 50%; transform: translate(50%, -50%); width: 8px; height: 8px; background: #52c41a; border-radius: 50%;" 
+    <Handle
+      id="true"
+      class="handle handle-true"
+      type="source"
+      :position="Position.Right"
     />
-    
-    <!-- False Output -->
+
     <div class="handle-label false-label">否</div>
-    <Handle 
-      id="false" 
-      type="source" 
-      :position="Position.Bottom" 
-      style="bottom: 0; left: 50%; transform: translate(-50%, 50%); width: 8px; height: 8px; background: #ff4d4f; border-radius: 50%;" 
+    <Handle
+      id="false"
+      class="handle handle-false"
+      type="source"
+      :position="Position.Bottom"
     />
   </div>
 </template>
@@ -55,8 +50,8 @@ defineProps<Props>()
 <style scoped>
 .logic-node-wrapper {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 140px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,18 +59,19 @@ defineProps<Props>()
 
 .node-shape {
   position: absolute;
-  width: 70px;
-  height: 70px;
-  background: #fffbe6;
-  border: 1px solid #ffe58f;
+  width: 110px;
+  height: 110px;
+  background: linear-gradient(135deg, #fff7e6, #ffe6ba);
+  border: 1px solid #ffd591;
   transform: rotate(45deg);
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 16px rgba(250, 173, 20, 0.18);
+  border-radius: 16px;
 }
 
 .logic-node-wrapper.selected .node-shape {
-  border-color: #faad14;
-  box-shadow: 0 0 0 2px rgba(250, 173, 20, 0.2);
+  border-color: #fa8c16;
+  box-shadow: 0 0 0 2px rgba(250, 140, 22, 0.22), 0 8px 20px rgba(250, 173, 20, 0.25);
 }
 
 .node-content {
@@ -85,50 +81,85 @@ defineProps<Props>()
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   pointer-events: none;
-  font-size: 12px;
-  color: #595959;
-  max-width: 80px;
   text-align: center;
 }
 
-.icon {
-  font-size: 16px;
-  margin-bottom: 2px;
-  color: #faad14;
+.pill {
+  padding: 2px 8px;
+  background: #fff;
+  color: #d48806;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .label {
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1.2;
+  font-size: 13px;
+  color: #ad6800;
+  max-width: 120px;
 }
 
 .expression {
-  font-size: 10px;
+  font-size: 11px;
   color: #8c8c8c;
-  margin-top: 2px;
+  max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90px;
+}
+
+.handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.handle-in {
+  left: 4px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #8c8c8c;
+}
+
+.handle-true {
+  right: 4px;
+  top: 45%;
+  transform: translate(50%, -50%);
+  background: #52c41a;
+}
+
+.handle-false {
+  bottom: 6px;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  background: #ff4d4f;
 }
 
 .handle-label {
   position: absolute;
-  font-size: 10px;
+  font-size: 11px;
   color: #8c8c8c;
   pointer-events: none;
+  font-weight: 600;
 }
 
 .true-label {
-  right: 8px;
-  top: 25px;
-  color: #52c41a;
+  right: 12px;
+  top: 38px;
+  color: #389e0d;
 }
 
 .false-label {
-  bottom: 8px;
-  left: 60px;
-  color: #ff4d4f;
+  bottom: 20px;
+  left: 64px;
+  color: #d4380d;
 }
 </style>

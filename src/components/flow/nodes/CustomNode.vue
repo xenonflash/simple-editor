@@ -40,10 +40,8 @@ const handleClick = () => {
 
 <template>
   <div class="custom-node" :class="{ selected }" @click="handleClick">
-    <!-- 输入连接点 -->
-    <Handle type="target" :position="Position.Top" />
-    
-    <!-- 节点内容 -->
+    <div class="pill">自定义</div>
+
     <div class="node-header">
       <div class="node-icon" v-if="data.icon">{{ data.icon }}</div>
       <div class="node-title">{{ data.label }}</div>
@@ -54,78 +52,118 @@ const handleClick = () => {
       <p class="node-description">{{ data.description }}</p>
     </div>
     
-    <!-- 进度条 -->
     <div class="progress-bar" v-if="data.progress !== undefined">
-      <div class="progress-fill" 
-           :style="{ width: progressWidth, backgroundColor: statusColor }"></div>
+      <div class="progress-fill" :style="{ width: progressWidth, backgroundColor: statusColor }"></div>
     </div>
     
-    <!-- 输出连接点 -->
-    <Handle type="source" :position="Position.Bottom" />
+    <Handle class="handle handle-in" type="target" :position="Position.Top" />
+    <Handle class="handle handle-out" type="source" :position="Position.Bottom" />
   </div>
 </template>
 
 <style scoped>
 .custom-node {
+  position: relative;
   background: white;
-  border: 2px solid #e1e1e1;
+  border: 1px solid #e5e5e5;
   border-radius: 12px;
-  min-width: 180px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
+  padding: 12px 16px 16px;
 }
 
 .custom-node.selected {
   border-color: #1890ff;
-  box-shadow: 0 4px 16px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.18), 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f9f0ff;
+  color: #722ed1;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .node-header {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   background: #fafafa;
-  border-bottom: 1px solid #f0f0f0;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
 }
 
 .node-icon {
-  font-size: 20px;
-  margin-right: 8px;
+  font-size: 18px;
 }
 
 .node-title {
   flex: 1;
-  font-weight: 600;
-  color: #333;
-  font-size: 14px;
+  font-weight: 700;
+  color: #1f1f1f;
+  font-size: 13px;
 }
 
 .node-status {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff;
 }
 
 .node-body {
-  padding: 12px 16px;
+  padding: 12px 2px 0;
 }
 
 .node-description {
   margin: 0;
   font-size: 12px;
-  color: #666;
+  color: #595959;
   line-height: 1.4;
 }
 
 .progress-bar {
-  height: 4px;
-  background: #f0f0f0;
+  height: 6px;
+  background: #f5f5f5;
   position: relative;
+  border-radius: 999px;
+  margin-top: 10px;
 }
 
 .progress-fill {
   height: 100%;
+  border-radius: 999px;
   transition: width 0.3s ease;
+}
+
+.handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+.handle-in {
+  top: 4px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #8c8c8c;
+}
+
+.handle-out {
+  bottom: 4px;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  background: #722ed1;
 }
 </style>
