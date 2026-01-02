@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { NButton, NTabs, NTabPane, NTree, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
+import { NButton, NTabs, NTabPane, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
 import { Codemirror } from 'vue-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
-
-type VariableTreeNode = {
-  label: string
-  key: string
-  isLeaf?: boolean
-  desc?: string
-  snippet?: string
-  children?: VariableTreeNode[]
-}
+import VariablePanel from './VariablePanel.vue'
+import type { VariableTreeNode } from './variableTree'
 
 const props = defineProps<{
   modelValue: string
@@ -61,22 +54,8 @@ function insertSnippet(snippet: string) {
   message.info('已插入代码片段')
 }
 
-function findSnippet(nodes: VariableTreeNode[], key: string): string | null {
-  for (const n of nodes) {
-    if (n.key === key && n.snippet) return n.snippet
-    if (n.children?.length) {
-      const s = findSnippet(n.children, key)
-      if (s) return s
-    }
-  }
-  return null
-}
-
-function handleVarSelect(keys: (string | number)[]) {
-  if (!keys.length) return
-  const key = String(keys[keys.length - 1])
-  const snippet = findSnippet(props.variableTree || [], key)
-  if (snippet) insertSnippet(snippet)
+function handleVarPick(payload: { snippet?: string }) {
+  if (payload.snippet) insertSnippet(payload.snippet)
 }
 </script>
 
@@ -92,8 +71,12 @@ function handleVarSelect(keys: (string | number)[]) {
       <div class="hint-panel">
         <n-tabs v-model:value="hintTab" size="small">
           <n-tab-pane name="vars" tab="可用变量">
-            <div class="hint-tip">点击变量可快速插入引用</div>
-            <n-tree :data="variableTree" block-line selectable @update:selected-keys="handleVarSelect" />
+            <VariablePanel
+              :data="variableTree"
+              tip="点击变量可快速插入引用"
+              select-mode="snippet"
+              @select="handleVarPick"
+            />
           </n-tab-pane>
           <n-tab-pane name="examples" tab="代码示例">
             <n-collapse default-expanded-names="read-var">

@@ -269,6 +269,18 @@ export const usePageStore = defineStore('page', () => {
     return v ? v.defaultValue : undefined;
   }
 
+  function getComponentById(componentId: string) {
+    return currentPage.value?.components?.find(c => c.id === componentId);
+  }
+
+  function getComponentProps(componentId: string) {
+    return getComponentById(componentId)?.props;
+  }
+
+  function getComponentProp(componentId: string, propName: string) {
+    return getComponentById(componentId)?.props?.[propName];
+  }
+
   function updateVariableValue(name: string, value: any) {
     if (!currentPage.value) return;
     const v = currentPage.value.variables.find(v => v.name === name);
@@ -318,6 +330,11 @@ export const usePageStore = defineStore('page', () => {
     updateVariable,
     deleteVariable,
     getVariableValue,
-    updateVariableValue
+    updateVariableValue,
+
+    // 组件属性读取（供脚本/可用变量面板使用）
+    getComponentById,
+    getComponentProps,
+    getComponentProp
   };
 });

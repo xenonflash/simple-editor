@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { NModal, NCard, NButton, NList, NListItem, NInput, NInputNumber, NSpace, NIcon, NForm, NFormItem, NSelect, NTag, useMessage } from 'naive-ui'
+import { NModal, NCard, NButton, NList, NListItem, NInput, NInputNumber, NSpace, NIcon, NForm, NFormItem, NSelect, NTag, NRadio, NRadioGroup, NPopover, useMessage } from 'naive-ui'
 import { Add, Trash, Play, GitNetwork, Close, Save } from '@vicons/ionicons5'
 import FlowCanvas from './FlowCanvas.vue'
 import ScriptCodeEditor from './ScriptCodeEditor.vue'
+import VariablePanel from './VariablePanel.vue'
 import { usePageStore } from '../../stores/page'
 import type { PageFlow } from '../../types/page'
 import { actionRegistry } from '../../config/actions'
+import { buildScriptVariableTree, buildValueRefTree } from './variableTree'
 
 const props = defineProps<{
   show: boolean
@@ -55,6 +57,7 @@ const defaultScriptTemplate = `/**
  *   - context.lastError: 上一个节点的错误（若存在）
  * - event: 事件对象（若存在）
  * - pageStore: 页面变量读写（getVariableValue / updateVariableValue）
+ * - pageStore: 组件属性读取（getComponentProp / getComponentProps）
  * - messageApi: 提示（info/success/warning/error）
  * - fetch: 网络请求
  *
@@ -87,45 +90,35 @@ const scriptCodeModel = computed<string>({
 
 
 const variableTree = computed(() => {
-  const pageVars = (pageStore.currentPage?.variables || []).map((v) => ({
-    label: `${v.name} (${v.type})`,
-    key: `page-${v.name}`,
-    isLeaf: true,
-    desc: '页面变量',
-    snippet: `pageStore.getVariableValue('${v.name}')`
-  }));
+  return buildScriptVariableTree(pageStore)
+})
 
-  const globals: any[] = [
-    {
-      label: 'messageApi',
-      key: 'global-messageApi',
-      isLeaf: true,
-      desc: '提示 API',
-      snippet: 'messageApi.success("提示内容")'
-    },
-    {
-      label: 'fetch',
-      key: 'global-fetch',
-      isLeaf: true,
-      desc: '网络请求',
-      snippet: 'const res = await fetch("https://api.example.com")'
-    }
-  ];
+const valueRefTree = computed(() => buildValueRefTree(pageStore))
 
-  const ctxNodes: any[] = [
-    { label: 'context.input', key: 'ctx-input', isLeaf: true, desc: '节点入参', snippet: 'context.input' },
-    { label: 'context.prevResult', key: 'ctx-prev', isLeaf: true, desc: '上个节点输出', snippet: 'context.prevResult' },
-    { label: 'context.lastError', key: 'ctx-err', isLeaf: true, desc: '上个节点错误', snippet: 'context.lastError' },
-    { label: 'context.__flowId', key: 'ctx-flow', isLeaf: true, desc: '当前 Flow 标识', snippet: 'context.__flowId' },
-    { label: 'event', key: 'ctx-event', isLeaf: true, desc: '事件对象（若存在）', snippet: 'event' }
-  ];
+function getValueMode(params: any): 'literal' | 'ref' {
+  if (params?.valueMode === 'ref' || params?.valueMode === 'literal') return params.valueMode
+  const vs = params?.valueSource
+  return vs && vs !== 'literal' ? 'ref' : 'literal'
+}
 
-  return [
-    { label: '页面变量', key: 'page-vars', children: pageVars },
-    { label: '全局能力', key: 'global', children: globals },
-    { label: '上下文', key: 'context', children: ctxNodes }
-  ];
-});
+function formatValueRefDisplay(refStr: string): string {
+  if (!refStr) return ''
+  if (refStr.startsWith('var:')) return refStr.slice('var:'.length)
+  if (refStr.startsWith('comp:')) {
+    const rest = refStr.slice('comp:'.length)
+    const parts = rest.split(':')
+    const componentId = parts[0]
+    const propName = parts.slice(1).join(':')
+    const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+    const compLabel = comp?.name || componentId
+    return `${compLabel}.${propName}`
+  }
+  if (refStr.startsWith('ctx:')) {
+    const k = refStr.slice('ctx:'.length)
+    return `context.${k}`
+  }
+  return refStr
+}
 
 function updatePageFlows(newFlows: PageFlow[]) {
   if (!currentPage.value) return
@@ -355,21 +348,39 @@ function onDrop(event: DragEvent) {
                   </n-form-item>
                   <n-form-item v-if="selectedNode.data.actionType !== 'removeVar'" label="值">
                     <n-space vertical size="small" style="width: 100%;">
-                      <n-select
-                        :value="selectedNode.data.params?.valueSource || 'literal'"
-                        :options="[
-                          { label: '固定值', value: 'literal' },
-                          { label: '上个节点输出 (context.prevResult)', value: 'prevResult' },
-                          { label: '上个节点错误 (context.lastError)', value: 'lastError' }
-                        ]"
-                        @update:value="v => updateNodeParam('valueSource', v)"
-                      />
+                      <n-radio-group
+                        :value="getValueMode(selectedNode.data.params)"
+                        @update:value="(v) => updateNodeParam('valueMode', v)"
+                      >
+                        <n-space>
+                          <n-radio value="literal">固定值</n-radio>
+                          <n-radio value="ref">选择变量</n-radio>
+                        </n-space>
+                      </n-radio-group>
+
                       <n-input
-                        v-if="(selectedNode.data.params?.valueSource || 'literal') === 'literal'"
+                        v-if="getValueMode(selectedNode.data.params) === 'literal'"
                         :value="selectedNode.data.params?.value"
                         placeholder="固定值（字符串/JSON 由节点自身处理）"
                         @update:value="v => updateNodeParam('value', v)"
                       />
+
+                      <template v-else>
+                        <n-popover trigger="click" placement="left" :show-arrow="false" style="width: 460px">
+                          <template #trigger>
+                            <n-button size="small" secondary style="width: 100%; justify-content: flex-start;">
+                              {{ selectedNode.data.params?.valueRef ? formatValueRefDisplay(String(selectedNode.data.params?.valueRef)) : '点击选择变量' }}
+                            </n-button>
+                          </template>
+                          <VariablePanel
+                            :data="valueRefTree"
+                            tip="选择后点击确认"
+                            select-mode="value"
+                            confirmable
+                            @select="(p) => p.value && updateNodeParam('valueRef', p.value)"
+                          />
+                        </n-popover>
+                      </template>
                     </n-space>
                   </n-form-item>
                   <n-form-item v-if="selectedNode.data.actionType === 'removeVar'" label="索引">

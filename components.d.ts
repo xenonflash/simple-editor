@@ -89,6 +89,7 @@ declare module 'vue' {
     TopBar: typeof import('./src/components/layout/TopBar.vue')['default']
     UserAvatar: typeof import('./src/components/layout/UserAvatar.vue')['default']
     UserProfile: typeof import('./src/components/userProfile.vue')['default']
+    VariablePanel: typeof import('./src/components/flow/VariablePanel.vue')['default']
     WelcomeItem: typeof import('./src/components/WelcomeItem.vue')['default']
   }
 }

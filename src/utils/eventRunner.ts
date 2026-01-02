@@ -111,6 +111,18 @@ export function useEventRunner() {
         const { code } = action.params;
         if (code) {
           try {
+            // HMR/旧运行时兜底：确保脚本侧能读取页面组件属性
+            const ps: any = pageStore as any;
+            if (typeof ps.getComponentById !== 'function') {
+              ps.getComponentById = (componentId: string) => ps.currentPage?.components?.find((c: any) => c.id === componentId);
+            }
+            if (typeof ps.getComponentProps !== 'function') {
+              ps.getComponentProps = (componentId: string) => ps.getComponentById(componentId)?.props;
+            }
+            if (typeof ps.getComponentProp !== 'function') {
+              ps.getComponentProp = (componentId: string, propName: string) => ps.getComponentById(componentId)?.props?.[propName];
+            }
+
             // 提供 context 和一些 helper
             const func = new Function('context', 'pageStore', 'message', code);
             func(context, pageStore, messageApi);

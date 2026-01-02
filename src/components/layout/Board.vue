@@ -35,26 +35,26 @@
               <template v-for="(comp, index) in props.components"
                         :key="comp.id">
                 <div class="component-wrapper"
-                     :style="{ zIndex: comp.props.zIndex || index + 1000 }"
+                   :style="{ zIndex: getRenderedProps(comp).zIndex || index + 1000 }"
                      @contextmenu.prevent="showContextMenu($event, comp)">
                   <Container v-if="comp.type === 'container'"
                             :id="comp.id"
-                            v-bind="comp.props"
+                      v-bind="getRenderedProps(comp)"
                             :scale="scale"
                             @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Text v-else-if="comp.type === 'text'"
                         :id="comp.id"
-                        :content="comp.props.content || '新建文本'"
-                        :x="comp.props.x || 0"
-                        :y="comp.props.y || 0"
-                        v-bind="comp.props"
+                  :content="getRenderedProps(comp).content || '新建文本'"
+                  :x="getRenderedProps(comp).x || 0"
+                  :y="getRenderedProps(comp).y || 0"
+                  v-bind="getRenderedProps(comp)"
                         :scale="scale"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Button v-else-if="comp.type === 'button'"
                         :id="comp.id"
-                        :x="comp.props.x || 0"
-                        :y="comp.props.y || 0"
-                        v-bind="comp.props"
+                  :x="getRenderedProps(comp).x || 0"
+                  :y="getRenderedProps(comp).y || 0"
+                  v-bind="getRenderedProps(comp)"
                         :scale="scale"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
@@ -183,6 +183,49 @@ function log(...args: any[]) {
   if (DEBUG) console.log('[Board]', ...args);
 }
 
+const snaplineStore = useSnaplineStore();
+const pageStore = usePageStore();
+
+const renderedPropsMap = computed(() => {
+  const map = new Map<string, Record<string, any>>();
+  const variables = pageStore.currentPage?.variables || [];
+  const components = pageStore.currentPage?.components || [];
+
+  function resolveBindingRef(bindingRef: string): any {
+    if (!bindingRef) return undefined;
+
+    if (bindingRef.startsWith('comp:')) {
+      const rest = bindingRef.slice('comp:'.length);
+      const parts = rest.split(':');
+      const componentId = parts[0];
+      const propKey = parts.slice(1).join(':');
+      const comp = components.find(c => c.id === componentId);
+      return comp?.props?.[propKey];
+    }
+
+    const varName = bindingRef.startsWith('var:') ? bindingRef.slice('var:'.length) : bindingRef;
+    const v = variables.find(vv => vv.name === varName);
+    return v?.defaultValue;
+  }
+
+  for (const comp of props.components) {
+    const raw = { ...(comp.props || {}) };
+    if (comp.bindings) {
+      for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
+        if (typeof bindingRef !== 'string') continue;
+        raw[propName] = resolveBindingRef(bindingRef);
+      }
+    }
+    map.set(comp.id, raw);
+  }
+
+  return map;
+});
+
+function getRenderedProps(comp: Comp): Record<string, any> {
+  return renderedPropsMap.value.get(comp.id) || comp.props || {};
+}
+
 // 使用页面的动态尺寸
 const canvasWidth = computed(() => pageStore.currentPage?.width || 1280);
 const canvasHeight = computed(() => pageStore.currentPage?.height || 800);
@@ -224,9 +267,6 @@ const contextMenu = ref({
   y: 0,
   component: null as Comp | null
 });
-
-const snaplineStore = useSnaplineStore();
-const pageStore = usePageStore();
 
 // 计算选中的组件ID（保持向下兼容）
 const selectedId = computed(() => {

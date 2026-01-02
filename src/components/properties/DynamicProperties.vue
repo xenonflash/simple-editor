@@ -1,17 +1,17 @@
 <template>
   <div class="dynamic-properties">
     <div v-for="(schema, key) in propsSchema" :key="key" class="property-row">
-      <label :title="key">{{ schema.label }}</label>
+      <div class="prop-label" :title="key">
+        <span class="label-text">{{ schema.label }}</span>
+        <span v-if="bindings && typeof bindings[key] === 'string'" class="bind-badge">
+          {{ formatBindingDisplay(String(bindings[key])) }}
+        </span>
+      </div>
       
       <div class="input-wrapper">
         <!-- 绑定模式 -->
         <template v-if="bindings && typeof bindings[key] === 'string'">
-          <n-select size="small"
-                    :value="bindings[key]"
-                    :options="variableOptions"
-                    placeholder="选择变量"
-                    @update:value="(val) => updateBindingValue(key, val)" 
-                    class="bind-select"/>
+          <div class="bound-placeholder" />
         </template>
         
         <!-- 普通模式 -->
@@ -55,25 +55,49 @@
       </div>
 
       <!-- 绑定按钮 -->
-      <n-button size="tiny" quaternary circle 
-                :type="bindings && typeof bindings[key] === 'string' ? 'error' : 'default'"
-                @click="toggleBinding(key)"
-                class="bind-btn"
-                title="绑定变量">
-        <template #icon>
-          <n-icon><Link v-if="bindings && typeof bindings[key] === 'string'" /><LinkOutline v-else /></n-icon>
+      <n-popover
+        trigger="click"
+        placement="left"
+        :show-arrow="false"
+        style="width: 420px"
+        :show="openKey === String(key)"
+        @update:show="(v) => (openKey = v ? String(key) : null)"
+      >
+        <template #trigger>
+          <n-button
+            size="tiny"
+            quaternary
+            circle
+            :type="bindings && typeof bindings[key] === 'string' ? 'error' : 'default'"
+            class="bind-btn"
+            title="绑定变量"
+          >
+            <template #icon>
+              <n-icon><Link v-if="bindings && typeof bindings[key] === 'string'" /><LinkOutline v-else /></n-icon>
+            </template>
+          </n-button>
         </template>
-      </n-button>
+        <VariablePanel
+          :data="pageVariableTree"
+          tip="点击变量直接绑定"
+          select-mode="value"
+          confirmable
+          @select="(p) => p.value && handleBindPick(String(key), p.value)"
+          @cancel="openKey = null"
+        />
+      </n-popover>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { NSelect, NButton, NIcon } from 'naive-ui';
+import { computed, ref } from 'vue';
+import { NButton, NIcon, NPopover } from 'naive-ui';
 import { Link, LinkOutline } from '@vicons/ionicons5';
 import type { PropSchema } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
+import VariablePanel from '../flow/VariablePanel.vue'
+import { buildPageVariableTree } from '../flow/variableTree'
 
 const props = defineProps<{
   modelValue: Record<string, any>;
@@ -84,14 +108,9 @@ const props = defineProps<{
 const emit = defineEmits(['update:modelValue', 'change', 'update:bindings']);
 const pageStore = usePageStore();
 
-// 获取当前页面的变量列表
-const variableOptions = computed(() => {
-  const vars = pageStore.currentPage?.variables || [];
-  return vars.map(v => ({
-    label: `${v.name}`,
-    value: v.name
-  }));
-});
+const openKey = ref<string | null>(null)
+
+const pageVariableTree = computed(() => buildPageVariableTree(pageStore))
 
 function updateValue(key: string, value: any) {
   emit('change', { [key]: value });
@@ -107,19 +126,29 @@ function updateJsonValue(key: string, value: string) {
   }
 }
 
-function toggleBinding(key: string) {
-  if (props.bindings && typeof props.bindings[key] === 'string') {
-    // 取消绑定
-    emit('update:bindings', { [key]: null });
+function handleBindPick(key: string, value: string) {
+  if (value === '__unbind__') {
+    emit('update:bindings', { [key]: null })
   } else {
-    // 开始绑定
-    const firstVar = variableOptions.value[0]?.value;
-    emit('update:bindings', { [key]: firstVar || '' });
+    emit('update:bindings', { [key]: value })
   }
+  openKey.value = null
 }
 
-function updateBindingValue(key: string, value: string) {
-  emit('update:bindings', { [key]: value });
+function formatBindingDisplay(binding: string): string {
+  if (!binding) return ''
+  if (binding.startsWith('var:')) return binding.slice('var:'.length)
+  if (binding.startsWith('comp:')) {
+    const rest = binding.slice('comp:'.length)
+    const parts = rest.split(':')
+    const componentId = parts[0]
+    const propName = parts.slice(1).join(':')
+    const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+    const compLabel = comp?.name || componentId
+    return `${compLabel}.${propName}`
+  }
+  // 兼容旧数据：直接存变量名
+  return binding
 }
 </script>
 
@@ -136,11 +165,33 @@ function updateBindingValue(key: string, value: string) {
   gap: 8px;
 }
 
-.property-row label {
-  width: 70px;
+.prop-label {
+  width: 100px;
   font-size: 12px;
   color: #666;
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bind-badge {
+  font-size: 11px;
+  color: #999;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,6 +201,18 @@ function updateBindingValue(key: string, value: string) {
   flex: 1;
   display: flex;
   min-width: 0; /* 防止flex子项溢出 */
+}
+
+.bound-placeholder {
+  width: 100%;
+  height: 28px;
+  border: 1px dashed #e5e5e5;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  align-items: center;
 }
 
 .property-row input[type="text"],
@@ -178,10 +241,6 @@ function updateBindingValue(key: string, value: string) {
 
 .bind-btn {
   flex-shrink: 0;
-}
-
-.bind-select {
-  width: 100%;
 }
 
 .json-textarea {

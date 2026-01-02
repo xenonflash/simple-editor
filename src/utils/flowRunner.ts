@@ -100,39 +100,78 @@ export function useFlowRunner() {
     // 合并 context
     const fullContext = { ...varContext, ...context };
 
+    function resolveValueRef(ref: string): any {
+      if (!ref) return undefined;
+
+      // 页面变量
+      if (ref.startsWith('var:')) {
+        const name = ref.slice('var:'.length);
+        return pageStore.getVariableValue(name);
+      }
+
+      // 页面组件属性（单向）
+      if (ref.startsWith('comp:')) {
+        const rest = ref.slice('comp:'.length);
+        const parts = rest.split(':');
+        const componentId = parts[0];
+        const propKey = parts.slice(1).join(':');
+        const ps: any = pageStore as any;
+        if (typeof ps.getComponentProp === 'function') return ps.getComponentProp(componentId, propKey);
+        return ps.currentPage?.components?.find((c: any) => c.id === componentId)?.props?.[propKey];
+      }
+
+      // 上下文
+      if (ref.startsWith('ctx:')) {
+        const k = ref.slice('ctx:'.length);
+        if (k === 'prevResult') return context?.prevResult;
+        if (k === 'lastError') return context?.lastError;
+        if (k === 'input') return context?.input;
+        if (k === '__flowId') return context?.__flowId;
+      }
+
+      // 兼容旧：直接变量名
+      return pageStore.getVariableValue(ref);
+    }
+
+    function resolveActionValue(params: any): { value: any; mode: 'literal' | 'ref' } {
+      const hasValueMode = params?.valueMode === 'ref' || params?.valueMode === 'literal';
+      const mode: 'literal' | 'ref' = params?.valueMode === 'ref' ? 'ref' : 'literal';
+      if (mode === 'ref') {
+        return { value: resolveValueRef(String(params?.valueRef || '')), mode };
+      }
+
+      // 兼容旧的 valueSource
+      if (!hasValueMode) {
+        const valueSource = params?.valueSource;
+        if (valueSource === 'prevResult') return { value: context?.prevResult, mode: 'ref' };
+        if (valueSource === 'lastError') return { value: context?.lastError, mode: 'ref' };
+      }
+      return { value: params?.value, mode: 'literal' };
+    }
+
     switch (actionType) {
       case 'setVar': {
         // TODO: 需要一个方法来更新变量的运行时值
         // 目前 pageStore 似乎直接修改了 variables 定义的 defaultValue 作为值？
         // 让我们假设是这样
-        const { variableName, value, valueSource } = params || {};
+        const { variableName } = params || {};
         if (variableName) {
-           if (valueSource === 'prevResult') {
-             pageStore.updateVariableValue(variableName, context?.prevResult);
-           } else if (valueSource === 'lastError') {
-             pageStore.updateVariableValue(variableName, context?.lastError);
-           } else {
-             // 简单的值设置
-             pageStore.updateVariableValue(variableName, value);
-           }
+          const resolved = resolveActionValue(params || {});
+          pageStore.updateVariableValue(variableName, resolved.value);
         }
         break;
       }
       case 'pushVar': {
-        const { variableName, value, valueSource } = params || {};
+        const { variableName } = params || {};
         if (variableName) {
           const currentVal = pageStore.getVariableValue(variableName);
           if (Array.isArray(currentVal)) {
-            let parsedValue: any;
-            if (valueSource === 'prevResult') {
-              parsedValue = context?.prevResult;
-            } else if (valueSource === 'lastError') {
-              parsedValue = context?.lastError;
-            } else {
-              // 解析 value，如果是 JSON 字符串
-              parsedValue = value;
+            const resolved = resolveActionValue(params || {});
+            let parsedValue: any = resolved.value;
+            // literal 模式下：尝试把字符串解析为 JSON
+            if (resolved.mode === 'literal' && typeof parsedValue === 'string') {
               try {
-                parsedValue = JSON.parse(value);
+                parsedValue = JSON.parse(parsedValue);
               } catch (e) {}
             }
             
@@ -155,6 +194,19 @@ export function useFlowRunner() {
         const code = params?.code || '';
         try {
           const eventObj = (context && (context.event ?? context.__event)) ?? undefined;
+
+          // HMR/旧运行时兜底：确保脚本侧能读取页面组件属性
+          const ps: any = pageStore as any;
+          if (typeof ps.getComponentById !== 'function') {
+            ps.getComponentById = (componentId: string) => ps.currentPage?.components?.find((c: any) => c.id === componentId);
+          }
+          if (typeof ps.getComponentProps !== 'function') {
+            ps.getComponentProps = (componentId: string) => ps.getComponentById(componentId)?.props;
+          }
+          if (typeof ps.getComponentProp !== 'function') {
+            ps.getComponentProp = (componentId: string, propName: string) => ps.getComponentById(componentId)?.props?.[propName];
+          }
+
           const fn = new Function('context', 'event', 'pageStore', 'messageApi', 'fetch', `return (async () => { ${code} })();`);
           const result = await fn(fullContext, eventObj, pageStore, messageApi, fetch);
 
