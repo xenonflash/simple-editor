@@ -12,15 +12,19 @@ app.use(createPinia())
 app.use(router)
 app.use(fontAwesomePlugin)
 
-// Mock 状态提示
-const { isMockEnabled } = await import('./mock')
-if (isMockEnabled()) {
-  console.log('🎭 Mock 模式已启用')
-  console.log('📝 默认账号: admin / 123456 或 user / 123456')
-  console.log('🔧 环境:', import.meta.env.MODE)
-} else {
-  console.log('🌐 真实 API 模式')
-  console.log('🔗 API 地址:', import.meta.env.VITE_API_BASE_URL)
+async function bootstrap() {
+  // Mock 状态提示（避免 top-level await 影响构建 target）
+  const { isMockEnabled } = await import('./mock')
+  if (isMockEnabled()) {
+    console.log('🎭 Mock 模式已启用')
+    console.log('📝 默认账号: admin / 123456 或 user / 123456')
+    console.log('🔧 环境:', import.meta.env.MODE)
+  } else {
+    console.log('🌐 真实 API 模式')
+    console.log('🔗 API 地址:', import.meta.env.VITE_API_BASE_URL)
+  }
+
+  app.mount('#app')
 }
 
-app.mount('#app')
+void bootstrap()
