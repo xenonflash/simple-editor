@@ -101,7 +101,7 @@
                       size="small" 
                       placeholder="绑定逻辑流" 
                       :options="flowOptions" 
-                      :value="getFlowForEvent(eventDef.value)"
+                      :value="getFlowForEvent(eventDef.value) || ''"
                       @update:value="(val) => updateEventFlow(eventDef.value, val)"
                       clearable
                       style="flex: 1"
@@ -229,7 +229,7 @@ const naiveConfig = computed(() => props.component ? getNaiveConfig(props.compon
 // Flow 相关
 const flows = computed(() => currentPage.value?.flows || []);
 const flowOptions = computed(() => [
-  { label: '不绑定', value: null },
+  { label: '不绑定', value: '' },
   ...flows.value.map(f => ({ label: f.name, value: f.id }))
 ]);
 
@@ -237,14 +237,14 @@ function openFlowEditor(flowId?: string) {
   emit('open-flow-editor', flowId);
 }
 
-function getFlowForEvent(eventName: string) {
-  if (!props.component || !props.component.events) return null;
+function getFlowForEvent(eventName: string): string | undefined {
+  if (!props.component || !props.component.events) return undefined;
   const event = props.component.events[eventName];
   if (Array.isArray(event)) {
     const handler = event.find(e => e.trigger === eventName);
-    return handler?.flowId || null;
+    return handler?.flowId;
   }
-  return null;
+  return undefined;
 }
 
 function updateEventFlow(eventName: string, flowId: string | null) {
@@ -262,7 +262,9 @@ function updateEventFlow(eventName: string, flowId: string | null) {
   }
   
   const targetHandler = newEvents[eventName].find(e => e.trigger === eventName)!;
-  targetHandler.flowId = flowId || undefined;
+  // NaiveUI clearable 会回传 null；并且我们用 '' 表示不绑定
+  const normalized = flowId === null || flowId === '' ? undefined : flowId;
+  targetHandler.flowId = normalized;
   
   emit('update', {
     id: props.component.id,

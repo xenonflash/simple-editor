@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, h } from 'vue'
 import { AddOutline, TrashOutline, CreateOutline, CheckmarkOutline } from '@vicons/ionicons5'
-import { NButton, NIcon, NInput, NSelect, NText, useMessage } from 'naive-ui'
+import { NButton, NIcon, NInput, NSelect, NText, NSwitch, useMessage } from 'naive-ui'
 import type { DataTable, DataField, FieldType } from '../../types/data'
 import { FieldType as FieldTypeEnum } from '../../types/data'
 import { format } from 'date-fns'
@@ -81,10 +81,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update-table': [updates: Partial<Pick<DataTable, 'name' | 'description'>>]
-  'add-field': [event: { name: string; type: FieldType }]
-  'update-field': [event: { id: string; updates: Partial<DataField> }]
-  'delete-field': [fieldId: string]
+  (e: 'update-table', updates: Partial<Pick<DataTable, 'name' | 'description'>>): void
+  (e: 'add-field', field: Pick<DataField, 'name' | 'type' | 'required' | 'defaultValue' | 'description'>): void
+  (e: 'update-field', event: { id: string; updates: Partial<DataField> }): void
+  (e: 'delete-field', fieldId: string): void
 }>()
 
 const message = useMessage()
@@ -93,7 +93,13 @@ const formRef = ref()
 const editingFieldId = ref<string | null>(null)
 const editingData = ref<Partial<DataField>>({})
 
-const newField = reactive({
+const newField = reactive<{
+  name: string
+  type: FieldType
+  required: boolean
+  defaultValue: any
+  description: string
+}>({
   name: '',
   type: FieldTypeEnum.STRING,
   required: false,
@@ -284,7 +290,7 @@ const columns = computed(() => [
             onUpdateValue: (value: any) => {
               editingData.value.defaultValue = value
             },
-            ...(row.type === FieldType.DATE ? {
+            ...(row.type === FieldTypeEnum.DATE ? {
               type: 'date',
               format: 'yyyy-MM-dd'
             } : {})

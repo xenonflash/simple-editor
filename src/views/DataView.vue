@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDataStore } from '../stores/data'
 import { FieldType, type DataTable, type DataField } from '../types/data'
@@ -41,7 +41,7 @@ const { tables, currentTableId, currentTable } = storeToRefs(dataStore)
 const showAddTableModal = ref(false)
 
 // 添加调试监听
-watch(tables, (newTables) => {
+watch(tables, (newTables: DataTable[]) => {
   console.log('Tables changed:', newTables)
 }, { deep: true })
 

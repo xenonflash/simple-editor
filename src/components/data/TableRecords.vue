@@ -77,8 +77,8 @@ const tableData = computed(() => {
 })
 
 // 计算表格列配置
-const columns = computed(() => {
-  const cols = props.table.fields.map(field => ({
+const columns = computed<any[]>(() => {
+  const cols: any[] = props.table.fields.map(field => ({
     title: () => {
       return h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, [
         field.required ? h('span', { style: { color: '#ff4d4f' } }, '*') : null,
@@ -102,7 +102,7 @@ const columns = computed(() => {
             padding: '4px 0'
           }
         }, [
-          h(getFieldComponent(field.type), {
+          h(getFieldComponent(field.type) as any, {
             value: value,
             placeholder: field.required ? `*请输入${field.name}` : `请输入${field.name}`,
             size: 'small',
@@ -155,7 +155,7 @@ const columns = computed(() => {
   
   // 添加操作列
   cols.push({
-    title: '操作',
+    title: () => h('span', {}, '操作'),
     key: 'actions',
     width: 160,
     fixed: 'right',

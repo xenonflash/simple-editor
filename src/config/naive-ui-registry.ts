@@ -2,7 +2,7 @@ import { CompType } from '../types/component';
 
 export interface PropSchema {
   label: string;
-  type: 'text' | 'number' | 'boolean' | 'select' | 'color';
+  type: 'text' | 'number' | 'boolean' | 'select' | 'color' | 'json';
   options?: { label: string; value: any }[];
   default?: any;
 }
