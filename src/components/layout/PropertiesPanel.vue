@@ -26,7 +26,19 @@
             :y="props.component.props.y || 0"
             :width="props.component.props.width"
             :height="props.component.props.height"
+            :widthSizing="props.component.props.widthSizing"
+            :heightSizing="props.component.props.heightSizing"
             @update="updateProps" />
+
+          <ContainerLayoutProperties
+            v-if="props.component.type === 'container'"
+            :layoutMode="props.component.props.layoutMode"
+            :flexDirection="props.component.props.flexDirection"
+            :justifyContent="props.component.props.justifyContent"
+            :alignItems="props.component.props.alignItems"
+            :gap="props.component.props.gap"
+            @update="updateProps"
+          />
 
           <template v-if="naiveConfig">
             <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">组件属性</div>
@@ -188,6 +200,7 @@ import {
 } from 'naive-ui';
 import { Add, Trash, Create, GitNetwork } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
+import ContainerLayoutProperties from '../properties/ContainerLayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
 import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';

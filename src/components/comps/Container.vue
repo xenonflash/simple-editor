@@ -1,25 +1,88 @@
 <template>
   <div class="container" 
+  ref="rootRef"
        :style="containerStyle" 
-       @mousedown.stop="(e) => handleMouseDown(e, props.x || 0, props.y || 0)"
+       @mousedown.stop="onMouseDown"
        @click.stop>
-    <slot></slot>
+    <template v-if="props.comp?.children?.length">
+      <template v-for="(child, index) in props.comp.children" :key="child.id">
+        <div class="child-wrapper" :style="{ zIndex: (child.props?.zIndex || 1) + index }">
+          <Container
+            v-if="child.type === 'container'"
+            :id="child.id"
+            :comp="child"
+            v-bind="getRenderedProps(child)"
+            :scale="props.scale || 1"
+            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            @update="(payload) => emit('update', payload)"
+          />
+          <Text
+            v-else-if="child.type === 'text'"
+            :id="child.id"
+            :content="getRenderedProps(child).content || '新建文本'"
+            :x="getRenderedProps(child).x || 0"
+            :y="getRenderedProps(child).y || 0"
+            v-bind="getRenderedProps(child)"
+            :scale="props.scale || 1"
+            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            @update="(updates) => emit('update', { id: child.id, updates })"
+          />
+          <Button
+            v-else-if="child.type === 'button'"
+            :id="child.id"
+            :x="getRenderedProps(child).x || 0"
+            :y="getRenderedProps(child).y || 0"
+            v-bind="getRenderedProps(child)"
+            :scale="props.scale || 1"
+            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            @update="(updates) => emit('update', { id: child.id, updates })"
+          />
+          <NaiveWrapper
+            v-else-if="child.type && child.type.startsWith('n-')"
+            :comp="child"
+            :scale="props.scale || 1"
+            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            @update="(updates) => emit('update', { id: child.id, updates })"
+          />
+        </div>
+      </template>
+    </template>
+    <slot />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { CompProps } from './base'
+import { computed, ref } from 'vue'
+import type { Comp, CompProps } from './base'
 import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
+import { resolveBindingRef } from '../../utils/bindingRef'
+import { useMeasuredSize } from '../../utils/useMeasuredSize'
+import Text from './Text.vue'
+import Button from './Button.vue'
+import NaiveWrapper from './NaiveWrapper.vue'
+
+defineOptions({ name: 'Container' })
 
 const props = defineProps<{
   id: string
+  comp: Comp
   width?: number
   height?: number
   x?: number
   y?: number
   scale?: number
+  inFlowLayout?: boolean
+
+  widthSizing?: 'fixed' | 'fill' | 'content'
+  heightSizing?: 'fixed' | 'fill' | 'content'
+
+  layoutMode?: 'absolute' | 'default' | 'flex'
+  flexDirection?: 'row' | 'column'
+  justifyContent?: string
+  alignItems?: string
+  gap?: number
+
   borderWidth?: number
   borderStyle?: string
   borderColor?: string
@@ -51,10 +114,15 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update', updates: Partial<CompProps>): void
+  (e: 'update', payload: { id: string; updates: Partial<CompProps> }): void
 }>()
 
 const pageStore = usePageStore()
+const effectiveLayoutMode = computed(() => props.layoutMode || 'absolute')
+
+const rootRef = ref<HTMLElement | null>(null)
+
+useMeasuredSize({ elementRef: rootRef, componentId: props.id })
 
 // 计算组件尺寸
 const componentSize = computed(() => {
@@ -82,16 +150,71 @@ const { handleMouseDown } = useDraggable({
     }
     // 如果组件已选中且没按多选键，保持当前选中状态不变
   },
-  onUpdate: (updates) => emit('update', updates)
+  onUpdate: (updates) => emit('update', { id: props.id, updates })
 })
+
+function onMouseDown(e: MouseEvent) {
+  // 在 flow/flex 模式下：容器本身不做拖拽（但允许选中）
+  if (props.inFlowLayout) {
+    const multiSelect = e.ctrlKey || e.metaKey
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect)
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true)
+    }
+    return
+  }
+
+  // 只在点击容器背景时拖拽，避免拖动子元素时拖动容器
+  if (e.target !== e.currentTarget) {
+    return
+  }
+  handleMouseDown(e, props.x || 0, props.y || 0)
+}
+
+function getRenderedProps(comp: Comp): Record<string, any> {
+  const raw = { ...(comp.props || {}) }
+  if (comp.bindings) {
+    for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
+      if (typeof bindingRef !== 'string' || !bindingRef) continue
+      raw[propName] = resolveBindingRef(bindingRef, {
+        getVarValue: (name) => pageStore.getVariableValue(name),
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
+      })
+    }
+  }
+  return raw
+}
 
 // 计算容器样式
 const containerStyle = computed(() => {
   const style: Record<string, string> = {
-    left: `${props.x || 0}px`,
-    top: `${props.y || 0}px`,
-    width: `${props.width || 100}px`,
-    height: `${props.height || 100}px`
+    position: props.inFlowLayout ? 'relative' : 'absolute',
+    width: props.widthSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.x || 0}px)`)
+      : props.widthSizing === 'content'
+        ? 'fit-content'
+        : `${props.width || 100}px`,
+    height: props.heightSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.y || 0}px)`)
+      : props.heightSizing === 'content'
+        ? 'fit-content'
+        : `${props.height || 100}px`,
+    display: effectiveLayoutMode.value === 'flex' ? 'flex' : 'block'
+  }
+
+  if (!props.inFlowLayout) {
+    style.left = `${props.x || 0}px`
+    style.top = `${props.y || 0}px`
+  }
+
+  if (effectiveLayoutMode.value === 'flex') {
+    style.flexDirection = props.flexDirection || 'row'
+    style.justifyContent = props.justifyContent || 'flex-start'
+    style.alignItems = props.alignItems || 'stretch'
+    if (typeof props.gap === 'number') {
+      style.gap = `${props.gap}px`
+    }
   }
 
   // 边框样式
@@ -148,12 +271,13 @@ const containerStyle = computed(() => {
 
 <style scoped>
 .container {
-  position: absolute;
   background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   user-select: none;
   pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.child-wrapper {
+  position: relative;
 }
 </style>

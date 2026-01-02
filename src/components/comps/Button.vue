@@ -1,5 +1,6 @@
 <template>
   <button class="button-comp" 
+          ref="buttonRef"
           :style="buttonStyle" 
           @mousedown.stop="handleMouseDown"
           @click.stop>
@@ -8,10 +9,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { CompProps } from './base'
 import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
+import { useMeasuredSize } from '../../utils/useMeasuredSize'
 
 const props = defineProps<{
   id: string;
@@ -20,6 +22,8 @@ const props = defineProps<{
   y: number;
   width?: number;
   height?: number;
+  widthSizing?: 'fixed' | 'fill' | 'content';
+  heightSizing?: 'fixed' | 'fill' | 'content';
   color?: string;
   backgroundColor?: string;
   borderWidth?: number;
@@ -37,6 +41,7 @@ const props = defineProps<{
   shadowSpread?: number;
   shadowColor?: string;
   scale?: number;
+  inFlowLayout?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +49,10 @@ const emit = defineEmits<{
 }>()
 
 const pageStore = usePageStore()
+
+const buttonRef = ref<HTMLElement | null>(null)
+
+useMeasuredSize({ elementRef: buttonRef, componentId: props.id })
 
 // 计算组件尺寸
 const componentSize = computed(() => {
@@ -76,15 +85,34 @@ const { handleMouseDown: startDrag } = useDraggable({
 
 // 处理鼠标按下事件
 function handleMouseDown(e: MouseEvent) {
+  if (props.inFlowLayout) {
+    const multiSelect = e.ctrlKey || e.metaKey;
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect);
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true);
+    }
+    return;
+  }
   startDrag(e, props.x, props.y);
 }
 
 // 计算按钮样式
 const buttonStyle = computed(() => {
   return {
-    transform: `translate(${props.x}px, ${props.y}px)`,
-    width: `${props.width || 100}px`,
-    height: `${props.height || 32}px`,
+    position: props.inFlowLayout ? 'relative' : 'absolute',
+    transform: props.inFlowLayout ? 'none' : `translate(${props.x}px, ${props.y}px)`,
+    width: props.widthSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.x}px)`)
+      : props.widthSizing === 'content'
+        ? 'fit-content'
+        : `${props.width || 100}px`,
+    height: props.heightSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${props.y}px)`)
+      : props.heightSizing === 'content'
+        ? 'fit-content'
+        : `${props.height || 32}px`,
+    cursor: props.inFlowLayout ? 'default' : 'move',
     color: props.color || '#333',
     backgroundColor: props.backgroundColor || '#fff',
     borderWidth: `${props.borderWidth || 1}px`,
@@ -101,13 +129,12 @@ const buttonStyle = computed(() => {
     boxShadow: props.shadowColor ? 
       `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 
       'none'
-  };
+  } as any;
 });
 </script>
 
 <style scoped>
 .button-comp {
-  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -34,26 +34,18 @@ export const useSnaplineStore = defineStore('snapline', () => {
   // 吸附阈值
   const threshold = 5
   
-  // 画布尺寸
-  const canvasWidth = 800
-  const canvasHeight = 600
+  // 画布尺寸（由 Board 同步，避免硬编码）
+  const canvasWidth = ref(800)
+  const canvasHeight = ref(600)
   
   // 计算吸附线
   const snapLines = computed<SnapLine[]>(() => {
-    console.log('Computing snap lines:', {
-      draggingComponent: draggingComponent.value,
-      allComponentsCount: allComponents.value.length
-    })
-    
     if (!draggingComponent.value) {
-      console.log('No dragging component, returning empty lines')
       return []
     }
     
     const lines: SnapLine[] = []
     const dragging = draggingComponent.value
-    
-    console.log('Dragging component:', dragging)
     
     // 拖拽组件的关键点
     const dragPoints = {
@@ -114,15 +106,17 @@ export const useSnaplineStore = defineStore('snapline', () => {
       })
     
     // 与画布边界对齐
+    const w = canvasWidth.value
+    const h = canvasHeight.value
     const canvasLines = [
       // 垂直边界线
-      { key: 'left', value: 0, range: [0, canvasHeight] },
-      { key: 'right', value: canvasWidth, range: [0, canvasHeight] },
-      { key: 'centerX', value: canvasWidth / 2, range: [0, canvasHeight] },
+      { key: 'left', value: 0, range: [0, h] },
+      { key: 'right', value: w, range: [0, h] },
+      { key: 'centerX', value: w / 2, range: [0, h] },
       // 水平边界线
-      { key: 'top', value: 0, range: [0, canvasWidth] },
-      { key: 'bottom', value: canvasHeight, range: [0, canvasWidth] },
-      { key: 'centerY', value: canvasHeight / 2, range: [0, canvasWidth] }
+      { key: 'top', value: 0, range: [0, w] },
+      { key: 'bottom', value: h, range: [0, w] },
+      { key: 'centerY', value: h / 2, range: [0, w] }
     ]
     
     canvasLines.forEach(({ key, value, range }) => {
@@ -150,7 +144,6 @@ export const useSnaplineStore = defineStore('snapline', () => {
       }
     })
     
-    console.log('Generated snap lines:', lines)
     return lines
   })
   
@@ -226,6 +219,8 @@ export const useSnaplineStore = defineStore('snapline', () => {
     }
     
     // 检查与画布边界的吸附
+    const w = canvasWidth.value
+    const h = canvasHeight.value
     if (!hasSnappedX) {
       // 左边界
       if (Math.abs(dragPoints.left - 0) <= threshold) {
@@ -233,13 +228,13 @@ export const useSnaplineStore = defineStore('snapline', () => {
         hasSnappedX = true
       }
       // 右边界
-      else if (Math.abs(dragPoints.right - canvasWidth) <= threshold) {
-        snappedX = canvasWidth - width
+      else if (Math.abs(dragPoints.right - w) <= threshold) {
+        snappedX = w - width
         hasSnappedX = true
       }
       // 水平中心线
-      else if (Math.abs(dragPoints.centerX - canvasWidth / 2) <= threshold) {
-        snappedX = canvasWidth / 2 - width / 2
+      else if (Math.abs(dragPoints.centerX - w / 2) <= threshold) {
+        snappedX = w / 2 - width / 2
         hasSnappedX = true
       }
     }
@@ -251,13 +246,13 @@ export const useSnaplineStore = defineStore('snapline', () => {
         hasSnappedY = true
       }
       // 下边界
-      else if (Math.abs(dragPoints.bottom - canvasHeight) <= threshold) {
-        snappedY = canvasHeight - height
+      else if (Math.abs(dragPoints.bottom - h) <= threshold) {
+        snappedY = h - height
         hasSnappedY = true
       }
       // 垂直中心线
-      else if (Math.abs(dragPoints.centerY - canvasHeight / 2) <= threshold) {
-        snappedY = canvasHeight / 2 - height / 2
+      else if (Math.abs(dragPoints.centerY - h / 2) <= threshold) {
+        snappedY = h / 2 - height / 2
         hasSnappedY = true
       }
     }
@@ -285,13 +280,23 @@ export const useSnaplineStore = defineStore('snapline', () => {
   const updateAllComponents = (components: Comp[]) => {
     allComponents.value = components
   }
+
+  const updateCanvasSize = (size: { width: number; height: number }) => {
+    const width = Number.isFinite(size.width) ? Math.max(1, size.width) : 800
+    const height = Number.isFinite(size.height) ? Math.max(1, size.height) : 600
+    canvasWidth.value = width
+    canvasHeight.value = height
+  }
   
   return {
     draggingComponent,
     allComponents,
+    canvasWidth,
+    canvasHeight,
     snapLines,
     calculateSnapPosition, // 新增
     updateDraggingComponent,
-    updateAllComponents
+    updateAllComponents,
+    updateCanvasSize
   }
 })

@@ -1,5 +1,6 @@
 <template>
   <div class="text-comp" 
+  ref="rootRef"
        :style="style"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">
@@ -25,6 +26,7 @@ import type { CompProps } from './base'
 import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
 import { history, ActionType } from '../../utils/history'
+import { useMeasuredSize } from '../../utils/useMeasuredSize'
 
 const props = defineProps<{
   id: string;
@@ -33,7 +35,10 @@ const props = defineProps<{
   y: number;
   width?: number;
   height?: number;
+  widthSizing?: 'fixed' | 'fill' | 'content';
+  heightSizing?: 'fixed' | 'fill' | 'content';
   scale: number;
+  inFlowLayout?: boolean;
   color?: string;
   fontSize?: number;
   fontWeight?: number | string;
@@ -57,6 +62,10 @@ const emit = defineEmits<{
 }>()
 
 const pageStore = usePageStore()
+
+const rootRef = ref<HTMLElement | null>(null)
+
+useMeasuredSize({ elementRef: rootRef, componentId: props.id })
 
 // 计算是否选中
 const isSelected = computed(() => {
@@ -111,6 +120,15 @@ const { handleMouseDown: dragMouseDown } = useDraggable({
 
 // 统一的鼠标按下处理
 function handleMouseDown(e: MouseEvent) {
+  if (props.inFlowLayout) {
+    const multiSelect = e.ctrlKey || e.metaKey;
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect);
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true);
+    }
+    return;
+  }
   if (!isEditing.value) {
     dragMouseDown(e, props.x, props.y)
   }
@@ -191,7 +209,8 @@ function cancelEditing() {
 // 样式计算
 const style = computed(() => {
   const styleObj: any = {
-    transform: `translate(${currentX.value}px, ${currentY.value}px)`,
+    transform: props.inFlowLayout ? 'none' : `translate(${currentX.value}px, ${currentY.value}px)`,
+    position: props.inFlowLayout ? 'relative' : 'absolute',
     color: props.color || '#000000',
     fontSize: props.fontSize ? `${props.fontSize}px` : '14px',
     fontWeight: props.fontWeight || 'normal',
@@ -203,9 +222,31 @@ const style = computed(() => {
     borderColor: props.borderColor || '#000000',
     boxShadow: props.shadowColor ? `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 'none',
   };
+
+  // 容器内 flow/flex：不走绝对定位
+  if (props.inFlowLayout) {
+    styleObj.left = 'auto';
+    styleObj.top = 'auto';
+    styleObj.cursor = 'default';
+  }
+
+  // 宽高 sizing（优先级高于 widthMode/autoHeight）
+  if (props.widthSizing === 'fill') {
+    styleObj.width = props.inFlowLayout ? '100%' : `calc(100% - ${currentX.value}px)`;
+  } else if (props.widthSizing === 'content') {
+    styleObj.width = 'fit-content';
+  }
+
+  if (props.heightSizing === 'fill') {
+    styleObj.height = props.inFlowLayout ? '100%' : `calc(100% - ${currentY.value}px)`;
+  } else if (props.heightSizing === 'content') {
+    styleObj.height = 'fit-content';
+  }
   
   // 宽度处理
-  if (props.widthMode === 'auto') {
+  if (props.widthSizing && props.widthSizing !== 'fixed') {
+    // handled above
+  } else if (props.widthMode === 'auto') {
     styleObj.width = 'auto';
     styleObj.minWidth = '20px';
   } else {
@@ -213,7 +254,9 @@ const style = computed(() => {
   }
   
   // 高度处理
-  if (props.autoHeight) {
+  if (props.heightSizing && props.heightSizing !== 'fixed') {
+    // handled above
+  } else if (props.autoHeight) {
     styleObj.height = 'auto';
     styleObj.minHeight = '20px';
   } else {
@@ -247,7 +290,6 @@ watch(() => props.height, (newHeight) => {
 
 <style scoped>
 .text-comp {
-  position: absolute;
   cursor: move;
   white-space: pre-wrap;
   word-break: break-word;

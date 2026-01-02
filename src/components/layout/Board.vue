@@ -20,6 +20,7 @@
                ref="canvasRef"
                @dragover="handleDragOver"
                @drop="handleDrop"
+               @dragleave="handleDragLeave"
                @mousedown.stop="handleCanvasClick">
             <div class="canvas-content"
                  :style="contentStyle">
@@ -30,6 +31,12 @@
                 :offset="panOffset"
                 :canvas-ref="canvasRef"
               />
+
+              <!-- 拖动已有组件：600ms 激活容器拖入模式 + 影子预览 -->
+              <DropPreviewBox />
+
+              <!-- 从面板拖入新组件：虚拟落地框（保留旧逻辑） -->
+              <div v-if="dropIndicator.show" class="drop-indicator" :style="dropIndicatorStyle" />
               
               <!-- 组件渲染 - 提高层级 -->
               <template v-for="(comp, index) in props.components"
@@ -39,9 +46,10 @@
                      @contextmenu.prevent="showContextMenu($event, comp)">
                   <Container v-if="comp.type === 'container'"
                             :id="comp.id"
+                        :comp="comp"
                       v-bind="getRenderedProps(comp)"
                             :scale="scale"
-                            @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                        @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
                   <Text v-else-if="comp.type === 'text'"
                         :id="comp.id"
                   :content="getRenderedProps(comp).content || '新建文本'"
@@ -141,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, provide } from 'vue';
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
@@ -161,6 +169,8 @@ import { usePageStore } from '../../stores/page';
 import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
 import { resolveBindingRef } from '../../utils/bindingRef';
+import DropPreviewBox from './DropPreviewBox.vue'
+import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from './useDropPreviewStore'
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -175,6 +185,7 @@ const emit = defineEmits<{
   (e: 'select', id: string | null): void;
   (e: 'update', compOrComps: Comp | Comp[]): void;
   (e: 'add', comp: Comp): void;
+  (e: 'addToContainer', payload: { containerId: string; comp: Comp }): void;
   (e: 'delete', id: string): void;
 }>();
 
@@ -195,7 +206,7 @@ const renderedPropsMap = computed(() => {
   function resolveBinding(bindingRef: string): any {
     return resolveBindingRef(bindingRef, {
       getVarValue: (name) => pageStore.getVariableValue(name),
-      getCompProp: (componentId, propKey) => components.find(c => c.id === componentId)?.props?.[propKey]
+      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
     })
   }
 
@@ -215,6 +226,29 @@ const renderedPropsMap = computed(() => {
 
 function getRenderedProps(comp: Comp): Record<string, any> {
   return renderedPropsMap.value.get(comp.id) || comp.props || {};
+}
+
+function getContainerHits(): ContainerHit[] {
+  return props.components
+    .filter((c) => c.type === 'container')
+    .map((c) => {
+      const p: any = getRenderedProps(c)
+      return {
+        id: c.id,
+        rect: {
+          x: p.x || 0,
+          y: p.y || 0,
+          width: p.width || 100,
+          height: p.height || 100
+        },
+        zIndex: p.zIndex || 1,
+        layoutMode: (p.layoutMode || 'absolute') as any,
+        paddingTop: p.paddingTop || 0,
+        paddingRight: p.paddingRight || 0,
+        paddingBottom: p.paddingBottom || 0,
+        paddingLeft: p.paddingLeft || 0
+      } as ContainerHit
+    })
 }
 
 // 使用页面的动态尺寸
@@ -251,6 +285,25 @@ function isNaiveComp(type: CompType) {
 // 画布偏移（画布左上角相对于wrapper的位置）
 const panOffset = ref({ x: 0, y: 0 });
 
+const dropPreviewStore = useDropPreviewStore({
+  wrapperRef,
+  scale,
+  panOffset,
+  getContainers: getContainerHits,
+  canDragIntoContainer: (componentId) => pageStore.getComponentById(componentId)?.type !== 'container',
+  hoverActivateMs: 400,
+  onMoveToContainer: (payload) => {
+    const ok = pageStore.moveComponentToContainer(payload.componentId, payload.containerId, {
+      layoutMode: payload.layoutMode,
+      localX: payload.localX,
+      localY: payload.localY
+    })
+    if (ok) pageStore.selectComponent(payload.componentId)
+  }
+})
+
+provide(DROP_PREVIEW_STORE_KEY, dropPreviewStore)
+
 // 右键菜单状态
 const contextMenu = ref({
   show: false,
@@ -273,6 +326,15 @@ const hasSelection = computed(() => {
 watch(() => props.components, (newComponents) => {
   snaplineStore.updateAllComponents(newComponents);
 }, { immediate: true, deep: true });
+
+// 同步画布尺寸到吸附系统（避免 snapline 仍使用硬编码尺寸）
+watch(
+  [canvasWidth, canvasHeight],
+  ([w, h]) => {
+    snaplineStore.updateCanvasSize({ width: w, height: h })
+  },
+  { immediate: true }
+)
 
 // 监听页面尺寸变化，重新初始化画布
 watch([canvasWidth, canvasHeight], () => {
@@ -462,8 +524,8 @@ function handleSelect(id: string) {
 }
 
 // 处理组件位置更新
-function handleUpdatePosition(id: string, updates: { x?: number; y?: number; width?: number; height?: number }) {
-  const comp = props.components.find(c => c.id === id);
+function handleUpdatePosition(id: string, updates: Record<string, any>) {
+  const comp = pageStore.getComponentById(id);
   if (!comp) return;
 
   const oldProps = { ...comp.props };
@@ -495,6 +557,34 @@ function handleDragOver(e: DragEvent) {
   if (e.dataTransfer) {
     e.dataTransfer.dropEffect = 'copy';
   }
+
+  const componentType = e.dataTransfer?.getData('componentType') as CompType;
+  if (!componentType) {
+    dropIndicator.value.show = false;
+    dropIndicator.value.containerId = null;
+    return;
+  }
+
+  const canvasPos = screenToCanvas(e.clientX, e.clientY);
+  const hit = findContainerHit(canvasPos.x, canvasPos.y);
+  if (hit) {
+    dropIndicator.value = {
+      show: true,
+      containerId: hit.containerId,
+      x: hit.x,
+      y: hit.y,
+      width: hit.width,
+      height: hit.height
+    };
+  } else {
+    dropIndicator.value.show = false;
+    dropIndicator.value.containerId = null;
+  }
+}
+
+function handleDragLeave() {
+  dropIndicator.value.show = false;
+  dropIndicator.value.containerId = null;
 }
 
 // 获取下一个可用的zIndex
@@ -528,6 +618,36 @@ function handleDrop(e: DragEvent) {
   // 使用统一的坐标转换函数
   const canvasPos = screenToCanvas(e.clientX, e.clientY);
 
+  const hit = findContainerHit(canvasPos.x, canvasPos.y);
+  if (hit) {
+    const container = pageStore.getComponentById(hit.containerId);
+    const layoutMode = (container?.props as any)?.layoutMode || 'absolute';
+
+    const newComp = createComp(componentType, `新建${componentType}`);
+    if (layoutMode === 'absolute') {
+      newComp.props.x = canvasPos.x - hit.x;
+      newComp.props.y = canvasPos.y - hit.y;
+    } else {
+      newComp.props.x = 0;
+      newComp.props.y = 0;
+    }
+    newComp.props.zIndex = 1;
+
+    history.addAction({
+      type: ActionType.ADD,
+      componentId: newComp.id,
+      data: {
+        after: newComp,
+        parentContainerId: hit.containerId
+      } as any
+    });
+
+    emit('addToContainer', { containerId: hit.containerId, comp: newComp });
+    dropIndicator.value.show = false;
+    dropIndicator.value.containerId = null;
+    return;
+  }
+
   // 创建新组件
   const newComp = createComp(componentType, `新建${componentType}`);
   newComp.props.x = canvasPos.x;
@@ -545,6 +665,52 @@ function handleDrop(e: DragEvent) {
   
   // 发出添加组件事件
   emit('add', newComp);
+
+  dropIndicator.value.show = false;
+  dropIndicator.value.containerId = null;
+}
+
+const dropIndicator = ref<{ show: boolean; containerId: string | null; x: number; y: number; width: number; height: number }>({
+  show: false,
+  containerId: null,
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0
+});
+
+const dropIndicatorStyle = computed(() => ({
+  position: 'absolute',
+  left: `${dropIndicator.value.x}px`,
+  top: `${dropIndicator.value.y}px`,
+  width: `${dropIndicator.value.width}px`,
+  height: `${dropIndicator.value.height}px`,
+  border: '2px dashed #1890ff',
+  background: 'rgba(24, 144, 255, 0.06)',
+  pointerEvents: 'none',
+  boxSizing: 'border-box'
+} as any));
+
+function findContainerHit(canvasX: number, canvasY: number): { containerId: string; x: number; y: number; width: number; height: number } | null {
+  const candidates = props.components
+    .filter((c) => c.type === 'container')
+    .map((c) => {
+      const p: any = getRenderedProps(c);
+      return {
+        id: c.id,
+        x: p.x || 0,
+        y: p.y || 0,
+        width: p.width || 100,
+        height: p.height || 100,
+        z: p.zIndex || 1
+      };
+    })
+    .filter((r) => canvasX >= r.x && canvasX <= r.x + r.width && canvasY >= r.y && canvasY <= r.y + r.height)
+    .sort((a, b) => b.z - a.z);
+
+  const top = candidates[0];
+  if (!top) return null;
+  return { containerId: top.id, x: top.x, y: top.y, width: top.width, height: top.height };
 }
 
 // 初始化画布居中
@@ -620,13 +786,15 @@ const canRedo = computed(() => history.canRedo());
 function deleteSelectedComponent() {
   if (pageStore.selectedComps.length > 0) {
     pageStore.selectedComps.forEach(comp => {
+      const parentContainerId = pageStore.findParentContainerId(comp.id);
       // 记录删除操作
       history.addAction({
         type: ActionType.DELETE,
         componentId: comp.id,
         data: {
-          before: comp
-        }
+          before: comp,
+          parentContainerId: typeof parentContainerId === 'string' ? parentContainerId : null
+        } as any
       });
       
       // 发出删除事件
@@ -645,11 +813,16 @@ function undo() {
         break;
       case ActionType.DELETE:
         if (action.data.before) {
-          emit('add', action.data.before as Comp);
+          const parentContainerId = (action.data as any).parentContainerId as string | null | undefined;
+          if (parentContainerId) {
+            emit('addToContainer', { containerId: parentContainerId, comp: action.data.before as Comp });
+          } else {
+            emit('add', action.data.before as Comp);
+          }
         }
         break;
       case ActionType.UPDATE:
-        const comp = props.components.find(comp => comp.id === action.componentId);
+        const comp = pageStore.getComponentById(action.componentId);
         if (comp && action.data.before) {
           emit('update', {
             ...comp,
@@ -668,14 +841,19 @@ function redo() {
     switch (action.type) {
       case ActionType.ADD:
         if (action.data.after) {
-          emit('add', action.data.after as Comp);
+          const parentContainerId = (action.data as any).parentContainerId as string | null | undefined;
+          if (parentContainerId) {
+            emit('addToContainer', { containerId: parentContainerId, comp: action.data.after as Comp });
+          } else {
+            emit('add', action.data.after as Comp);
+          }
         }
         break;
       case ActionType.DELETE:
         emit('delete', action.componentId);
         break;
       case ActionType.UPDATE:
-        const comp = props.components.find(comp => comp.id === action.componentId);
+        const comp = pageStore.getComponentById(action.componentId);
         if (comp && action.data.after) {
           emit('update', {
             ...comp,

@@ -2,7 +2,7 @@
   <div class="naive-wrapper"
        ref="wrapperRef"
        :style="wrapperStyle"
-       @mousedown.stop="(e) => handleMouseDown(e, props.comp.props.x || 0, props.comp.props.y || 0)"
+  @mousedown.stop="onMouseDown"
        @click.stop>
     <component :is="componentMap[comp.type]" 
                v-bind="naiveProps"
@@ -111,6 +111,7 @@ import { resolveBindingRef } from '../../utils/bindingRef'
 const props = defineProps<{
   comp: Comp;
   scale: number;
+  inFlowLayout?: boolean;
 }>();
 
 const emit = defineEmits(['update']);
@@ -159,9 +160,7 @@ const effectiveProps = computed(() => {
       if (typeof bindingRef !== 'string' || !bindingRef) return;
       rawProps[propName] = resolveBindingRef(bindingRef, {
         getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => (pageStore as any).getComponentProp
-          ? (pageStore as any).getComponentProp(componentId, propKey)
-          : pageStore.currentPage?.components?.find(c => c.id === componentId)?.props?.[propKey]
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
       })
     })
   }
@@ -210,19 +209,31 @@ const textContentComponents = [
 
 // 包装器样式 (处理定位和尺寸)
 const wrapperStyle = computed(() => {
+  const widthSizing = (props.comp.props as any).widthSizing as ('fixed' | 'fill' | 'content' | undefined);
+  const heightSizing = (props.comp.props as any).heightSizing as ('fixed' | 'fill' | 'content' | undefined);
+  const x = props.comp.props.x || 0
+  const y = props.comp.props.y || 0
   return {
-    position: 'absolute',
-    left: `${props.comp.props.x || 0}px`,
-    top: `${props.comp.props.y || 0}px`,
-    width: props.comp.props.width ? `${props.comp.props.width}px` : 'auto',
-    height: props.comp.props.height ? `${props.comp.props.height}px` : 'auto',
+    position: props.inFlowLayout ? 'relative' : 'absolute',
+    left: props.inFlowLayout ? 'auto' : `${x}px`,
+    top: props.inFlowLayout ? 'auto' : `${y}px`,
+    width: widthSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${x}px)`)
+      : widthSizing === 'content'
+        ? 'fit-content'
+        : (props.comp.props.width ? `${props.comp.props.width}px` : 'auto'),
+    height: heightSizing === 'fill'
+      ? (props.inFlowLayout ? '100%' : `calc(100% - ${y}px)`)
+      : heightSizing === 'content'
+        ? 'fit-content'
+        : (props.comp.props.height ? `${props.comp.props.height}px` : 'auto'),
     zIndex: props.comp.props.zIndex || 1,
     // 选中时的样式
     // outline: pageStore.isComponentSelected(props.comp.id) ? '2px solid #1890ff' : 'none',
     cursor: 'move',
     // 确保 wrapper 能够适应内容大小
     display: 'inline-block'
-  };
+  } as any;
 });
 
 // 更新组件尺寸到 store
@@ -322,6 +333,19 @@ const { handleMouseDown } = useDraggable({
   },
   onUpdate: (updates) => emit('update', updates)
 });
+
+function onMouseDown(e: MouseEvent) {
+  if (props.inFlowLayout) {
+    const multiSelect = e.ctrlKey || e.metaKey;
+    if (!pageStore.isComponentSelected(props.comp.id)) {
+      pageStore.selectComponent(props.comp.id, multiSelect);
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.comp.id, true);
+    }
+    return;
+  }
+  handleMouseDown(e, props.comp.props.x || 0, props.comp.props.y || 0);
+}
 </script>
 
 <style scoped>

@@ -62,6 +62,9 @@ function calculateTextHeight(text: string, width: number, fontSize: number, font
 
 // 获取组件的实际尺寸（考虑自动尺寸）
 function getComponentActualSize(comp: Comp): { width: number; height: number } {
+  const widthSizing = (comp.props as any).widthSizing as ('fixed' | 'fill' | 'content' | undefined)
+  const heightSizing = (comp.props as any).heightSizing as ('fixed' | 'fill' | 'content' | undefined)
+
   let width = comp.props.width || 100
   let height = comp.props.height || 100
   
@@ -91,16 +94,24 @@ function getComponentActualSize(comp: Comp): { width: number; height: number } {
   
   // 处理 Naive UI 组件的默认尺寸
   if (comp.type.startsWith('n-')) {
-    // 优先使用显式设置的宽高（如果存在）
-    if (comp.props.width) width = comp.props.width
+    // 非 fixed sizing 时，优先用测量值（即使存在显式 width/height）
+    if (widthSizing && widthSizing !== 'fixed' && comp.props._measuredWidth) width = comp.props._measuredWidth
+    else if (comp.props.width) width = comp.props.width
     else if (comp.props._measuredWidth) width = comp.props._measuredWidth
 
-    if (comp.props.height) height = comp.props.height
+    if (heightSizing && heightSizing !== 'fixed' && comp.props._measuredHeight) height = comp.props._measuredHeight
+    else if (comp.props.height) height = comp.props.height
     else if (comp.props._measuredHeight) height = comp.props._measuredHeight
 
     // 如果没有显式设置宽高且没有测量值，使用默认值
     if (!width) width = 120;
     if (!height) height = 34;
+  }
+
+  // 非 Naive 组件：若 sizing 非 fixed 且存在测量值，也优先使用
+  if (!comp.type.startsWith('n-')) {
+    if (widthSizing && widthSizing !== 'fixed' && comp.props._measuredWidth) width = comp.props._measuredWidth
+    if (heightSizing && heightSizing !== 'fixed' && comp.props._measuredHeight) height = comp.props._measuredHeight
   }
   
   return { width, height }
@@ -116,8 +127,9 @@ export const useControlStore = defineStore('control', () => {
     
     selectedComps.forEach(comp => {
       const { width, height } = getComponentActualSize(comp)
-      const x = comp.props.x || 0
-      const y = comp.props.y || 0
+      const pos = pageStore.getComponentCanvasPosition(comp.id)
+      const x = pos?.x ?? (comp.props.x || 0)
+      const y = pos?.y ?? (comp.props.y || 0)
       
       // 1. 选中边框
       result.push({

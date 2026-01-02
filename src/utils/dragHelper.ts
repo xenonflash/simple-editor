@@ -37,7 +37,16 @@ export function useDraggable(options: DragOptions = {}) {
   // 新增：导入 pageStore
   const pageStore = usePageStore()
 
+  // 重要：必须用稳定的函数引用绑定/解绑 window 事件，否则多次拖动会累积监听器导致重复更新和运行时异常
+  let groupStartPositions: Map<string, { x: number; y: number }> | null = null
+
+  function onWindowMouseMove(e: MouseEvent) {
+    handleMouseMove(e, groupStartPositions || undefined)
+  }
+
   function handleMouseDown(e: MouseEvent, currentX: number, currentY: number) {
+    if (dragState.value.isDragging) return
+
     dragState.value.isDragging = true
     dragState.value.startX = e.clientX
     dragState.value.startY = e.clientY
@@ -46,19 +55,21 @@ export function useDraggable(options: DragOptions = {}) {
 
     // 新增：记录群组拖拽的初始位置
     const selectedComponents = pageStore.selectedComps
-    const groupStartPositions = new Map()
-    
     if (selectedComponents.length > 1 && options.componentId) {
+      const map = new Map<string, { x: number; y: number }>()
       // 多选状态下，记录所有选中组件的初始位置
       selectedComponents.forEach(comp => {
-        groupStartPositions.set(comp.id, {
+        map.set(comp.id, {
           x: comp.props.x || 0,
           y: comp.props.y || 0
         })
       })
+      groupStartPositions = map
+    } else {
+      groupStartPositions = null
     }
 
-    window.addEventListener('mousemove', (e) => handleMouseMove(e, groupStartPositions))
+    window.addEventListener('mousemove', onWindowMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
     options.onDragStart?.()
   }
@@ -145,8 +156,10 @@ export function useDraggable(options: DragOptions = {}) {
   function handleMouseUp() {
     if (dragState.value.isDragging) {
       dragState.value.isDragging = false
-      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mousemove', onWindowMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
+
+      groupStartPositions = null
       
       snaplineStore.updateDraggingComponent(null)
       options.onDragEnd?.()

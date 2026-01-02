@@ -50,6 +50,17 @@ function handleAddComponent(comp: Comp) {
   pageStore.selectComponent(comp.id);
 }
 
+function handleAddComponentToContainer(payload: { containerId: string; comp: Comp }) {
+  const ok = pageStore.addComponentToContainer(payload.containerId, payload.comp);
+  if (ok) {
+    pageStore.selectComponent(payload.comp.id);
+  } else {
+    // fallback: 如果容器不存在，退化为添加到顶层
+    pageStore.addComponentToCurrentPage(payload.comp);
+    pageStore.selectComponent(payload.comp.id);
+  }
+}
+
 // 处理删除组件
 function handleDeleteComponent(id: string) {
   console.log('Delete component:', id);
@@ -66,6 +77,7 @@ function handleDeleteComponent(id: string) {
              @select="handleSelect"
              @update="handleUpdate"
              @add="handleAddComponent"
+              @addToContainer="handleAddComponentToContainer"
              @delete="handleDeleteComponent" />
       <PropertiesPanel :component="selectedComponent"
                       @update="handleUpdate"

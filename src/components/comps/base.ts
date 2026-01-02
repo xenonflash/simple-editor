@@ -109,6 +109,8 @@ interface BaseProps {
   y: number;
   width?: number;
   height?: number;
+  widthSizing?: 'fixed' | 'fill' | 'content';
+  heightSizing?: 'fixed' | 'fill' | 'content';
   borderWidth?: number;
   borderStyle?: string;
   borderColor?: string;
@@ -127,6 +129,8 @@ export function createComp(type: CompType, name: string): Comp {
     y: 0,
     width: 200,
     height: 100,
+    widthSizing: 'fixed',
+    heightSizing: 'fixed',
     borderWidth: 0,
     borderStyle: 'none',
     borderColor: '#000000',
@@ -170,6 +174,13 @@ export function createComp(type: CompType, name: string): Comp {
           ...baseProps,
           width: 200,
           height: 200,
+          widthSizing: 'fixed',
+          heightSizing: 'fixed',
+          layoutMode: 'absolute',
+          flexDirection: 'row',
+          justifyContent: 'flex-start',
+          alignItems: 'stretch',
+          gap: 0,
           borderWidth: 1,
           borderStyle: 'solid',
           borderColor: '#e0e0e0',

@@ -59,6 +59,87 @@ export const usePageStore = defineStore('page', () => {
     return currentPage.value?.components || [];
   });
 
+  function findComponentInTree(componentId: string, list?: Comp[]): Comp | null {
+    const comps = list || (currentPage.value?.components || [])
+    for (const c of comps) {
+      if (c.id === componentId) return c
+      if (c.children && c.children.length > 0) {
+        const hit = findComponentInTree(componentId, c.children)
+        if (hit) return hit
+      }
+    }
+    return null
+  }
+
+  function findParentContainerId(componentId: string, list?: Comp[], parentContainerId: string | null = null): string | null | undefined {
+    const comps = list || (currentPage.value?.components || [])
+    for (const c of comps) {
+      if (c.id === componentId) return parentContainerId
+      if (c.children && c.children.length > 0) {
+        const nextParent = c.type === 'container' ? c.id : parentContainerId
+        const hit = findParentContainerId(componentId, c.children, nextParent)
+        if (hit !== undefined) return hit
+      }
+    }
+    return undefined
+  }
+
+  function getComponentCanvasPosition(componentId: string): { x: number; y: number } | null {
+    const comp = findComponentInTree(componentId)
+    if (!comp) return null
+
+    let x = comp.props?.x || 0
+    let y = comp.props?.y || 0
+
+    // 当组件位于绝对布局容器内部时，props.x/y 是相对于容器内容区的 local 坐标；需要叠加父容器的 canvas 坐标 + padding。
+    // 对于非 absolute 的容器布局（default/flex），子组件位置由布局决定，这里无法可靠计算，先保持现状（由 UI/后续迭代处理）。
+    let parentId = findParentContainerId(componentId)
+    while (parentId) {
+      const parent = findComponentInTree(parentId)
+      if (!parent) break
+
+      const parentLayoutMode = parent.props?.layoutMode || 'absolute'
+      if (parentLayoutMode === 'absolute') {
+        const px = parent.props?.x || 0
+        const py = parent.props?.y || 0
+        const padL = parent.props?.paddingLeft || 0
+        const padT = parent.props?.paddingTop || 0
+        x += px + padL
+        y += py + padT
+      }
+
+      parentId = findParentContainerId(parentId)
+    }
+
+    return { x, y }
+  }
+
+  function mapComponentTree(list: Comp[], mapper: (c: Comp) => Comp | null): { next: Comp[]; changed: boolean } {
+    let changed = false
+    const next = list
+      .map((c) => {
+        const mapped = mapper(c)
+        if (mapped === null) {
+          changed = true
+          return null
+        }
+        if (mapped && mapped !== c) changed = true
+
+        const base = mapped || c
+        if (base.children && base.children.length > 0) {
+          const childRes = mapComponentTree(base.children, mapper)
+          if (childRes.changed) {
+            changed = true
+            return { ...base, children: childRes.next }
+          }
+        }
+        return base
+      })
+      .filter(Boolean) as Comp[]
+
+    return { next, changed }
+  }
+
   const selectedCompIds = computed(() => {
     return selectedComps.value.map(comp => comp.id);
   });
@@ -158,7 +239,7 @@ export const usePageStore = defineStore('page', () => {
       return;
     }
 
-    const component = currentComponents.value.find(comp => comp.id === componentId);
+    const component = findComponentInTree(componentId);
     if (!component) return;
 
     if (multiSelect) {
@@ -174,9 +255,9 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function selectComponents(componentIds: string[]) {
-    const components = currentComponents.value.filter(comp => 
-      componentIds.includes(comp.id)
-    );
+    const components = componentIds
+      .map((id) => findComponentInTree(id))
+      .filter(Boolean) as Comp[]
     selectedComps.value = components;
   }
 
@@ -190,6 +271,13 @@ export const usePageStore = defineStore('page', () => {
 
     currentPage.value.components = components;
     currentPage.value.updatedAt = new Date();
+
+    // 保持选中引用最新
+    if (selectedComps.value.length > 0) {
+      selectedComps.value = selectedComps.value
+        .map((c) => findComponentInTree(c.id, components))
+        .filter(Boolean) as Comp[]
+    }
     return true;
   }
 
@@ -201,14 +289,104 @@ export const usePageStore = defineStore('page', () => {
     return true;
   }
 
+  function addComponentToContainer(containerId: string, component: Comp): boolean {
+    if (!currentPage.value) return false
+    const root = currentPage.value.components
+    const res = mapComponentTree(root, (c) => {
+      if (c.id !== containerId) return c
+      const children = Array.isArray(c.children) ? c.children : []
+      return { ...c, children: [...children, component] }
+    })
+    if (!res.changed) return false
+    currentPage.value.components = res.next
+    currentPage.value.updatedAt = new Date()
+    // 选中引用保持最新
+    if (selectedComps.value.length > 0) {
+      selectedComps.value = selectedComps.value
+        .map((sc) => findComponentInTree(sc.id, res.next))
+        .filter(Boolean) as Comp[]
+    }
+    return true
+  }
+
+  function moveComponentToContainer(
+    componentId: string,
+    containerId: string,
+    options?: {
+      layoutMode?: 'absolute' | 'default' | 'flex'
+      localX?: number
+      localY?: number
+    }
+  ): boolean {
+    if (!currentPage.value) return false
+    if (componentId === containerId) return false
+
+    const dragged = findComponentInTree(componentId)
+    const target = findComponentInTree(containerId)
+    if (!dragged || !target) return false
+
+    // 防止把容器拖进自己的子树
+    if (dragged.type === 'container') {
+      const stack = [...(dragged.children || [])]
+      while (stack.length) {
+        const n = stack.pop()!
+        if (n.id === containerId) return false
+        if (n.children && n.children.length) stack.push(...n.children)
+      }
+    }
+
+    // 1) 从原位置移除
+    let removed: Comp | null = null
+    const removedRes = mapComponentTree(currentPage.value.components, (c) => {
+      if (c.id === componentId) {
+        removed = c
+        return null
+      }
+      return c
+    })
+    if (!removedRes.changed || !removed) return false
+
+    // 2) 根据布局模式更新 props（仅 absolute 需要 local x/y）
+    const nextComp: Comp = (() => {
+      const layoutMode = options?.layoutMode
+      if (layoutMode !== 'absolute') return removed as Comp
+      const nextProps: any = { ...(removed as Comp).props }
+      if (typeof options?.localX === 'number') nextProps.x = options!.localX
+      if (typeof options?.localY === 'number') nextProps.y = options!.localY
+      return { ...(removed as Comp), props: nextProps }
+    })()
+
+    // 3) 插入到目标容器 children（append）
+    const insertedRes = mapComponentTree(removedRes.next, (c) => {
+      if (c.id !== containerId) return c
+      const children = Array.isArray(c.children) ? c.children : []
+      return { ...c, children: [...children, nextComp] }
+    })
+    if (!insertedRes.changed) return false
+
+    currentPage.value.components = insertedRes.next
+    currentPage.value.updatedAt = new Date()
+
+    // 选中引用保持最新
+    if (selectedComps.value.length > 0) {
+      selectedComps.value = selectedComps.value
+        .map((sc) => findComponentInTree(sc.id, insertedRes.next))
+        .filter(Boolean) as Comp[]
+    }
+
+    return true
+  }
+
   function deleteComponentFromCurrentPage(componentId: string): boolean {
     if (!currentPage.value) return false;
 
-    const index = currentPage.value.components.findIndex(c => c.id === componentId);
-    if (index === -1) return false;
-
-    currentPage.value.components.splice(index, 1);
-    currentPage.value.updatedAt = new Date();
+    const res = mapComponentTree(currentPage.value.components, (c) => {
+      if (c.id === componentId) return null
+      return c
+    })
+    if (!res.changed) return false
+    currentPage.value.components = res.next
+    currentPage.value.updatedAt = new Date()
     
     const selectedIndex = selectedComps.value.findIndex(comp => comp.id === componentId);
     if (selectedIndex >= 0) {
@@ -221,47 +399,43 @@ export const usePageStore = defineStore('page', () => {
   function updateComponentInCurrentPage(component: Comp): boolean {
     if (!currentPage.value) return false;
 
-    const index = currentPage.value.components.findIndex(c => c.id === component.id);
-    if (index === -1) return false;
+    const res = mapComponentTree(currentPage.value.components, (c) => {
+      if (c.id !== component.id) return c
+      return {
+        ...c,
+        ...component,
+        props: { ...(c.props || {}), ...(component.props || {}) }
+      }
+    })
+    if (!res.changed) return false
+    currentPage.value.components = res.next
+    currentPage.value.updatedAt = new Date()
 
-    const updatedComponent = {
-      ...currentPage.value.components[index],
-      ...component,
-      props: { ...currentPage.value.components[index].props, ...component.props }
-    };
-    
-    currentPage.value.components.splice(index, 1, updatedComponent);
-    currentPage.value.updatedAt = new Date();
-    
-    const selectedIndex = selectedComps.value.findIndex(comp => comp.id === component.id);
-    if (selectedIndex >= 0) {
-      selectedComps.value.splice(selectedIndex, 1, updatedComponent);
-    }
-    
-    return true;
+    const nextSelected = selectedComps.value
+      .map((sc) => findComponentInTree(sc.id, res.next))
+      .filter(Boolean) as Comp[]
+    selectedComps.value = nextSelected
+    return true
   }
 
   function updateComponentPosition(componentId: string, updates: { x?: number; y?: number }) {
     if (!currentPage.value) return false;
-  
-    const component = currentPage.value.components.find(c => c.id === componentId);
-    if (!component) return false;
-  
-    if (updates.x !== undefined) {
-      component.props.x = updates.x;
-    }
-    if (updates.y !== undefined) {
-      component.props.y = updates.y;
-    }
-  
-    currentPage.value.updatedAt = new Date();
-    
-    const selectedIndex = selectedComps.value.findIndex(comp => comp.id === componentId);
-    if (selectedIndex >= 0) {
-      selectedComps.value[selectedIndex] = { ...component };
-    }
-    
-    return true;
+
+    const res = mapComponentTree(currentPage.value.components, (c) => {
+      if (c.id !== componentId) return c
+      const nextProps: any = { ...(c.props || {}) }
+      if (updates.x !== undefined) nextProps.x = updates.x
+      if (updates.y !== undefined) nextProps.y = updates.y
+      return { ...c, props: nextProps }
+    })
+    if (!res.changed) return false
+    currentPage.value.components = res.next
+    currentPage.value.updatedAt = new Date()
+
+    selectedComps.value = selectedComps.value
+      .map((sc) => findComponentInTree(sc.id, res.next))
+      .filter(Boolean) as Comp[]
+    return true
   }
 
   // ==================== 页面属性编辑方法 ====================
@@ -349,7 +523,8 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function getComponentById(componentId: string) {
-    return currentPage.value?.components?.find(c => c.id === componentId);
+    if (!currentPage.value) return undefined
+    return findComponentInTree(componentId) || undefined
   }
 
   function getComponentProps(componentId: string) {
@@ -396,6 +571,8 @@ export const usePageStore = defineStore('page', () => {
     // 组件操作方法
     updateCurrentPageComponents,
     addComponentToCurrentPage,
+    addComponentToContainer,
+    moveComponentToContainer,
     deleteComponentFromCurrentPage,
     updateComponentInCurrentPage,
     updateComponentPosition,
@@ -416,6 +593,8 @@ export const usePageStore = defineStore('page', () => {
 
     // 组件属性读取（供脚本/可用变量面板使用）
     getComponentById,
+    findParentContainerId,
+    getComponentCanvasPosition,
     getComponentProps,
     getComponentProp
   };
