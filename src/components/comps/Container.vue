@@ -15,27 +15,31 @@
             v-bind="getRenderedProps(child)"
             :scale="props.scale || 1"
             :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            :locked="lockedForChildren"
+            :bindingContext="getBindingContextForChild(child)"
             @update="(payload) => emit('update', payload)"
           />
           <Text
             v-else-if="child.type === 'text'"
             :id="child.id"
-            :content="getRenderedProps(child).content || '新建文本'"
-            :x="getRenderedProps(child).x || 0"
-            :y="getRenderedProps(child).y || 0"
-            v-bind="getRenderedProps(child)"
+            :content="getRenderedProps(child, getBindingContextForChild(child)).content || '新建文本'"
+            :x="getRenderedProps(child, getBindingContextForChild(child)).x || 0"
+            :y="getRenderedProps(child, getBindingContextForChild(child)).y || 0"
+            v-bind="getRenderedProps(child, getBindingContextForChild(child))"
             :scale="props.scale || 1"
             :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            :locked="lockedForChildren"
             @update="(updates) => emit('update', { id: child.id, updates })"
           />
           <Button
             v-else-if="child.type === 'button'"
             :id="child.id"
-            :x="getRenderedProps(child).x || 0"
-            :y="getRenderedProps(child).y || 0"
-            v-bind="getRenderedProps(child)"
+            :x="getRenderedProps(child, getBindingContextForChild(child)).x || 0"
+            :y="getRenderedProps(child, getBindingContextForChild(child)).y || 0"
+            v-bind="getRenderedProps(child, getBindingContextForChild(child))"
             :scale="props.scale || 1"
             :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            :locked="lockedForChildren"
             @update="(updates) => emit('update', { id: child.id, updates })"
           />
           <NaiveWrapper
@@ -43,6 +47,8 @@
             :comp="child"
             :scale="props.scale || 1"
             :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+            :locked="lockedForChildren"
+            :bindingContext="getBindingContextForChild(child)"
             @update="(updates) => emit('update', { id: child.id, updates })"
           />
         </div>
@@ -113,6 +119,11 @@ const props = defineProps<{
   marginRight?: number
   marginBottom?: number
   marginLeft?: number
+
+  bindingContext?: any
+
+  // page 模式下：如果组件处于自定义组件实例内部，则锁定交互（不可拖拽/编辑）
+  locked?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -121,6 +132,22 @@ const emit = defineEmits<{
 
 const pageStore = usePageStore()
 const effectiveLayoutMode = computed(() => props.layoutMode || 'absolute')
+
+const isCustomComponentInstanceRoot = computed(() => {
+  const p: any = props.comp?.props || {}
+  return !!p.__customComponentId
+})
+
+const lockedForSelf = computed(() => {
+  return !!props.locked
+})
+
+const lockedForChildren = computed(() => {
+  // 1) 祖先已经锁定，则子孙继续锁定
+  if (lockedForSelf.value) return true
+  // 2) page 模式下，自定义组件实例根之下的所有子组件锁定
+  return pageStore.editorMode === 'page' && isCustomComponentInstanceRoot.value
+})
 
 const coord = inject(COORDINATE_HELPER_KEY, null)
 
@@ -210,6 +237,16 @@ const { handleMouseDown } = useDraggable({
 })
 
 function onMouseDown(e: MouseEvent) {
+  if (lockedForSelf.value) {
+    const multiSelect = e.ctrlKey || e.metaKey
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect)
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true)
+    }
+    return
+  }
+
   // 在 flow/flex 模式下：容器本身不做拖拽（但允许选中）
   if (props.inFlowLayout) {
     const multiSelect = e.ctrlKey || e.metaKey
@@ -228,18 +265,30 @@ function onMouseDown(e: MouseEvent) {
   handleMouseDown(e, props.x || 0, props.y || 0)
 }
 
-function getRenderedProps(comp: Comp): Record<string, any> {
+function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
   const raw = { ...(comp.props || {}) }
+  const ctx = context ?? getBindingContextForChild(comp)
   if (comp.bindings) {
     for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
       if (typeof bindingRef !== 'string' || !bindingRef) continue
       raw[propName] = resolveBindingRef(bindingRef, {
         getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+        context: ctx
       })
     }
   }
   return raw
+}
+
+function getBindingContextForChild(comp: Comp): any {
+  const base = props.bindingContext
+  const p: any = comp?.props || {}
+  const customProps = p.__customProps
+  if (customProps && typeof customProps === 'object') {
+    return base ? { ...base, customProps, props: customProps } : { customProps, props: customProps }
+  }
+  return base
 }
 
 // 计算容器样式

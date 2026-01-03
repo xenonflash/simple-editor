@@ -11,6 +11,12 @@ export type VariableTreeNode = {
   children?: VariableTreeNode[]
 }
 
+export type BuildPageVariableTreeOptions = {
+  customProps?: Record<string, any>
+  customPropsCtxPath?: string
+  customPropsLabel?: string
+}
+
 function previewValue(v: any): string {
   if (v === undefined) return 'undefined'
   if (v === null) return 'null'
@@ -61,6 +67,33 @@ function buildComponentPropNodes(comp: Comp): VariableTreeNode[] {
     desc: '组件属性',
     snippet: `pageStore.getComponentProp('${comp.id}', '${k}')`
   }))
+}
+
+function buildCustomPropsTree(customProps: Record<string, any>, basePath: string, keyPrefix: string): VariableTreeNode[] {
+  const keys = Object.keys(customProps).sort()
+  return keys.map((k) => {
+    const v = customProps[k]
+    const nextPath = `${basePath}.${k}`
+    const nodeKey = `${keyPrefix}-${k}`
+
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const children = buildCustomPropsTree(v, nextPath, nodeKey)
+      return {
+        label: `${k} = ${previewValue(v)}`,
+        key: nodeKey,
+        desc: '自定义组件 props',
+        children
+      }
+    }
+
+    return {
+      label: `${k} = ${previewValue(v)}`,
+      key: nodeKey,
+      isLeaf: true,
+      desc: '自定义组件 props',
+      value: `ctx:${nextPath}`
+    }
+  })
 }
 
 export function buildScriptVariableTree(pageStore: ReturnType<typeof usePageStore>): VariableTreeNode[] {
@@ -125,7 +158,7 @@ export function buildScriptVariableTree(pageStore: ReturnType<typeof usePageStor
   ]
 }
 
-export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>): VariableTreeNode[] {
+export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>, opts?: BuildPageVariableTreeOptions): VariableTreeNode[] {
   const unbind: VariableTreeNode = {
     label: '取消绑定',
     key: 'unbind',
@@ -133,6 +166,17 @@ export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>
     desc: '清空当前属性绑定',
     value: '__unbind__'
   }
+
+  const customProps = opts?.customProps
+  const customPropsCtxPath = (opts?.customPropsCtxPath || 'customProps').trim() || 'customProps'
+  const customPropsLabel = (opts?.customPropsLabel || '自定义组件参数').trim() || '自定义组件参数'
+  const customPropsNode: VariableTreeNode | null = (customProps && typeof customProps === 'object')
+    ? {
+        label: customPropsLabel,
+        key: 'custom-props',
+        children: buildCustomPropsTree(customProps, customPropsCtxPath, 'custom-props')
+      }
+    : null
 
   const vars: VariableTreeNode[] = (pageStore.currentPage?.variables || []).map((v) => ({
     label: `${v.name}`,
@@ -161,6 +205,7 @@ export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>
 
   return [
     { label: '操作', key: 'binding-actions', children: [unbind] },
+    ...(customPropsNode ? [customPropsNode] : []),
     { label: '页面变量', key: 'page-vars', children: vars },
     { label: '页面组件属性', key: 'page-comp-props', children: components }
   ]

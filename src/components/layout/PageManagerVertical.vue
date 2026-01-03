@@ -87,7 +87,7 @@ import AppIcon from '../icons/AppIcon.vue';
 const pageStore = usePageStore();
 
 // 计算属性
-const pages = computed(() => pageStore.pages);
+const pages = computed(() => pageStore.pages.filter(p => !String(p.id).startsWith('__cc_edit__:')));
 const currentPageId = computed(() => pageStore.currentPageId);
 
 // 添加缺少的响应式变量声明

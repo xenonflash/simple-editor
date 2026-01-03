@@ -43,6 +43,7 @@ const props = defineProps<{
   shadowColor?: string;
   scale?: number;
   inFlowLayout?: boolean;
+  locked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -86,6 +87,16 @@ const { handleMouseDown: startDrag } = useDraggable({
 
 // 处理鼠标按下事件
 function handleMouseDown(e: MouseEvent) {
+  if (props.locked) {
+    const multiSelect = e.ctrlKey || e.metaKey;
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect);
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true);
+    }
+    return;
+  }
+
   if (props.inFlowLayout) {
     const multiSelect = e.ctrlKey || e.metaKey;
     if (!pageStore.isComponentSelected(props.id)) {

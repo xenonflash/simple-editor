@@ -20,6 +20,32 @@
       <div class="tab-content">
         <!-- 属性面板 -->
         <div v-show="activeTab === 'properties'">
+          <!-- 组件编辑模式：Props/State 在左侧【数据】面板维护 -->
+          <div v-if="isCustomEditMode && editingDef" class="section" style="margin-bottom: 8px;">
+            <div class="section-header">
+              <span>组件定义：{{ editingDef.name }}</span>
+            </div>
+            <div class="section-content" style="padding: 8px; font-size: 12px; color: #666;">
+              Props / State 的增删与字段配置请在左侧【数据】面板完成。
+            </div>
+          </div>
+
+          <!-- 页面模式：只允许编辑已定义的实例参数（不允许随意新增） -->
+          <div v-else-if="customMeta && customDef" class="section" style="margin-bottom: 8px;">
+            <div class="section-header">
+              <span>组件属性</span>
+            </div>
+            <div class="section-content" style="padding: 0;">
+              <DynamicProperties
+                :modelValue="customMeta.props"
+                :bindings="{}"
+                :propsSchema="customDef.propsSchema || {}"
+                @change="updateCustomInstanceProps"
+                @update:bindings="() => {}"
+              />
+            </div>
+          </div>
+
           <!-- 布局属性 -->
           <LayoutProperties 
             :x="props.component.props.x || 0"
@@ -44,6 +70,9 @@
             <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">组件属性</div>
             <DynamicProperties :modelValue="props.component.props"
                                :bindings="props.component.bindings || {}"
+                               :customProps="bindingCustomProps"
+                               :customPropsCtxPath="bindingCustomPropsCtxPath"
+                               :customPropsLabel="bindingCustomPropsLabel"
                                :propsSchema="naiveConfig.propsSchema"
                                @change="updateProps"
                                @update:bindings="updateBindings" />
@@ -65,6 +94,11 @@
                          :height="props.component.props.height"
                          :widthMode="props.component.props.widthMode"
                          :autoHeight="props.component.props.autoHeight"
+                         :bindings="props.component.bindings || {}"
+                         :customProps="bindingCustomProps"
+                         :customPropsCtxPath="bindingCustomPropsCtxPath"
+                         :customPropsLabel="bindingCustomPropsLabel"
+                         @update:bindings="updateBindings"
                          @update="updateProps" />
 
           <BorderProperties v-bind="props.component.props"
@@ -210,21 +244,175 @@ import SpacingProperties from '../properties/SpacingProperties.vue';
 import DynamicProperties from '../properties/DynamicProperties.vue';
 import PageProperties from '../properties/PageProperties.vue';
 import { getNaiveConfig } from '../../config/naive-ui-registry';
+import type { PropSchema } from '../../config/naive-ui-registry'
 import { usePageStore } from '../../stores/page';
+import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { Comp } from '../comps/base';
 import type { CompEventAction } from '../comps/base';
 import { actionRegistry } from '../../config/actions';
 
 const props = defineProps<{
   component: Comp | null;
+  editingCustomDefId?: string | null;
+  editingCustomDefName?: string | null;
+  editingCustomPropsSchema?: Record<string, PropSchema> | null;
 }>();
 
-const emit = defineEmits(['update', 'open-flow-editor']);
+const emit = defineEmits(['update', 'open-flow-editor', 'update-custom-props-schema']);
 const pageStore = usePageStore();
+const customComponentsStore = useCustomComponentsStore()
 const currentPage = computed(() => pageStore.currentPage);
+
+const isCustomEditMode = computed(() => pageStore.editorMode === 'custom-edit')
+
+const editingDef = computed(() => {
+  if (!isCustomEditMode.value) return null
+  if (!props.editingCustomDefId) return null
+  return {
+    id: props.editingCustomDefId,
+    name: props.editingCustomDefName || ''
+  }
+})
+
+const schemaTypeOptions = [
+  { label: '文本', value: 'text' },
+  { label: '数字', value: 'number' },
+  { label: '布尔', value: 'boolean' },
+  { label: '颜色', value: 'color' },
+  { label: 'JSON', value: 'json' }
+]
+
+const schemaEntries = computed(() => {
+  const schema = props.editingCustomPropsSchema || {}
+  return Object.keys(schema)
+    .sort()
+    .map((k) => ({ key: k, schema: schema[k] }))
+})
+
+const newSchemaKey = ref('')
+const newSchemaLabel = ref('')
+const newSchemaType = ref<'text' | 'number' | 'boolean' | 'color' | 'json'>('text')
+const newSchemaDefault = ref('')
+
+function parseDefaultByType(type: string, raw: string): any {
+  if (type === 'number') return Number(raw)
+  if (type === 'boolean') return raw === 'true'
+  if (type === 'json') {
+    try {
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+  return raw
+}
+
+function updateSchema(next: Record<string, PropSchema>) {
+  emit('update-custom-props-schema', next)
+}
+
+function addSchemaProp() {
+  const key = newSchemaKey.value.trim()
+  if (!key) return
+  const label = newSchemaLabel.value.trim() || key
+  const type = newSchemaType.value
+  const next: Record<string, PropSchema> = { ...(props.editingCustomPropsSchema || {}) }
+  next[key] = {
+    label,
+    type,
+    default: parseDefaultByType(type, newSchemaDefault.value)
+  }
+  newSchemaKey.value = ''
+  newSchemaLabel.value = ''
+  newSchemaDefault.value = ''
+  updateSchema(next)
+}
+
+function updateSchemaProp(key: string, patch: Partial<PropSchema>) {
+  const cur = (props.editingCustomPropsSchema || {})
+  const prev = cur[key]
+  if (!prev) return
+  const next: Record<string, PropSchema> = { ...cur }
+  next[key] = { ...prev, ...patch }
+  updateSchema(next)
+}
+
+function removeSchemaProp(key: string) {
+  const cur = (props.editingCustomPropsSchema || {})
+  if (!(key in cur)) return
+  const next: Record<string, PropSchema> = { ...cur }
+  delete next[key]
+  updateSchema(next)
+}
 
 const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
+
+const customMeta = computed(() => {
+  const c = props.component
+  if (!c) return null
+  const p: any = c.props || {}
+  if (!p.__customComponentId) return null
+  return {
+    id: String(p.__customComponentId),
+    name: String(p.__customComponentName || ''),
+    props: (p.__customProps && typeof p.__customProps === 'object') ? p.__customProps : {}
+  }
+})
+
+const customDef = computed(() => {
+  const meta = customMeta.value
+  if (!meta) return null
+  return customComponentsStore.getById(meta.id) || null
+})
+
+const customInstanceRoot = computed(() => {
+  const c = props.component
+  if (!c) return null
+
+  let cur: Comp | undefined = c
+  while (cur) {
+    const p: any = cur.props || {}
+    if (p.__customComponentId) return cur
+    const parentId = pageStore.findParentContainerId(cur.id)
+    if (!parentId) break
+    cur = pageStore.getComponentById(parentId)
+  }
+  return null
+})
+
+const bindingCustomProps = computed(() => {
+  if (isCustomEditMode.value) {
+    const schema = props.editingCustomPropsSchema || {}
+    const preview: Record<string, any> = {}
+    for (const [k, s] of Object.entries(schema)) {
+      const ss: any = s
+      if (ss && Object.prototype.hasOwnProperty.call(ss, 'default')) preview[k] = ss.default
+      else if (ss?.type === 'number') preview[k] = 0
+      else if (ss?.type === 'boolean') preview[k] = false
+      else if (ss?.type === 'json') preview[k] = null
+      else preview[k] = ''
+    }
+    return preview
+  }
+
+  const root = customInstanceRoot.value
+  if (!root) return null
+  const p: any = root.props || {}
+  const cp = p.__customProps
+  return (cp && typeof cp === 'object') ? cp : null
+})
+
+const bindingCustomPropsCtxPath = computed(() => (isCustomEditMode.value ? 'props' : 'customProps'))
+const bindingCustomPropsLabel = computed(() => (isCustomEditMode.value ? '组件参数' : '自定义组件参数'))
+
+function updateCustomInstanceProps(updates: Record<string, any>) {
+  if (!props.component) return
+  const p: any = props.component.props || {}
+  const next = { ...(p.__customProps || {}) }
+  Object.assign(next, updates)
+  updateProps({ __customProps: next })
+}
 
 // Flow 相关
 const flows = computed(() => currentPage.value?.flows || []);

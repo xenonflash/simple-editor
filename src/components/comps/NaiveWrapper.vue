@@ -113,6 +113,8 @@ const props = defineProps<{
   comp: Comp;
   scale: number;
   inFlowLayout?: boolean;
+  bindingContext?: any;
+  locked?: boolean;
 }>();
 
 const emit = defineEmits(['update']);
@@ -161,7 +163,8 @@ const effectiveProps = computed(() => {
       if (typeof bindingRef !== 'string' || !bindingRef) return;
       rawProps[propName] = resolveBindingRef(bindingRef, {
         getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+        context: props.bindingContext
       })
     })
   }
@@ -214,7 +217,7 @@ const wrapperStyle = computed(() => {
   const heightSizing = (props.comp.props as any).heightSizing as ('fixed' | 'fill' | 'content' | undefined);
   const x = props.comp.props.x || 0
   const y = props.comp.props.y || 0
-  return {
+  const style: any = {
     position: props.inFlowLayout ? 'relative' : 'absolute',
     left: props.inFlowLayout ? 'auto' : `${x}px`,
     top: props.inFlowLayout ? 'auto' : `${y}px`,
@@ -231,10 +234,23 @@ const wrapperStyle = computed(() => {
     zIndex: props.comp.props.zIndex || 1,
     // 选中时的样式
     // outline: pageStore.isComponentSelected(props.comp.id) ? '2px solid #1890ff' : 'none',
-    cursor: 'move',
+    cursor: props.locked ? 'default' : 'move',
     // 确保 wrapper 能够适应内容大小
     display: 'inline-block'
-  } as any;
+  };
+
+  const p: any = props.comp.props || {}
+  const hasPadding = [p.paddingTop, p.paddingRight, p.paddingBottom, p.paddingLeft].some(v => typeof v === 'number')
+  if (hasPadding) {
+    style.padding = `${p.paddingTop ?? 0}px ${p.paddingRight ?? 0}px ${p.paddingBottom ?? 0}px ${p.paddingLeft ?? 0}px`
+  }
+
+  const hasMargin = [p.marginTop, p.marginRight, p.marginBottom, p.marginLeft].some(v => typeof v === 'number')
+  if (hasMargin) {
+    style.margin = `${p.marginTop ?? 0}px ${p.marginRight ?? 0}px ${p.marginBottom ?? 0}px ${p.marginLeft ?? 0}px`
+  }
+
+  return style as any;
 });
 
 // 更新组件尺寸到 store
@@ -286,6 +302,7 @@ onUnmounted(() => {
 
 // 更新组件值
 function handleUpdateValue(value: any) {
+  if (props.locked) return;
   // 根据组件类型判断更新哪个属性
   let key = 'value';
   if (props.comp.type === CompType.N_CHECKBOX) {
@@ -336,6 +353,16 @@ const { handleMouseDown } = useDraggable({
 });
 
 function onMouseDown(e: MouseEvent) {
+  if (props.locked) {
+    const multiSelect = e.ctrlKey || e.metaKey;
+    if (!pageStore.isComponentSelected(props.comp.id)) {
+      pageStore.selectComponent(props.comp.id, multiSelect);
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.comp.id, true);
+    }
+    return;
+  }
+
   if (props.inFlowLayout) {
     const multiSelect = e.ctrlKey || e.metaKey;
     if (!pageStore.isComponentSelected(props.comp.id)) {

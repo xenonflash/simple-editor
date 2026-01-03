@@ -1,14 +1,124 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { defineStore } from 'pinia';
 import type { Page, PageState, PageVariable } from '../types/page';
 import { createPage } from '../types/page';
 import type { Comp } from '../components/comps/base';
+import type { PropSchema } from '../config/naive-ui-registry'
+import { exportToJSON, importFromJSON } from '../utils/io'
 
 export const usePageStore = defineStore('page', () => {
   // ==================== 状态定义 ====================
   const pages = ref<Page[]>([]);
   const currentPageId = ref<string | null>(null);
   const selectedComps = ref<Comp[]>([]);
+
+  const editorMode = ref<'page' | 'custom-edit'>('page')
+  const CUSTOM_EDIT_PAGE_PREFIX = '__cc_edit__:'
+
+  // ==================== 自动持久化（localStorage） ====================
+  const PERSIST_KEY = 'simple-editor:autosave:v1'
+  const persistDirty = ref(false)
+  let persistTimer: number | null = null
+  let isHydrating = false
+
+  function stripMeasuredProps(props: Record<string, any> | undefined | null): Record<string, any> {
+    const src = props || {}
+    const next: Record<string, any> = {}
+    for (const [k, v] of Object.entries(src)) {
+      if (k.startsWith('_measured')) continue
+      next[k] = v
+    }
+    return next
+  }
+
+  function sanitizeCompForPersist(comp: Comp): Comp {
+    return {
+      ...comp,
+      props: stripMeasuredProps((comp as any).props),
+      children: (comp.children || []).map(sanitizeCompForPersist)
+    }
+  }
+
+  function sanitizePageForPersist(page: Page): Page {
+    return {
+      ...page,
+      components: (page.components || []).map(sanitizeCompForPersist)
+    }
+  }
+
+  function saveToLocalStorage() {
+    try {
+      const payload = {
+        version: 1,
+        savedAt: Date.now(),
+        currentPageId: currentPageId.value,
+        pages: pages.value
+          .filter((p) => !String(p.id).startsWith(CUSTOM_EDIT_PAGE_PREFIX))
+          .map(sanitizePageForPersist)
+      }
+      localStorage.setItem(PERSIST_KEY, JSON.stringify(payload))
+      persistDirty.value = false
+    } catch (e) {
+      // localStorage quota / privacy mode / serialization errors
+      console.warn('[pageStore] autosave failed:', e)
+    }
+  }
+
+  function loadFromLocalStorage(): boolean {
+    try {
+      const raw = localStorage.getItem(PERSIST_KEY)
+      if (!raw) return false
+      const parsed = JSON.parse(raw)
+      if (!parsed || parsed.version !== 1) return false
+      if (!Array.isArray(parsed.pages)) return false
+
+      const nextPages = parsed.pages as Page[]
+      const nextCurrentId = (typeof parsed.currentPageId === 'string' || parsed.currentPageId === null)
+        ? (parsed.currentPageId as string | null)
+        : null
+
+      isHydrating = true
+      pages.value = nextPages
+      currentPageId.value = nextCurrentId && nextPages.some(p => p.id === nextCurrentId)
+        ? nextCurrentId
+        : (nextPages[0]?.id ?? null)
+      selectedComps.value = []
+
+      // 重新构建运行时变量默认值
+      runtimeVarValuesByPageId.value = {}
+      for (const p of pages.value) ensureRuntimeVarsForPage(p)
+
+      persistDirty.value = false
+      isHydrating = false
+      return true
+    } catch (e) {
+      isHydrating = false
+      console.warn('[pageStore] autoload failed:', e)
+      return false
+    }
+  }
+
+  function initializeFromLocalStorage() {
+    const ok = loadFromLocalStorage()
+    if (!ok) initializeDefaultPage()
+  }
+
+  function startAutoPersist(options?: { intervalMs?: number }) {
+    const intervalMs = options?.intervalMs ?? 5000
+    if (persistTimer) return
+    persistTimer = window.setInterval(() => {
+      if (isHydrating) return
+      if (!persistDirty.value) return
+      if (!pages.value.length) return
+      saveToLocalStorage()
+    }, Math.max(1000, intervalMs))
+  }
+
+  function stopAutoPersist() {
+    if (!persistTimer) return
+    window.clearInterval(persistTimer)
+    persistTimer = null
+  }
 
   // 运行时变量值（按页面隔离）：pageId -> { varName: value }
   const runtimeVarValuesByPageId = ref<Record<string, Record<string, any>>>({});
@@ -199,6 +309,24 @@ export const usePageStore = defineStore('page', () => {
     }
   }
 
+  // 任何页面配置变更都标记为 dirty（由定时器统一落盘）
+  watch(
+    pages,
+    () => {
+      if (isHydrating) return
+      persistDirty.value = true
+    },
+    { deep: true }
+  )
+
+  watch(
+    currentPageId,
+    () => {
+      if (isHydrating) return
+      persistDirty.value = true
+    }
+  )
+
   function addPage(name?: string, description?: string): Page {
     const newPage = createPage(name, description);
     pages.value.push(newPage);
@@ -280,6 +408,12 @@ export const usePageStore = defineStore('page', () => {
       return;
     }
 
+    // 页面编辑模式下：自定义组件实例内部不允许直接选中子组件，自动提升到实例根。
+    if (editorMode.value === 'page') {
+      const rootId = findCustomComponentInstanceRootId(componentId)
+      if (rootId) componentId = rootId
+    }
+
     const component = findComponentInTree(componentId);
     if (!component) return;
 
@@ -296,10 +430,178 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function selectComponents(componentIds: string[]) {
-    const components = componentIds
+    const normalized = editorMode.value === 'page'
+      ? componentIds.map((id) => findCustomComponentInstanceRootId(id) || id)
+      : componentIds
+
+    const components = normalized
       .map((id) => findComponentInTree(id))
       .filter(Boolean) as Comp[]
     selectedComps.value = components;
+  }
+
+  function findCustomComponentInstanceRootId(componentId: string): string | null {
+    let cur: Comp | null = findComponentInTree(componentId)
+    if (!cur) return null
+    while (cur) {
+      const p: any = cur.props || {}
+      if (p.__customComponentId) return cur.id
+      const parentId = findParentContainerId(cur.id)
+      if (!parentId) break
+      cur = findComponentInTree(parentId)
+    }
+    return null
+  }
+
+  function setEditorMode(mode: 'page' | 'custom-edit') {
+    editorMode.value = mode
+    selectedComps.value = []
+  }
+
+  function createCustomComponentEditPage(defId: string, name: string, templateJson: string): string {
+    const id = `${CUSTOM_EDIT_PAGE_PREFIX}${defId}`
+    const existing = pages.value.find((p) => p.id === id)
+    const comps = (() => {
+      try {
+        return importFromJSON(templateJson)
+      } catch {
+        return [] as Comp[]
+      }
+    })()
+
+    if (existing) {
+      existing.name = `编辑组件：${name}`
+      existing.components = comps
+      existing.updatedAt = new Date()
+      currentPageId.value = id
+      selectedComps.value = []
+      return id
+    }
+
+    const newPage: Page = {
+      id,
+      name: `编辑组件：${name}`,
+      components: comps,
+      variables: [],
+      flows: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    } as any
+
+    pages.value.push(newPage)
+    currentPageId.value = id
+    selectedComps.value = []
+    return id
+  }
+
+  function removeCustomComponentEditPage(defId: string) {
+    const id = `${CUSTOM_EDIT_PAGE_PREFIX}${defId}`
+    const idx = pages.value.findIndex((p) => p.id === id)
+    if (idx >= 0) pages.value.splice(idx, 1)
+    if (currentPageId.value === id) currentPageId.value = pages.value[0]?.id || null
+    selectedComps.value = []
+  }
+
+  function exportCurrentPageComponentsToJSON(): string {
+    return exportToJSON(currentPage.value?.components || [])
+  }
+
+  function buildCustomPropsDefaults(schema: Record<string, PropSchema>): Record<string, any> {
+    const res: Record<string, any> = {}
+    for (const [k, s] of Object.entries(schema || {})) {
+      if (s && Object.prototype.hasOwnProperty.call(s, 'default')) {
+        res[k] = (s as any).default
+        continue
+      }
+      const t = (s as any)?.type
+      if (t === 'number') res[k] = 0
+      else if (t === 'boolean') res[k] = false
+      else if (t === 'json') res[k] = null
+      else res[k] = ''
+    }
+    return res
+  }
+
+  function applyCustomPropsDefaults(existing: any, schema: Record<string, PropSchema>): Record<string, any> {
+    const base = (existing && typeof existing === 'object') ? { ...existing } : {}
+    const defaults = buildCustomPropsDefaults(schema)
+    for (const [k, v] of Object.entries(defaults)) {
+      if (!(k in base)) base[k] = v
+    }
+    return base
+  }
+
+  function syncCustomComponentInstances(def: { id: string; templateJson: string; propsSchema: Record<string, PropSchema> }): boolean {
+    const preserveKeys = new Set([
+      'x', 'y', 'zIndex',
+      'width', 'height', 'widthSizing', 'heightSizing',
+      'layoutMode', 'flexDirection', 'justifyContent', 'alignItems', 'gap'
+    ])
+
+    function replaceIfMatch(comp: Comp): Comp {
+      const p: any = comp.props || {}
+      if (p.__customComponentId !== def.id) return comp
+
+      const next = (() => {
+        try {
+          return importFromJSON(def.templateJson)[0]
+        } catch {
+          return undefined
+        }
+      })()
+      if (!next) return comp
+
+      const instProps: any = comp.props || {}
+      const preserved: any = {}
+      for (const k of Object.keys(instProps)) {
+        if (preserveKeys.has(k)) preserved[k] = instProps[k]
+      }
+
+      const nextCustomProps = applyCustomPropsDefaults(instProps.__customProps, def.propsSchema)
+
+      next.id = comp.id
+      next.name = comp.name
+
+      next.props = {
+        ...(next.props || {}),
+        ...preserved,
+        __customComponentId: instProps.__customComponentId,
+        __customComponentName: instProps.__customComponentName,
+        __customProps: nextCustomProps
+      }
+
+      return next
+    }
+
+    function mapTree(list: Comp[]): { next: Comp[]; changed: boolean } {
+      let changed = false
+      const next = list.map((c) => {
+        const replaced = replaceIfMatch(c)
+        let node = replaced
+        if (replaced.children && replaced.children.length) {
+          const childRes = mapTree(replaced.children)
+          if (childRes.changed) {
+            changed = true
+            node = { ...replaced, children: childRes.next }
+          }
+        }
+        if (node !== c) changed = true
+        return node
+      })
+      return { next, changed }
+    }
+
+    let anyChanged = false
+    for (const page of pages.value) {
+      if (String(page.id).startsWith(CUSTOM_EDIT_PAGE_PREFIX)) continue
+      const res = mapTree(page.components || [])
+      if (res.changed) {
+        page.components = res.next
+        page.updatedAt = new Date()
+        anyChanged = true
+      }
+    }
+    return anyChanged
   }
 
   function isComponentSelected(componentId: string): boolean {
@@ -420,6 +722,17 @@ export const usePageStore = defineStore('page', () => {
 
   function deleteComponentFromCurrentPage(componentId: string): boolean {
     if (!currentPage.value) return false;
+
+    // 组件编辑模式：不允许删除最外层（根级）Container
+    if (editorMode.value === 'custom-edit') {
+      const comp = findComponentInTree(componentId)
+      if (comp && comp.type === 'container') {
+        const parentId = findParentContainerId(componentId)
+        if (parentId === null) {
+          return false
+        }
+      }
+    }
 
     const res = mapComponentTree(currentPage.value.components, (c) => {
       if (c.id === componentId) return null
@@ -589,6 +902,7 @@ export const usePageStore = defineStore('page', () => {
     pages,
     currentPageId,
     selectedComps,
+    editorMode,
     
     // 计算属性
     currentPage,
@@ -598,6 +912,12 @@ export const usePageStore = defineStore('page', () => {
     
     // 页面管理方法
     initializeDefaultPage,
+    initializeFromLocalStorage,
+    startAutoPersist,
+    stopAutoPersist,
+    createCustomComponentEditPage,
+    removeCustomComponentEditPage,
+    exportCurrentPageComponentsToJSON,
     addPage,
     deletePage,
     updatePage,
@@ -608,6 +928,7 @@ export const usePageStore = defineStore('page', () => {
     selectComponent,
     selectComponents,
     isComponentSelected,
+    setEditorMode,
     
     // 组件操作方法
     updateCurrentPageComponents,
@@ -617,6 +938,9 @@ export const usePageStore = defineStore('page', () => {
     deleteComponentFromCurrentPage,
     updateComponentInCurrentPage,
     updateComponentPosition,
+
+    // 自定义组件：同步定义到实例
+    syncCustomComponentInstances,
     
     // 页面属性编辑方法
     updatePageProperties,

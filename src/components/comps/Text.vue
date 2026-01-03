@@ -56,6 +56,15 @@ const props = defineProps<{
   shadowColor?: string;
   widthMode?: 'auto' | 'fixed';
   autoHeight?: boolean;
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  marginTop?: number;
+  marginRight?: number;
+  marginBottom?: number;
+  marginLeft?: number;
+  locked?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -121,6 +130,16 @@ const { handleMouseDown: dragMouseDown } = useDraggable({
 
 // 统一的鼠标按下处理
 function handleMouseDown(e: MouseEvent) {
+  if (props.locked) {
+    const multiSelect = e.ctrlKey || e.metaKey
+    if (!pageStore.isComponentSelected(props.id)) {
+      pageStore.selectComponent(props.id, multiSelect)
+    } else if (multiSelect) {
+      pageStore.selectComponent(props.id, true)
+    }
+    return
+  }
+
   if (props.inFlowLayout) {
     const multiSelect = e.ctrlKey || e.metaKey;
     if (!pageStore.isComponentSelected(props.id)) {
@@ -172,6 +191,7 @@ function calculateTextHeight(text: string, width: number): number {
 
 // 文本编辑相关函数
 function startEditing() {
+  if (props.locked) return;
   if (!isSelected.value) return;
   
   isEditing.value = true;
@@ -224,11 +244,25 @@ const style = computed(() => {
     boxShadow: props.shadowColor ? `${props.shadowX || 0}px ${props.shadowY || 0}px ${props.shadowBlur || 0}px ${props.shadowSpread || 0}px ${props.shadowColor}` : 'none',
   };
 
+  const hasPadding = [props.paddingTop, props.paddingRight, props.paddingBottom, props.paddingLeft].some(v => typeof v === 'number')
+  if (hasPadding) {
+    styleObj.padding = `${props.paddingTop ?? 0}px ${props.paddingRight ?? 0}px ${props.paddingBottom ?? 0}px ${props.paddingLeft ?? 0}px`
+  }
+
+  const hasMargin = [props.marginTop, props.marginRight, props.marginBottom, props.marginLeft].some(v => typeof v === 'number')
+  if (hasMargin) {
+    styleObj.margin = `${props.marginTop ?? 0}px ${props.marginRight ?? 0}px ${props.marginBottom ?? 0}px ${props.marginLeft ?? 0}px`
+  }
+
   // 容器内 flow/flex：不走绝对定位
   if (props.inFlowLayout) {
     styleObj.left = 'auto';
     styleObj.top = 'auto';
     styleObj.cursor = 'default';
+  }
+
+  if (props.locked) {
+    styleObj.cursor = 'default'
   }
 
   // 宽高 sizing（优先级高于 widthMode/autoHeight）

@@ -42,6 +42,19 @@ export interface ResolveBindingRefOptions {
   context?: any
 }
 
+function getByPath(obj: any, path: string): any {
+  if (!obj) return undefined
+  const raw = String(path || '').trim()
+  if (!raw) return undefined
+  const parts = raw.split('.').filter(Boolean)
+  let cur: any = obj
+  for (const part of parts) {
+    if (cur == null) return undefined
+    cur = cur[part]
+  }
+  return cur
+}
+
 export function resolveBindingRef(ref: string, opts: ResolveBindingRefOptions): any {
   const parsed = parseBindingRef(ref)
 
@@ -58,7 +71,7 @@ export function resolveBindingRef(ref: string, opts: ResolveBindingRefOptions): 
   if (parsed.kind === 'ctx') {
     const k = parsed.ctxKey
     if (!k) return undefined
-    return opts.context?.[k]
+    return getByPath(opts.context, k)
   }
 
   return undefined

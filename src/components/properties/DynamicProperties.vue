@@ -104,6 +104,9 @@ const props = defineProps<{
   modelValue: Record<string, any>;
   bindings: Record<string, string>;
   propsSchema: Record<string, PropSchema>;
+  customProps?: Record<string, any> | null;
+  customPropsCtxPath?: string;
+  customPropsLabel?: string;
 }>();
 
 const emit = defineEmits(['update:modelValue', 'change', 'update:bindings']);
@@ -111,7 +114,11 @@ const pageStore = usePageStore();
 
 const openKey = ref<string | null>(null)
 
-const pageVariableTree = computed(() => buildPageVariableTree(pageStore))
+const pageVariableTree = computed(() => buildPageVariableTree(pageStore, {
+  customProps: props.customProps || undefined,
+  customPropsCtxPath: props.customPropsCtxPath,
+  customPropsLabel: props.customPropsLabel
+}))
 
 function updateValue(key: string, value: any) {
   emit('change', { [key]: value });

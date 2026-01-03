@@ -4,10 +4,52 @@
     <template #content>
       <!-- 文字内容 -->
       <div class="property-row">
-        <textarea type="text" 
-               :value="content" 
-               @input="updateValue('content', $event)" 
-               placeholder="输入文字内容..." />
+        <div class="content-row">
+          <div class="content-meta" v-if="contentBinding">
+            <span class="bind-badge">{{ formatBindingDisplay(String(contentBinding)) }}</span>
+          </div>
+
+          <div class="content-input">
+            <div v-if="contentBinding" class="bound-placeholder" />
+            <textarea v-else
+                   type="text" 
+                   :value="content" 
+                   @input="updateValue('content', $event)" 
+                   placeholder="输入文字内容..." />
+          </div>
+
+          <n-popover
+            trigger="click"
+            placement="left"
+            :show-arrow="false"
+            style="width: 420px"
+            :show="openKey === 'content'"
+            @update:show="(v) => (openKey = v ? 'content' : null)"
+          >
+            <template #trigger>
+              <n-button
+                size="tiny"
+                quaternary
+                circle
+                :type="contentBinding ? 'error' : 'default'"
+                class="bind-btn"
+                title="绑定变量"
+              >
+                <template #icon>
+                  <n-icon><Link v-if="contentBinding" /><LinkOutline v-else /></n-icon>
+                </template>
+              </n-button>
+            </template>
+            <VariablePanel
+              :data="pageVariableTree"
+              tip="点击变量直接绑定"
+              select-mode="value"
+              confirmable
+              @select="(p) => p.value && handleBindPick('content', p.value)"
+              @cancel="openKey = null"
+            />
+          </n-popover>
+        </div>
       </div>
       
       <!-- 自动宽度开关 -->
@@ -76,6 +118,13 @@
 
 <script setup lang="ts">
 import PropertySection from './PropertySection.vue';
+import { computed, ref } from 'vue'
+import { NButton, NIcon, NPopover } from 'naive-ui'
+import { Link, LinkOutline } from '@vicons/ionicons5'
+import VariablePanel from '../flow/VariablePanel.vue'
+import { buildPageVariableTree } from '../flow/variableTree'
+import { usePageStore } from '../../stores/page'
+import { formatBindingRefDisplay } from '../../utils/bindingRef'
 
 const props = defineProps<{
   content: string;
@@ -89,9 +138,24 @@ const props = defineProps<{
   height?: number;
   widthMode?: 'auto' | 'fixed';
   autoHeight?: boolean;
+
+  bindings?: Record<string, string>;
+  customProps?: Record<string, any> | null;
+  customPropsCtxPath?: string;
+  customPropsLabel?: string;
 }>();
 
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update', 'update:bindings']);
+
+const pageStore = usePageStore()
+const openKey = ref<string | null>(null)
+
+const contentBinding = computed(() => props.bindings?.content)
+const pageVariableTree = computed(() => buildPageVariableTree(pageStore, {
+  customProps: props.customProps || undefined,
+  customPropsCtxPath: props.customPropsCtxPath,
+  customPropsLabel: props.customPropsLabel
+}))
 
 function updateValue(key: string, event: Event) {
   const target = event.target as HTMLInputElement;
@@ -131,6 +195,24 @@ function toggleDecoration(value: string) {
   
   emit('update', { textDecoration: newValue });
 }
+
+function handleBindPick(key: string, value: string) {
+  if (value === '__unbind__') {
+    emit('update:bindings', { [key]: null })
+  } else {
+    emit('update:bindings', { [key]: value })
+  }
+  openKey.value = null
+}
+
+function formatBindingDisplay(binding: string): string {
+  return formatBindingRefDisplay(binding, {
+    getComponentLabel: (componentId) => {
+      const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+      return comp?.name || componentId
+    }
+  })
+}
 </script>
 
 <style scoped>
@@ -168,6 +250,48 @@ textarea {
 }
 textarea:focus-visible{
   outline: none
+}
+
+.content-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.content-meta {
+  width: 0;
+  flex: 0 0 auto;
+}
+
+.content-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.bound-placeholder {
+  width: 100%;
+  height: 28px;
+  border: 1px dashed #e5e5e5;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  align-items: center;
+}
+
+.bind-badge {
+  font-size: 11px;
+  color: #999;
+  display: inline-block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bind-btn {
+  flex-shrink: 0;
 }
 
 input[type="text"],

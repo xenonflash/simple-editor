@@ -46,6 +46,7 @@
                         :comp="comp"
                       v-bind="getRenderedProps(comp)"
                             :scale="scale"
+                        :bindingContext="getBindingContextForRoot(comp)"
                   @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
                   <Text v-else-if="comp.type === 'text'"
@@ -68,6 +69,7 @@
                   <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
                         :comp="comp"
                         :scale="scale"
+                    :bindingContext="getBindingContextForRoot(comp)"
                   @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 </div>
@@ -116,6 +118,11 @@
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
       @click.stop
     >
+      <div class="menu-item" @click="saveAsCustomComponent">
+        <span class="icon">💾</span>
+        <span class="text">保存为组件</span>
+      </div>
+      <div class="menu-divider"></div>
       <div class="menu-item" @click="duplicateComponent">
         <span class="icon">📋</span>
         <span class="text">复制</span>
@@ -163,6 +170,9 @@ import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../
 import BoardToolbar from './BoardToolbar.vue';
 import { useSnaplineStore } from '../../stores/snapline';
 import { usePageStore } from '../../stores/page';
+import { useCustomComponentsStore } from '../../stores/customComponents'
+
+import { useMessage } from 'naive-ui'
 
 import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
@@ -179,6 +189,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const props = defineProps<{
   components: Comp[];
+  bindingContext?: any;
 }>();
 
 const emit = defineEmits<{
@@ -197,26 +208,52 @@ function log(...args: any[]) {
 
 const snaplineStore = useSnaplineStore();
 const pageStore = usePageStore();
+const customComponentsStore = useCustomComponentsStore()
 const pointerHubStore = usePointerHubStore()
+const message = useMessage()
+
+function isProtectedRootContainerInCustomEdit(comp: Comp): boolean {
+  if (pageStore.editorMode !== 'custom-edit') return false
+  if (!comp || comp.type !== 'container') return false
+  const parentId = pageStore.findParentContainerId(comp.id)
+  return parentId === null
+}
+
+function mergeBindingContext(base: any, extra: any): any {
+  if (!extra) return base
+  if (!base) return extra
+  return { ...base, ...extra }
+}
+
+function getCustomPropsBindingContext(comp: Comp): any {
+  const p: any = comp?.props || {}
+  const customProps = p.__customProps
+  if (customProps && typeof customProps === 'object') {
+    return { customProps, props: customProps }
+  }
+  return undefined
+}
 
 const renderedPropsMap = computed(() => {
   const map = new Map<string, Record<string, any>>();
   const variables = pageStore.currentPage?.variables || [];
   const components = pageStore.currentPage?.components || [];
 
-  function resolveBinding(bindingRef: string): any {
+  function resolveBinding(bindingRef: string, context?: any): any {
     return resolveBindingRef(bindingRef, {
       getVarValue: (name) => pageStore.getVariableValue(name),
-      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey]
+      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+      context
     })
   }
 
   for (const comp of props.components) {
     const raw = { ...(comp.props || {}) };
+    const context = mergeBindingContext(props.bindingContext, getCustomPropsBindingContext(comp))
     if (comp.bindings) {
       for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
         if (typeof bindingRef !== 'string') continue;
-        raw[propName] = resolveBinding(bindingRef);
+        raw[propName] = resolveBinding(bindingRef, context);
       }
     }
     map.set(comp.id, raw);
@@ -227,6 +264,10 @@ const renderedPropsMap = computed(() => {
 
 function getRenderedProps(comp: Comp): Record<string, any> {
   return renderedPropsMap.value.get(comp.id) || comp.props || {};
+}
+
+function getBindingContextForRoot(comp: Comp): any {
+  return mergeBindingContext(props.bindingContext, getCustomPropsBindingContext(comp))
 }
 
 function getContainerHits(): ContainerHit[] {
@@ -606,8 +647,9 @@ function handleDragOver(e: DragEvent) {
     e.dataTransfer.dropEffect = 'copy';
   }
 
+  const customComponentId = e.dataTransfer?.getData('customComponentId') || ''
   const componentType = e.dataTransfer?.getData('componentType') as CompType;
-  if (!componentType) {
+  if (!customComponentId && !componentType) {
     dropIndicator.value.show = false;
     dropIndicator.value.containerId = null;
     return;
@@ -660,13 +702,71 @@ function screenToCanvas(screenX: number, screenY: number): { x: number, y: numbe
 
 function handleDrop(e: DragEvent) {
   e.preventDefault();
+  const customComponentId = e.dataTransfer?.getData('customComponentId') || ''
   const componentType = e.dataTransfer?.getData('componentType') as CompType;
-  if (!componentType) return;
+  if (!customComponentId && !componentType) return;
 
   // 使用统一的坐标转换函数
   const canvasPos = screenToCanvas(e.clientX, e.clientY);
 
   const hit = findContainerHit(canvasPos.x, canvasPos.y);
+
+  if (customComponentId) {
+    const def = customComponentsStore.getById(customComponentId)
+    if (!def) return
+
+    const buildDefaultsFromSchema = (schema: any): Record<string, any> => {
+      const res: Record<string, any> = {}
+      const src = (schema && typeof schema === 'object') ? schema : {}
+      for (const [k, s] of Object.entries(src)) {
+        const ss: any = s
+        if (ss && Object.prototype.hasOwnProperty.call(ss, 'default')) {
+          res[k] = ss.default
+          continue
+        }
+        const t = ss?.type
+        if (t === 'number') res[k] = 0
+        else if (t === 'boolean') res[k] = false
+        else if (t === 'json') res[k] = null
+        else res[k] = ''
+      }
+      return res
+    }
+
+    const roots = importFromJSON(def.templateJson)
+    const root = roots[0]
+    if (!root) return
+
+    root.props = {
+      ...(root.props || {}),
+      __customComponentId: def.id,
+      __customComponentName: def.name,
+      __customProps: buildDefaultsFromSchema((def as any).propsSchema)
+    }
+
+    if (hit) {
+      const container = pageStore.getComponentById(hit.containerId);
+      const layoutMode = (container?.props as any)?.layoutMode || 'absolute';
+      if (layoutMode === 'absolute') {
+        root.props.x = canvasPos.x - hit.x;
+        root.props.y = canvasPos.y - hit.y;
+      } else {
+        root.props.x = 0;
+        root.props.y = 0;
+      }
+      root.props.zIndex = 1;
+      emit('addToContainer', { containerId: hit.containerId, comp: root });
+    } else {
+      root.props.x = canvasPos.x;
+      root.props.y = canvasPos.y;
+      root.props.zIndex = getNextZIndex();
+      emit('add', root);
+    }
+
+    dropIndicator.value.show = false;
+    dropIndicator.value.containerId = null;
+    return;
+  }
   if (hit) {
     const container = pageStore.getComponentById(hit.containerId);
     const layoutMode = (container?.props as any)?.layoutMode || 'absolute';
@@ -832,9 +932,16 @@ function deleteSelectedComponent() {
   const selectedSnapshot = [...pageStore.selectedComps]
   if (selectedSnapshot.length === 0) return
 
+  let blockedCount = 0
+
   // 重要：emit('delete') 会触发外部更新组件树/选中状态，
   // 不能直接遍历 pageStore.selectedComps（会被边删边改导致只删一个或跳删）。
   for (const comp of selectedSnapshot) {
+    if (isProtectedRootContainerInCustomEdit(comp)) {
+      blockedCount++
+      continue
+    }
+
     const parentContainerId = pageStore.findParentContainerId(comp.id)
 
     history.addAction({
@@ -849,8 +956,14 @@ function deleteSelectedComponent() {
     emit('delete', comp.id)
   }
 
-  // 删除后清空选中，避免残留引用
-  pageStore.selectComponent(null)
+  if (blockedCount > 0) {
+    message.warning('组件编辑模式下不允许删除最外层容器')
+  }
+
+  // 仅当确实删除了内容时才清空选中，避免误清
+  if (blockedCount !== selectedSnapshot.length) {
+    pageStore.selectComponent(null)
+  }
 }
 
 // 撤销
@@ -966,8 +1079,9 @@ function showContextMenu(event: MouseEvent, component: Comp) {
     component
   };
   
-  // 选中组件
-  emit('select', component.id);
+  // 选中组件：若当前是多选且右键命中的组件已在选区中，保留多选；否则切到单选。
+  const isAlreadySelected = pageStore.selectedComps.some((c) => c.id === component.id)
+  if (!isAlreadySelected) emit('select', component.id)
   
   // 点击其他地方隐藏菜单
   document.addEventListener('click', hideContextMenu, { once: true });
@@ -1000,6 +1114,87 @@ function duplicateComponent() {
   
   emit('add', newComp);
   hideContextMenu();
+}
+
+function deepClone<T>(v: T): T {
+  try {
+    return structuredClone(v)
+  } catch {
+    return JSON.parse(JSON.stringify(v))
+  }
+}
+
+function getCompCanvasRectForGroup(comp: Comp): { x: number; y: number; width: number; height: number } {
+  const pos = pageStore.getComponentCanvasPosition(comp.id)
+  const x = pos?.x ?? (comp.props?.x || 0)
+  const y = pos?.y ?? (comp.props?.y || 0)
+
+  const p: any = comp.props || {}
+  const widthSizing = p.widthSizing as string | undefined
+  const heightSizing = p.heightSizing as string | undefined
+  const measuredW = Number(p._measuredWidth)
+  const measuredH = Number(p._measuredHeight)
+  const rawW = typeof p.width === 'number' ? p.width : Number(p.width)
+  const rawH = typeof p.height === 'number' ? p.height : Number(p.height)
+
+  const width = (widthSizing && widthSizing !== 'fixed' && Number.isFinite(measuredW))
+    ? measuredW
+    : (Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100))
+
+  const height = (heightSizing && heightSizing !== 'fixed' && Number.isFinite(measuredH))
+    ? measuredH
+    : (Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100))
+
+  return { x, y, width, height }
+}
+
+function saveAsCustomComponent() {
+  const selected = pageStore.selectedComps
+  const targetComps = selected.length > 0 ? selected : (contextMenu.value.component ? [contextMenu.value.component] : [])
+  if (targetComps.length === 0) {
+    hideContextMenu()
+    return
+  }
+
+  const defaultName = targetComps.length > 1 ? `组件组(${targetComps.length})` : `${targetComps[0].name || '组件'}`
+  const name = (window.prompt('组件名称', defaultName) || '').trim() || defaultName
+
+  let root: Comp
+  if (targetComps.length === 1) {
+    root = deepClone(targetComps[0])
+    root.props = { ...(root.props || {}), x: 0, y: 0 }
+  } else {
+    const rects = targetComps.map(getCompCanvasRectForGroup)
+    const minX = Math.min(...rects.map(r => r.x))
+    const minY = Math.min(...rects.map(r => r.y))
+    const maxX = Math.max(...rects.map(r => r.x + r.width))
+    const maxY = Math.max(...rects.map(r => r.y + r.height))
+    const groupW = Math.max(1, maxX - minX)
+    const groupH = Math.max(1, maxY - minY)
+
+    root = createComp(CompType.CONTAINER, name)
+    root.props = {
+      ...(root.props || {}),
+      x: 0,
+      y: 0,
+      width: groupW,
+      height: groupH,
+      widthSizing: 'fixed',
+      heightSizing: 'fixed',
+      layoutMode: 'absolute'
+    }
+
+    root.children = targetComps.map((c) => {
+      const cloned = deepClone(c)
+      const r = getCompCanvasRectForGroup(c)
+      cloned.props = { ...(cloned.props || {}), x: r.x - minX, y: r.y - minY }
+      return cloned
+    })
+  }
+
+  const templateJson = exportToJSON([root])
+  customComponentsStore.addCustomComponent(name, templateJson)
+  hideContextMenu()
 }
 
 // 组件层级调整
@@ -1161,6 +1356,12 @@ function deleteComponentFromMenu() {
   if (!contextMenu.value.component) return;
   
   const comp = contextMenu.value.component;
+
+  if (isProtectedRootContainerInCustomEdit(comp)) {
+    message.warning('组件编辑模式下不允许删除最外层容器')
+    hideContextMenu();
+    return;
+  }
   
   // 记录删除操作
   history.addAction({
