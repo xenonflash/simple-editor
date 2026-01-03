@@ -38,41 +38,43 @@
               <!-- 组件渲染 - 提高层级 -->
               <template v-for="(comp, index) in props.components"
                         :key="comp.id">
+                  <template v-for="rep in getRenderRepeatsForRoot(comp, index)" :key="rep.key">
                 <div class="component-wrapper"
-                   :style="{ zIndex: getRenderedProps(comp).zIndex || index + 1000 }"
-                   >
+                     v-show="rep.visible"
+                     :style="{ zIndex: rep.zIndex }">
                   <Container v-if="comp.type === 'container'"
-                            :id="comp.id"
-                        :comp="comp"
-                      v-bind="getRenderedProps(comp)"
-                            :scale="scale"
-                        :bindingContext="getBindingContextForRoot(comp)"
-                  @contextmenu.prevent="showContextMenu($event, comp)"
-                        @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
+                    :id="comp.id"
+                    :comp="comp"
+                    v-bind="getRenderedProps(comp)"
+                    :scale="scale"
+                    :bindingContext="rep.bindingContext"
+                    @contextmenu.prevent="showContextMenu($event, comp)"
+                    @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
                   <Text v-else-if="comp.type === 'text'"
-                        :id="comp.id"
-                  :content="getRenderedProps(comp).content || '新建文本'"
-                  :x="getRenderedProps(comp).x || 0"
-                  :y="getRenderedProps(comp).y || 0"
-                  v-bind="getRenderedProps(comp)"
-                        :scale="scale"
-                  @contextmenu.prevent="showContextMenu($event, comp)"
-                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                    :id="comp.id"
+                    :content="getRenderedProps(comp).content || '新建文本'"
+                    :x="getRenderedProps(comp).x || 0"
+                    :y="getRenderedProps(comp).y || 0"
+                    v-bind="getRenderedProps(comp)"
+                    :scale="scale"
+                    @contextmenu.prevent="showContextMenu($event, comp)"
+                    @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <Button v-else-if="comp.type === 'button'"
-                        :id="comp.id"
-                  :x="getRenderedProps(comp).x || 0"
-                  :y="getRenderedProps(comp).y || 0"
-                  v-bind="getRenderedProps(comp)"
-                        :scale="scale"
-                  @contextmenu.prevent="showContextMenu($event, comp)"
-                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                      :id="comp.id"
+                      :x="getRenderedProps(comp).x || 0"
+                      :y="getRenderedProps(comp).y || 0"
+                      v-bind="getRenderedProps(comp)"
+                      :scale="scale"
+                      @contextmenu.prevent="showContextMenu($event, comp)"
+                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                   <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
                         :comp="comp"
                         :scale="scale"
-                    :bindingContext="getBindingContextForRoot(comp)"
-                  @contextmenu.prevent="showContextMenu($event, comp)"
+                        :bindingContext="rep.bindingContext"
+                        @contextmenu.prevent="showContextMenu($event, comp)"
                         @update="(updates) => handleUpdatePosition(comp.id, updates)" />
                 </div>
+                  </template>
               </template>
               
               <!-- 其他组件保持原有层级 -->
@@ -268,6 +270,41 @@ function getRenderedProps(comp: Comp): Record<string, any> {
 
 function getBindingContextForRoot(comp: Comp): any {
   return mergeBindingContext(props.bindingContext, getCustomPropsBindingContext(comp))
+}
+
+function isVisibleByRenderControl(comp: Comp): boolean {
+  const raw: any = getRenderedProps(comp)
+  // 默认显示；绑定返回 false 则隐藏
+  if (raw && Object.prototype.hasOwnProperty.call(raw, 'renderVisible')) {
+    return raw.renderVisible !== false
+  }
+  return true
+}
+
+function getLoopItemsForRoot(comp: Comp): any[] | null {
+  const raw: any = getRenderedProps(comp)
+  const enabled = raw?.loopEnabled === true
+  if (!enabled) return null
+  const items = raw?.loopItems
+  return Array.isArray(items) ? items : []
+}
+
+function getRenderRepeatsForRoot(comp: Comp, index: number): Array<{ key: string; bindingContext: any; visible: boolean; zIndex: number }> {
+  const baseContext = getBindingContextForRoot(comp)
+  const visible = isVisibleByRenderControl(comp)
+  const zIndex = (getRenderedProps(comp) as any)?.zIndex || index + 1000
+
+  const items = getLoopItemsForRoot(comp)
+  if (!items) {
+    return [{ key: comp.id, bindingContext: baseContext, visible, zIndex }]
+  }
+
+  return items.map((item, i) => ({
+    key: `${comp.id}__loop__${i}`,
+    bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
+    visible,
+    zIndex
+  }))
 }
 
 function getContainerHits(): ContainerHit[] {

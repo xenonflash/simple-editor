@@ -7,51 +7,53 @@
        @click.stop>
     <template v-if="props.comp?.children?.length">
       <template v-for="(child, index) in props.comp.children" :key="child.id">
-        <div class="child-wrapper" :style="{ zIndex: (child.props?.zIndex || 1) + index }">
-          <Container
-            v-if="child.type === 'container'"
-            :id="child.id"
-            :comp="child"
-            v-bind="getRenderedProps(child)"
-            :scale="props.scale || 1"
-            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
-            :locked="lockedForChildren"
-            :bindingContext="getBindingContextForChild(child)"
-            @update="(payload) => emit('update', payload)"
-          />
-          <Text
-            v-else-if="child.type === 'text'"
-            :id="child.id"
-            :content="getRenderedProps(child, getBindingContextForChild(child)).content || '新建文本'"
-            :x="getRenderedProps(child, getBindingContextForChild(child)).x || 0"
-            :y="getRenderedProps(child, getBindingContextForChild(child)).y || 0"
-            v-bind="getRenderedProps(child, getBindingContextForChild(child))"
-            :scale="props.scale || 1"
-            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
-            :locked="lockedForChildren"
-            @update="(updates) => emit('update', { id: child.id, updates })"
-          />
-          <Button
-            v-else-if="child.type === 'button'"
-            :id="child.id"
-            :x="getRenderedProps(child, getBindingContextForChild(child)).x || 0"
-            :y="getRenderedProps(child, getBindingContextForChild(child)).y || 0"
-            v-bind="getRenderedProps(child, getBindingContextForChild(child))"
-            :scale="props.scale || 1"
-            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
-            :locked="lockedForChildren"
-            @update="(updates) => emit('update', { id: child.id, updates })"
-          />
-          <NaiveWrapper
-            v-else-if="child.type && child.type.startsWith('n-')"
-            :comp="child"
-            :scale="props.scale || 1"
-            :inFlowLayout="effectiveLayoutMode !== 'absolute'"
-            :locked="lockedForChildren"
-            :bindingContext="getBindingContextForChild(child)"
-            @update="(updates) => emit('update', { id: child.id, updates })"
-          />
-        </div>
+        <template v-for="rep in getRenderRepeatsForChild(child, index)" :key="rep.key">
+          <div class="child-wrapper" v-show="rep.visible" :style="{ zIndex: rep.zIndex }">
+            <Container
+              v-if="child.type === 'container'"
+              :id="child.id"
+              :comp="child"
+              v-bind="getRenderedProps(child, rep.bindingContext)"
+              :scale="props.scale || 1"
+              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :locked="lockedForChildren"
+              :bindingContext="rep.bindingContext"
+              @update="(payload) => emit('update', payload)"
+            />
+            <Text
+              v-else-if="child.type === 'text'"
+              :id="child.id"
+              :content="getRenderedProps(child, rep.bindingContext).content || '新建文本'"
+              :x="getRenderedProps(child, rep.bindingContext).x || 0"
+              :y="getRenderedProps(child, rep.bindingContext).y || 0"
+              v-bind="getRenderedProps(child, rep.bindingContext)"
+              :scale="props.scale || 1"
+              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :locked="lockedForChildren"
+              @update="(updates) => emit('update', { id: child.id, updates })"
+            />
+            <Button
+              v-else-if="child.type === 'button'"
+              :id="child.id"
+              :x="getRenderedProps(child, rep.bindingContext).x || 0"
+              :y="getRenderedProps(child, rep.bindingContext).y || 0"
+              v-bind="getRenderedProps(child, rep.bindingContext)"
+              :scale="props.scale || 1"
+              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :locked="lockedForChildren"
+              @update="(updates) => emit('update', { id: child.id, updates })"
+            />
+            <NaiveWrapper
+              v-else-if="child.type && child.type.startsWith('n-')"
+              :comp="child"
+              :scale="props.scale || 1"
+              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :locked="lockedForChildren"
+              :bindingContext="rep.bindingContext"
+              @update="(updates) => emit('update', { id: child.id, updates })"
+            />
+          </div>
+        </template>
       </template>
     </template>
     <slot />
@@ -267,7 +269,7 @@ function onMouseDown(e: MouseEvent) {
 
 function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
   const raw = { ...(comp.props || {}) }
-  const ctx = context ?? getBindingContextForChild(comp)
+  const ctx = context ?? localBindingContext.value
   if (comp.bindings) {
     for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
       if (typeof bindingRef !== 'string' || !bindingRef) continue
@@ -281,14 +283,63 @@ function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
   return raw
 }
 
-function getBindingContextForChild(comp: Comp): any {
-  const base = props.bindingContext
-  const p: any = comp?.props || {}
-  const customProps = p.__customProps
-  if (customProps && typeof customProps === 'object') {
-    return base ? { ...base, customProps, props: customProps } : { customProps, props: customProps }
+const localBindingContext = computed(() => {
+  const base = props.bindingContext || {}
+  const currentProps = props.comp?.props || {}
+  
+  // 如果当前容器是自定义组件实例，注入其 props
+  if (currentProps.__customProps) {
+    return {
+      ...base,
+      customProps: currentProps.__customProps,
+      props: currentProps.__customProps
+    }
   }
   return base
+})
+
+function getBindingContextForChild(comp: Comp): any {
+  return localBindingContext.value
+}
+
+function mergeBindingContext(base: any, extra: any): any {
+  if (!extra) return base
+  if (!base) return extra
+  return { ...base, ...extra }
+}
+
+function isVisibleByRenderControl(comp: Comp, context: any): boolean {
+  const raw: any = getRenderedProps(comp, context)
+  if (raw && Object.prototype.hasOwnProperty.call(raw, 'renderVisible')) {
+    return raw.renderVisible !== false
+  }
+  return true
+}
+
+function getLoopItems(comp: Comp, context: any): any[] | null {
+  const raw: any = getRenderedProps(comp, context)
+  const enabled = raw?.loopEnabled === true
+  if (!enabled) return null
+  const items = raw?.loopItems
+  return Array.isArray(items) ? items : []
+}
+
+function getRenderRepeatsForChild(child: Comp, index: number): Array<{ key: string; bindingContext: any; visible: boolean; zIndex: number }> {
+  const baseContext = getBindingContextForChild(child)
+  const visible = isVisibleByRenderControl(child, baseContext)
+  const zIndex = ((child.props as any)?.zIndex || 1) + index
+
+  const items = getLoopItems(child, baseContext)
+  if (!items) {
+    return [{ key: child.id, bindingContext: baseContext, visible, zIndex }]
+  }
+
+  return items.map((item, i) => ({
+    key: `${child.id}__loop__${i}`,
+    bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
+    visible,
+    zIndex
+  }))
 }
 
 // 计算容器样式

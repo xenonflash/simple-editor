@@ -14,6 +14,11 @@
                 @click="activeTab = 'events'">
           事件
         </button>
+        <button class="tab-button" 
+                :class="{ active: activeTab === 'render' }"
+                @click="activeTab = 'render'">
+          渲染
+        </button>
       </div>
 
       <!-- 标签页内容 -->
@@ -180,6 +185,39 @@
             </div>
           </div>
         </div>
+
+        <!-- 渲染面板 -->
+        <div v-show="activeTab === 'render'">
+          <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">显示 / 隐藏</div>
+          <DynamicProperties
+            :modelValue="props.component.props"
+            :bindings="props.component.bindings || {}"
+            :customProps="bindingCustomProps"
+            :customPropsCtxPath="bindingCustomPropsCtxPath"
+            :customPropsLabel="bindingCustomPropsLabel"
+            :propsSchema="renderVisibilitySchema"
+            @change="updateProps"
+            @update:bindings="updateBindings"
+          />
+
+          <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">循环渲染</div>
+          <DynamicProperties
+            :modelValue="props.component.props"
+            :bindings="props.component.bindings || {}"
+            :customProps="bindingCustomProps"
+            :customPropsCtxPath="bindingCustomPropsCtxPath"
+            :customPropsLabel="bindingCustomPropsLabel"
+            :propsSchema="renderLoopSchema"
+            @change="updateProps"
+            @update:bindings="updateBindings"
+          />
+
+          <div v-if="loopValidationMessage" class="section" style="margin: 8px 12px 12px;">
+            <div class="section-content" style="padding: 8px; font-size: 12px; color: #ad4e00; background: #fff7e6; border: 1px solid #ffe7ba; border-radius: 6px;">
+              {{ loopValidationMessage }}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -250,6 +288,7 @@ import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { Comp } from '../comps/base';
 import type { CompEventAction } from '../comps/base';
 import { actionRegistry } from '../../config/actions';
+import { resolveBindingRef } from '../../utils/bindingRef'
 
 const props = defineProps<{
   component: Comp | null;
@@ -348,6 +387,15 @@ function removeSchemaProp(key: string) {
 const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
 
+const renderVisibilitySchema: Record<string, PropSchema> = {
+  renderVisible: { label: '显示', type: 'boolean', default: true } as any
+}
+
+const renderLoopSchema: Record<string, PropSchema> = {
+  loopEnabled: { label: '启用', type: 'boolean', default: false } as any,
+  loopItems: { label: '数组数据', type: 'json', default: [] } as any
+}
+
 const customMeta = computed(() => {
   const c = props.component
   if (!c) return null
@@ -405,6 +453,42 @@ const bindingCustomProps = computed(() => {
 
 const bindingCustomPropsCtxPath = computed(() => (isCustomEditMode.value ? 'props' : 'customProps'))
 const bindingCustomPropsLabel = computed(() => (isCustomEditMode.value ? '组件参数' : '自定义组件参数'))
+
+const bindingContextForValidation = computed(() => {
+  const base: any = {}
+  const cp = bindingCustomProps.value
+  if (cp && typeof cp === 'object') {
+    // 渲染层实际注入了 props/customProps 双别名（custom-edit 时为 props）
+    base.customProps = cp
+    base.props = cp
+  }
+  return base
+})
+
+const loopValidationMessage = computed(() => {
+  const comp = props.component
+  if (!comp) return ''
+
+  const loopEnabled = !!(comp.props as any)?.loopEnabled
+  if (!loopEnabled) return ''
+
+  const ref = (comp.bindings as any)?.loopItems
+  if (typeof ref !== 'string' || !ref) {
+    return '启用循环渲染后，需要将“数组数据”绑定到一个数组类型的数据源。'
+  }
+
+  const resolved = resolveBindingRef(ref, {
+    getVarValue: (name) => pageStore.getVariableValue(name),
+    getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+    context: bindingContextForValidation.value
+  })
+
+  if (!Array.isArray(resolved)) {
+    return '“数组数据”当前绑定的值不是数组，请改为绑定数组类型变量/上下文数据。'
+  }
+
+  return ''
+})
 
 function updateCustomInstanceProps(updates: Record<string, any>) {
   if (!props.component) return

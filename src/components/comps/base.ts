@@ -101,6 +101,14 @@ export interface CompStandardProps {
   // 新增文字组件专用属性
   widthMode?: 'auto' | 'fixed'; // 宽度模式：自动撑满或固定宽度
   autoHeight?: boolean; // 是否自动高度
+
+  // ==================== 渲染控制（核心数据结构） ====================
+  /** 条件渲染：默认显示；false 则隐藏（类似 v-show） */
+  renderVisible?: boolean;
+  /** 循环渲染开关 */
+  loopEnabled?: boolean;
+  /** 循环渲染数据源（通常通过 bindings 绑定到数组变量/上下文） */
+  loopItems?: any[];
 }
 
 // 基础属性接口（不包含id和type）
@@ -120,6 +128,11 @@ interface BaseProps {
   shadowSpread?: number;
   shadowColor?: string;
   zIndex?: number;
+
+  // 渲染控制
+  renderVisible?: boolean;
+  loopEnabled?: boolean;
+  loopItems?: any[];
 }
 
 // 组件工厂函数
@@ -139,7 +152,9 @@ export function createComp(type: CompType, name: string): Comp {
     shadowBlur: 0,
     shadowSpread: 0,
     shadowColor: '#000000',
-    zIndex: 1
+    zIndex: 1,
+    renderVisible: true,
+    loopEnabled: false
   };
 
   // 检查是否为 Naive UI 组件

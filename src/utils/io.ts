@@ -3,17 +3,23 @@ import { CompType, createComp } from '../components/comps/base';
 
 // 导出组件到JSON
 export function exportToJSON(components: Comp[]): string {
+  function processComponent(comp: Comp): any {
+    return {
+      id: comp.id,
+      name: comp.name,
+      type: comp.type,
+      props: comp.props,
+      bindings: comp.bindings,
+      events: comp.events,
+      style: comp.style,
+      size: comp.size,
+      children: comp.children ? comp.children.map(processComponent) : [],
+      isContainer: comp.isContainer,
+    }
+  }
+
   // 序列化组件数据，移除事件处理器等不需要的字段
-  const serializedComps = components.map(comp => ({
-    id: comp.id,
-    name: comp.name,
-    type: comp.type,
-    props: comp.props,
-    style: comp.style,
-    size: comp.size,
-    children: comp.children,
-    isContainer: comp.isContainer,
-  }));
+  const serializedComps = components.map(processComponent);
 
   return JSON.stringify(serializedComps, null, 2);
 }
@@ -31,8 +37,15 @@ export function importFromJSON(jsonStr: string): Comp[] {
       // 创建新组件实例
       const newComp = createComp(comp.type as CompType, comp.name);
       
+      // 恢复 ID (如果存在)
+      if (comp.id) {
+        newComp.id = comp.id;
+      }
+
       // 复制属性
       newComp.props = { ...comp.props };
+      newComp.bindings = { ...comp.bindings };
+      newComp.events = { ...comp.events };
       newComp.style = { ...comp.style };
       newComp.size = { ...comp.size };
       newComp.isContainer = comp.isContainer;
