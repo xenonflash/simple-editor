@@ -5,6 +5,7 @@ import { createPage } from '../types/page';
 import type { Comp } from '../components/comps/base';
 import type { PropSchema } from '../config/naive-ui-registry'
 import { exportToJSON, importFromJSON } from '../utils/io'
+import { instantiateFromCustomComponentTemplate } from '../utils/customComponentInstance'
 
 export const usePageStore = defineStore('page', () => {
   // ==================== 状态定义 ====================
@@ -550,6 +551,14 @@ export const usePageStore = defineStore('page', () => {
         }
       })()
       if (!next) return comp
+
+      // 为该实例同步时复用内部节点 id，避免多个实例共享同一套 id
+      // 同时强制保持实例根 id 不变（选择/历史/引用更稳定）
+      const sourceRootId = next.id
+      instantiateFromCustomComponentTemplate(next, {
+        existingInstanceRoot: comp,
+        fixedIdBySourceId: { [sourceRootId]: comp.id }
+      })
 
       const instProps: any = comp.props || {}
       const preserved: any = {}

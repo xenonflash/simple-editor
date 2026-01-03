@@ -179,6 +179,7 @@ import { useMessage } from 'naive-ui'
 import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
 import { resolveBindingRef } from '../../utils/bindingRef';
+import { instantiateFromCustomComponentTemplate } from '../../utils/customComponentInstance'
 import DropPreviewBox from './DropPreviewBox.vue'
 import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from '../../stores/dropPreview'
 import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
@@ -773,6 +774,9 @@ function handleDrop(e: DragEvent) {
     const roots = importFromJSON(def.templateJson)
     const root = roots[0]
     if (!root) return
+
+    // 实例化：为该次拖入生成全新的唯一 id（并修正内部 comp: 绑定引用）
+    instantiateFromCustomComponentTemplate(root)
 
     root.props = {
       ...(root.props || {}),
