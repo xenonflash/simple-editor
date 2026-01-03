@@ -1,5 +1,6 @@
 <template>
-  <div class="naive-wrapper"
+    <div class="naive-wrapper"
+      :data-comp-id="props.comp.id"
        ref="wrapperRef"
        :style="wrapperStyle"
   @mousedown.stop="onMouseDown"

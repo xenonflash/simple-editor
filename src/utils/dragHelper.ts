@@ -138,28 +138,54 @@ export function useDraggable(options: DragOptions = {}) {
     let finalX = rawX
     let finalY = rawY
 
+    // 吸附计算统一使用 canvas 绝对坐标；对于容器 absolute 布局内部的组件，props.x/y 是相对容器内容区的 local 坐标。
+    const componentId = options.componentId
+    let originX = 0
+    let originY = 0
+    if (componentId) {
+      const parentId = pageStore.findParentContainerId(componentId)
+      if (parentId) {
+        const parent = pageStore.getComponentById(parentId)
+        const parentLayoutMode = (parent?.props as any)?.layoutMode || 'absolute'
+        if (parentLayoutMode === 'absolute') {
+          const origin = pageStore.getContainerContentCanvasOrigin(parentId)
+          if (origin) {
+            originX = origin.x
+            originY = origin.y
+          }
+        }
+      }
+    }
+
     // 吸附计算逻辑保持不变...
-    if (options.componentId && options.componentSize) {
+    if (componentId && options.componentSize) {
       const size = typeof options.componentSize === 'object' && 'value' in options.componentSize 
         ? options.componentSize.value 
         : options.componentSize
+
+      const canvasRawX = rawX + originX
+      const canvasRawY = rawY + originY
       
       snaplineStore.updateDraggingComponent({
-        id: options.componentId,
-        x: rawX,
-        y: rawY,
+        id: componentId,
+        x: canvasRawX,
+        y: canvasRawY,
         width: size.width,
         height: size.height
       })
       
-      const snapResult = snaplineStore.calculateSnapPosition(rawX, rawY, size.width, size.height)
-      finalX = snapResult.x
-      finalY = snapResult.y
+      const snapResult = snaplineStore.calculateSnapPosition(canvasRawX, canvasRawY, size.width, size.height)
+      const snappedCanvasX = snapResult.x
+      const snappedCanvasY = snapResult.y
+
+      // 转回 local 坐标写回 props
+      finalX = snappedCanvasX - originX
+      finalY = snappedCanvasY - originY
       
       snaplineStore.updateDraggingComponent({
-        id: options.componentId,
-        x: finalX,
-        y: finalY,
+        id: componentId,
+        x: snappedCanvasX,
+        y: snappedCanvasY,
         width: size.width,
         height: size.height
       })

@@ -1,6 +1,7 @@
 <template>
-  <div class="text-comp" 
-  ref="rootRef"
+    <div class="text-comp" 
+    ref="rootRef"
+      :data-comp-id="props.id"
        :style="style"
        @mousedown.stop="handleMouseDown"
        @dblclick="startEditing">

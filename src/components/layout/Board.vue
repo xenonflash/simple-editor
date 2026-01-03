@@ -230,26 +230,53 @@ function getRenderedProps(comp: Comp): Record<string, any> {
 }
 
 function getContainerHits(): ContainerHit[] {
-  return props.components
-    .filter((c) => c.type === 'container')
-    .map((c) => {
-      const p: any = getRenderedProps(c)
-      return {
-        id: c.id,
-        rect: {
-          x: p.x || 0,
-          y: p.y || 0,
-          width: p.width || 100,
-          height: p.height || 100
-        },
-        zIndex: p.zIndex || 1,
-        layoutMode: (p.layoutMode || 'absolute') as any,
-        paddingTop: p.paddingTop || 0,
-        paddingRight: p.paddingRight || 0,
-        paddingBottom: p.paddingBottom || 0,
-        paddingLeft: p.paddingLeft || 0
-      } as ContainerHit
+  const res: ContainerHit[] = []
+  const stack: Comp[] = [...props.components]
+
+  while (stack.length > 0) {
+    const c = stack.pop()!
+    if (c.children && c.children.length > 0) stack.push(...c.children)
+    if (c.type !== 'container') continue
+
+    const p: any = c.id ? pageStore.getComponentById(c.id)?.props ?? c.props : c.props
+
+    const pos = pageStore.getComponentCanvasPosition(c.id)
+    const x = pos?.x ?? (Number(p?.x) || 0)
+    const y = pos?.y ?? (Number(p?.y) || 0)
+
+    const measuredW = Number((p as any)?._measuredWidth)
+    const measuredH = Number((p as any)?._measuredHeight)
+
+    const rawW = typeof p?.width === 'number' ? p.width : Number(p?.width)
+    const rawH = typeof p?.height === 'number' ? p.height : Number(p?.height)
+
+    const width = Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100)
+    const height = Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100)
+
+    res.push({
+      id: c.id,
+      rect: { x, y, width, height },
+      zIndex: p?.zIndex || 1,
+      layoutMode: (p?.layoutMode || 'absolute') as any,
+      paddingTop: p?.paddingTop || 0,
+      paddingRight: p?.paddingRight || 0,
+      paddingBottom: p?.paddingBottom || 0,
+      paddingLeft: p?.paddingLeft || 0
     })
+  }
+
+  return res
+}
+
+function flattenComponents(list: Comp[]): Comp[] {
+  const out: Comp[] = []
+  const stack: Comp[] = [...list]
+  while (stack.length > 0) {
+    const c = stack.pop()!
+    out.push(c)
+    if (c.children && c.children.length > 0) stack.push(...c.children)
+  }
+  return out
 }
 
 // 使用页面的动态尺寸
@@ -332,7 +359,7 @@ const hasSelection = computed(() => {
 
 // 监听组件变化，更新 store
 watch(() => props.components, (newComponents) => {
-  snaplineStore.updateAllComponents(newComponents);
+  snaplineStore.updateAllComponents(flattenComponents(newComponents));
 }, { immediate: true, deep: true });
 
 // 同步画布尺寸到吸附系统（避免 snapline 仍使用硬编码尺寸）

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Comp } from '../components/comps/base'
+import { usePageStore } from './page'
 
 export interface SnapLine {
   id: string
@@ -19,6 +20,28 @@ export interface SnapResult {
 }
 
 export const useSnaplineStore = defineStore('snapline', () => {
+  const pageStore = usePageStore()
+
+  function getCompCanvasRect(compId: string, fallbackProps: any): { x: number; y: number; width: number; height: number } {
+    const comp = pageStore.getComponentById(compId)
+    const p: any = comp?.props ?? fallbackProps ?? {}
+
+    const pos = pageStore.getComponentCanvasPosition(compId)
+    const x = pos?.x ?? (Number(p?.x) || 0)
+    const y = pos?.y ?? (Number(p?.y) || 0)
+
+    const measuredW = Number(p?._measuredWidth)
+    const measuredH = Number(p?._measuredHeight)
+
+    const rawW = typeof p?.width === 'number' ? p.width : Number(p?.width)
+    const rawH = typeof p?.height === 'number' ? p.height : Number(p?.height)
+
+    const width = Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100)
+    const height = Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100)
+
+    return { x, y, width, height }
+  }
+
   // 当前拖拽的组件信息
   const draggingComponent = ref<{
     id: string
@@ -61,13 +84,14 @@ export const useSnaplineStore = defineStore('snapline', () => {
     allComponents.value
       .filter(comp => comp.id !== dragging.id)
       .forEach(comp => {
+        const rect = getCompCanvasRect(comp.id, comp.props)
         const compPoints = {
-          left: comp.props.x || 0,
-          right: (comp.props.x || 0) + (comp.props.width || 100),
-          centerX: (comp.props.x || 0) + (comp.props.width || 100) / 2,
-          top: comp.props.y || 0,
-          bottom: (comp.props.y || 0) + (comp.props.height || 100),
-          centerY: (comp.props.y || 0) + (comp.props.height || 100) / 2
+          left: rect.x,
+          right: rect.x + rect.width,
+          centerX: rect.x + rect.width / 2,
+          top: rect.y,
+          bottom: rect.y + rect.height,
+          centerY: rect.y + rect.height / 2
         }
         
         // 垂直对齐线
@@ -167,14 +191,15 @@ export const useSnaplineStore = defineStore('snapline', () => {
     // 检查与其他组件的吸附
     for (const comp of allComponents.value) {
       if (draggingComponent.value && comp.id === draggingComponent.value.id) continue
-      
+
+      const rect = getCompCanvasRect(comp.id, comp.props)
       const compPoints = {
-        left: comp.props.x || 0,
-        right: (comp.props.x || 0) + (comp.props.width || 100),
-        centerX: (comp.props.x || 0) + (comp.props.width || 100) / 2,
-        top: comp.props.y || 0,
-        bottom: (comp.props.y || 0) + (comp.props.height || 100),
-        centerY: (comp.props.y || 0) + (comp.props.height || 100) / 2
+        left: rect.x,
+        right: rect.x + rect.width,
+        centerX: rect.x + rect.width / 2,
+        top: rect.y,
+        bottom: rect.y + rect.height,
+        centerY: rect.y + rect.height / 2
       }
       
       // 检查垂直吸附（X轴）

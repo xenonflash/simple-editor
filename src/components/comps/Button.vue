@@ -1,5 +1,6 @@
 <template>
-  <button class="button-comp" 
+    <button class="button-comp" 
+      :data-comp-id="props.id"
           ref="buttonRef"
           :style="buttonStyle" 
           @mousedown.stop="handleMouseDown"

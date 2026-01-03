@@ -1,6 +1,7 @@
 <template>
-  <div class="container" 
-  ref="rootRef"
+    <div class="container" 
+    ref="rootRef"
+      :data-comp-id="props.id"
        :style="containerStyle" 
        @mousedown.stop="onMouseDown"
        @click.stop>
@@ -52,12 +53,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, inject, nextTick, ref, watch } from 'vue'
 import type { Comp, CompProps } from './base'
 import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
 import { resolveBindingRef } from '../../utils/bindingRef'
 import { useMeasuredSize } from '../../utils/useMeasuredSize'
+import { COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
 import Text from './Text.vue'
 import Button from './Button.vue'
 import NaiveWrapper from './NaiveWrapper.vue'
@@ -120,9 +122,63 @@ const emit = defineEmits<{
 const pageStore = usePageStore()
 const effectiveLayoutMode = computed(() => props.layoutMode || 'absolute')
 
+const coord = inject(COORDINATE_HELPER_KEY, null)
+
 const rootRef = ref<HTMLElement | null>(null)
 
 useMeasuredSize({ elementRef: rootRef, componentId: props.id })
+
+function measureDescendantPositions() {
+  if (!coord) return
+  const el = rootRef.value
+  if (!el) return
+
+  // 仅在非 absolute 布局下需要依赖 DOM 布局位置
+  if (effectiveLayoutMode.value === 'absolute') return
+
+  const nodes = Array.from(el.querySelectorAll('[data-comp-id]')) as HTMLElement[]
+  for (const node of nodes) {
+    const id = node.getAttribute('data-comp-id')
+    if (!id || id === props.id) continue
+
+    const comp = pageStore.getComponentById(id)
+    if (!comp) continue
+
+    const rect = node.getBoundingClientRect()
+    const canvasPos = coord.clientToCanvas({ x: rect.left, y: rect.top })
+
+    const prevX = (comp.props as any)._measuredCanvasX
+    const prevY = (comp.props as any)._measuredCanvasY
+
+    // 避免频繁抖动更新
+    const changed =
+      !Number.isFinite(prevX) ||
+      !Number.isFinite(prevY) ||
+      Math.abs(canvasPos.x - prevX) > 1 ||
+      Math.abs(canvasPos.y - prevY) > 1
+
+    if (!changed) continue
+
+    pageStore.updateComponentInCurrentPage({
+      ...comp,
+      props: {
+        ...comp.props,
+        _measuredCanvasX: canvasPos.x,
+        _measuredCanvasY: canvasPos.y
+      }
+    })
+  }
+}
+
+watch(
+  () => [effectiveLayoutMode.value, props.flexDirection, props.justifyContent, props.alignItems, props.gap, props.paddingTop, props.paddingRight, props.paddingBottom, props.paddingLeft, props.comp?.children?.length],
+  () => {
+    nextTick(() => {
+      measureDescendantPositions()
+    })
+  },
+  { immediate: true }
+)
 
 // 计算组件尺寸
 const componentSize = computed(() => {

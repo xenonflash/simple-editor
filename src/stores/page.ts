@@ -88,12 +88,35 @@ export const usePageStore = defineStore('page', () => {
     const comp = findComponentInTree(componentId)
     if (!comp) return null
 
+    // 仅当组件处在非 absolute 的容器布局（default/flex 等）链路里时，props.x/y 无法可靠反映真实位置，才使用 DOM 测量值。
+    // 对于 canvas 顶层或 absolute 容器内的组件，拖拽/移动依赖 props 立即更新；若这里无条件优先 measured，会导致 control 框“卡住”。
+    let isInFlowLayout = false
+    let parentId = findParentContainerId(componentId)
+    while (parentId) {
+      const parent = findComponentInTree(parentId)
+      if (!parent) break
+      const parentLayoutMode = parent.props?.layoutMode || 'absolute'
+      if (parentLayoutMode !== 'absolute') {
+        isInFlowLayout = true
+        break
+      }
+      parentId = findParentContainerId(parentId)
+    }
+
+    if (isInFlowLayout) {
+      const measuredX = (comp.props as any)?._measuredCanvasX
+      const measuredY = (comp.props as any)?._measuredCanvasY
+      if (Number.isFinite(measuredX) && Number.isFinite(measuredY)) {
+        return { x: measuredX, y: measuredY }
+      }
+    }
+
     let x = comp.props?.x || 0
     let y = comp.props?.y || 0
 
     // 当组件位于绝对布局容器内部时，props.x/y 是相对于容器内容区的 local 坐标；需要叠加父容器的 canvas 坐标 + padding。
     // 对于非 absolute 的容器布局（default/flex），子组件位置由布局决定，这里无法可靠计算，先保持现状（由 UI/后续迭代处理）。
-    let parentId = findParentContainerId(componentId)
+    parentId = findParentContainerId(componentId)
     while (parentId) {
       const parent = findComponentInTree(parentId)
       if (!parent) break
@@ -102,16 +125,34 @@ export const usePageStore = defineStore('page', () => {
       if (parentLayoutMode === 'absolute') {
         const px = parent.props?.x || 0
         const py = parent.props?.y || 0
+        const border = parent.props?.borderWidth || 0
         const padL = parent.props?.paddingLeft || 0
         const padT = parent.props?.paddingTop || 0
-        x += px + padL
-        y += py + padT
+        // 绝对定位的包含块是 padding box：需要叠加 border + padding
+        x += px + border + padL
+        y += py + border + padT
       }
 
       parentId = findParentContainerId(parentId)
     }
 
     return { x, y }
+  }
+
+  function getContainerContentCanvasOrigin(containerId: string): { x: number; y: number } | null {
+    const container = findComponentInTree(containerId)
+    if (!container) return null
+
+    const pos = getComponentCanvasPosition(containerId)
+    if (!pos) return null
+
+    const border = container.props?.borderWidth || 0
+    const padL = container.props?.paddingLeft || 0
+    const padT = container.props?.paddingTop || 0
+    return {
+      x: pos.x + border + padL,
+      y: pos.y + border + padT
+    }
   }
 
   function mapComponentTree(list: Comp[], mapper: (c: Comp) => Comp | null): { next: Comp[]; changed: boolean } {
@@ -595,6 +636,7 @@ export const usePageStore = defineStore('page', () => {
     getComponentById,
     findParentContainerId,
     getComponentCanvasPosition,
+    getContainerContentCanvasOrigin,
     getComponentProps,
     getComponentProp
   };
