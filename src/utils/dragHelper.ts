@@ -1,10 +1,12 @@
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import type { Ref } from 'vue'
 import type { CompProps } from '../components/comps/base'
 import { useSnaplineStore } from '../stores/snapline'
 // 新增：导入 usePageStore
 import { usePageStore } from '../stores/page'
 import { HandleDir } from '@/stores/control'
+import type { CoordinateHelper, Point } from './coordinateHelper'
+import type { PointerHub, PointerMessage } from '../stores/pointerHub'
 
 interface DragState {
   isDragging: boolean
@@ -204,7 +206,8 @@ interface ResizeState {
 }
 
 interface ResizeOptions {
-  scale?: Ref<number> | number
+  coord: CoordinateHelper
+  pointerHub: PointerHub
   minWidth?: number
   minHeight?: number
   onResizeStart?: () => void
@@ -212,7 +215,7 @@ interface ResizeOptions {
   onUpdate?: (updates: Partial<CompProps>) => void
 }
 
-export function useResizable(options: ResizeOptions = {}) {
+export function useResizable(options: ResizeOptions) {
   const resizeState = ref<ResizeState>({
     isResizing: false,
     handle: null,
@@ -224,11 +227,19 @@ export function useResizable(options: ResizeOptions = {}) {
     startPosY: 0
   })
 
-  function startResize(
-    handle: string,
-    e: MouseEvent,
-    currentBounds: { x: number; y: number; width: number; height: number }
-  ) {
+  let unsubscribePointer: (() => void) | null = null
+  let activePointerId: number | null = null
+
+  function detachPointer() {
+    if (unsubscribePointer) {
+      unsubscribePointer()
+      unsubscribePointer = null
+    }
+  }
+
+  function startResize(handle: string, e: PointerEvent, currentBounds: { x: number; y: number; width: number; height: number }) {
+    detachPointer()
+
     resizeState.value.isResizing = true
     resizeState.value.handle = handle
     resizeState.value.startX = e.clientX
@@ -238,17 +249,37 @@ export function useResizable(options: ResizeOptions = {}) {
     resizeState.value.startPosX = currentBounds.x
     resizeState.value.startPosY = currentBounds.y
 
-    window.addEventListener('mousemove', handleResize)
-    window.addEventListener('mouseup', handleResizeEnd)
+    activePointerId = e.pointerId
+
+    unsubscribePointer = options.pointerHub.subscribe(onPointerMessage)
+
     options.onResizeStart?.()
   }
 
-  function handleResize(e: MouseEvent) {
+  function onPointerMessage(msg: PointerMessage) {
+    if (!resizeState.value.isResizing) return
+    if (activePointerId != null && msg.raw.pointerId !== activePointerId) return
+
+    if (msg.type === 'move') {
+      handleResizeFromClient(msg.pos.client)
+      return
+    }
+
+    if (msg.type === 'up' || msg.type === 'cancel') {
+      handleResizeEnd()
+    }
+  }
+
+  function handleResizeFromClient(client: Point) {
     if (!resizeState.value.isResizing) return
 
-    const scale = (typeof options.scale === 'object' ? options.scale.value : options.scale) || 1
-    const deltaX = (e.clientX - resizeState.value.startX) / scale
-    const deltaY = (e.clientY - resizeState.value.startY) / scale
+    const deltaClient = {
+      x: client.x - resizeState.value.startX,
+      y: client.y - resizeState.value.startY
+    }
+    const deltaCanvas = options.coord.clientDeltaToCanvas(deltaClient)
+    const deltaX = deltaCanvas.x
+    const deltaY = deltaCanvas.y
     const minWidth = options.minWidth || 1
     const minHeight = options.minHeight || 1
 
@@ -293,11 +324,15 @@ export function useResizable(options: ResizeOptions = {}) {
   function handleResizeEnd() {
     if (resizeState.value.isResizing) {
       resizeState.value.isResizing = false
-      window.removeEventListener('mousemove', handleResize)
-      window.removeEventListener('mouseup', handleResizeEnd)
+      detachPointer()
+      activePointerId = null
       options.onResizeEnd?.()
     }
   }
+
+  onUnmounted(() => {
+    detachPointer()
+  })
 
   return {
     resizeState,

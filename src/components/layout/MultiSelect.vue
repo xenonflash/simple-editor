@@ -2,7 +2,7 @@
   <div 
     class="multi-select"
     :class="{ selecting: selectionState.isSelecting }"
-    @mousedown="handleMouseDown"
+    @pointerdown.capture="handlePointerDown"
   >
     <!-- 框选框 -->
     <div 
@@ -23,19 +23,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, inject, onUnmounted } from 'vue'
 import { usePageStore } from '../../stores/page'
 import type { Comp } from '../comps/base'
+import { usePointerHubStore } from '../../stores/pointerHub'
+import { COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
 
 interface Props {
   components: Comp[]
-  scale: number
-  offset: { x: number; y: number }
-  canvasRef?: HTMLElement | null
 }
 
 const props = defineProps<Props>()
 const pageStore = usePageStore()
+const pointerHubStore = usePointerHubStore()
+const coord = inject(COORDINATE_HELPER_KEY)
+
+if (!coord) {
+  throw new Error('MultiSelect must be used under CoordinateHelper provider')
+}
+
+const coordHelper = coord as NonNullable<typeof coord>
 
 // 框选状态
 const selectionState = reactive({
@@ -50,26 +57,14 @@ const selectionState = reactive({
 // 预选组件列表
 const previewComponents = ref<Comp[]>([])
 
-// 修正：canvas相对坐标转画布坐标
-function canvasToWorld(canvasX: number, canvasY: number) {
-  return {
-    x: canvasX / props.scale,
-    y: canvasY / props.scale
-  }
-}
-
 // 框选框样式
 const selectionBoxStyle = computed(() => {
   if (!selectionState.isSelecting) return { display: 'none' }
-  
-  // 转换为画布坐标系
-  const startCanvas = canvasToWorld(selectionState.startX, selectionState.startY)
-  const endCanvas = canvasToWorld(selectionState.currentX, selectionState.currentY)
-  
-  const left = Math.min(startCanvas.x, endCanvas.x)
-  const top = Math.min(startCanvas.y, endCanvas.y)
-  const width = Math.abs(endCanvas.x - startCanvas.x)
-  const height = Math.abs(endCanvas.y - startCanvas.y)
+
+  const left = Math.min(selectionState.startX, selectionState.currentX)
+  const top = Math.min(selectionState.startY, selectionState.currentY)
+  const width = Math.abs(selectionState.currentX - selectionState.startX)
+  const height = Math.abs(selectionState.currentY - selectionState.startY)
   
   return {
     position: 'absolute' as const,
@@ -86,13 +81,10 @@ const selectionBoxStyle = computed(() => {
 
 // 预选提示样式
 const previewStyle = computed(() => {
-  // 转换为画布坐标系
-  const canvasPos = canvasToWorld(selectionState.currentX, selectionState.currentY)
-  
   return {
     position: 'absolute' as const,
-    left: `${canvasPos.x + 10}px`,
-    top: `${canvasPos.y - 25}px`,
+    left: `${selectionState.currentX + 10}px`,
+    top: `${selectionState.currentY - 25}px`,
     padding: '2px 8px',
     backgroundColor: '#1890ff',
     color: 'white',
@@ -103,34 +95,43 @@ const previewStyle = computed(() => {
   }
 })
 
-// 处理鼠标按下
-function handleMouseDown(e: MouseEvent) {
-  // 只处理左键点击
-  if (e.button !== 0) return
-  
-  const target = e.target as HTMLElement
-  
-  // 只有点击在这些空白元素上才开始框选
-  const isEmptyArea = target.classList.contains('multi-select') ||
-                     target.classList.contains('canvas-content') ||
-                     target.classList.contains('canvas') ||
-                     target.classList.contains('placeholder')
-  
-  if (isEmptyArea) {
-    e.preventDefault()
-    e.stopPropagation()
-    startSelection(e)
+let unsubscribePointer: (() => void) | null = null
+let activePointerId: number | null = null
+
+function detachPointer() {
+  if (unsubscribePointer) {
+    unsubscribePointer()
+    unsubscribePointer = null
   }
 }
 
-// 开始框选
-function startSelection(e: MouseEvent) {
-  const rect = props.canvasRef?.getBoundingClientRect()
-  if (!rect) return
-  
+// 处理舞台指针按下（捕获阶段，用于阻止 Board 的空白点击逻辑）
+function handlePointerDown(e: PointerEvent) {
+  if (e.button !== 0) return
+
+  const target = e.target as HTMLElement | null
+  const isEmptyArea =
+    !!target &&
+    (target.classList.contains('multi-select') ||
+      target.classList.contains('canvas-content') ||
+      target.classList.contains('canvas') ||
+      target.classList.contains('placeholder'))
+
+  if (!isEmptyArea) return
+
+  e.preventDefault()
+  e.stopPropagation()
+  startSelection(e)
+}
+
+// 开始框选（坐标统一使用 canvas 坐标系）
+function startSelection(e: PointerEvent) {
+  activePointerId = e.pointerId
+  const startCanvas = coordHelper.clientToCanvas({ x: e.clientX, y: e.clientY })
+
   selectionState.isSelecting = true
-  selectionState.startX = e.clientX - rect.left
-  selectionState.startY = e.clientY - rect.top
+  selectionState.startX = startCanvas.x
+  selectionState.startY = startCanvas.y
   selectionState.currentX = selectionState.startX
   selectionState.currentY = selectionState.startY
   
@@ -139,41 +140,28 @@ function startSelection(e: MouseEvent) {
     pageStore.selectComponent(null)
   }
   
-  // 添加全局事件监听
-  window.addEventListener('mousemove', handleGlobalMouseMove)
-  window.addEventListener('mouseup', handleGlobalMouseUp)
-}
-
-// 全局鼠标移动处理
-function handleGlobalMouseMove(e: MouseEvent) {
-  if (!selectionState.isSelecting) return
-  updateSelection(e)
-}
-
-// 更新框选状态
-function updateSelection(e: MouseEvent) {
-  const rect = props.canvasRef?.getBoundingClientRect()
-  if (!rect) return
-  
-  selectionState.currentX = e.clientX - rect.left
-  selectionState.currentY = e.clientY - rect.top
-  
-  // 实时更新预选组件
-  updatePreviewComponents()
-}
-
-// 全局鼠标释放处理
-function handleGlobalMouseUp(e: MouseEvent) {
-  endSelection()
+  detachPointer()
+  unsubscribePointer = pointerHubStore.subscribe((msg) => {
+    if (!selectionState.isSelecting) return
+    if (activePointerId != null && msg.raw.pointerId !== activePointerId) return
+    if (msg.type === 'move') {
+      selectionState.currentX = msg.pos.canvas.x
+      selectionState.currentY = msg.pos.canvas.y
+      updatePreviewComponents()
+      return
+    }
+    if (msg.type === 'up' || msg.type === 'cancel') {
+      endSelection()
+    }
+  })
 }
 
 // 结束框选
 function endSelection() {
   if (!selectionState.isSelecting) return
   
-  // 移除全局事件监听
-  window.removeEventListener('mousemove', handleGlobalMouseMove)
-  window.removeEventListener('mouseup', handleGlobalMouseUp)
+  detachPointer()
+  activePointerId = null
   
   // 应用最终选中结果
   applySelection()
@@ -215,16 +203,12 @@ function applySelection() {
 // 获取框选矩形（画布坐标系）
 function getSelectionRect() {
   if (!selectionState.isSelecting) return null
-  
-  // 转换为画布坐标系
-  const startCanvas = canvasToWorld(selectionState.startX, selectionState.startY)
-  const endCanvas = canvasToWorld(selectionState.currentX, selectionState.currentY)
-  
+
   return {
-    left: Math.min(startCanvas.x, endCanvas.x),
-    top: Math.min(startCanvas.y, endCanvas.y),
-    right: Math.max(startCanvas.x, endCanvas.x),
-    bottom: Math.max(startCanvas.y, endCanvas.y)
+    left: Math.min(selectionState.startX, selectionState.currentX),
+    top: Math.min(selectionState.startY, selectionState.currentY),
+    right: Math.max(selectionState.startX, selectionState.currentX),
+    bottom: Math.max(selectionState.startY, selectionState.currentY)
   }
 }
 
@@ -242,16 +226,9 @@ function isComponentInSelection(comp: Comp, selectionRect: any): boolean {
            compTop > selectionRect.bottom)
 }
 
-// 组件挂载时的初始化
-onMounted(() => {
-  // 可以在这里添加额外的初始化逻辑
-})
-
 // 组件卸载时的清理
 onUnmounted(() => {
-  // 清理全局事件监听
-  window.removeEventListener('mousemove', handleGlobalMouseMove)
-  window.removeEventListener('mouseup', handleGlobalMouseUp)
+  detachPointer()
 })
 </script>
 

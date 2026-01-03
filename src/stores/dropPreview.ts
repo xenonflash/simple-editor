@@ -1,6 +1,8 @@
 import type { InjectionKey, Ref } from 'vue'
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { useSnaplineStore } from '../../stores/snapline'
+import { useSnaplineStore } from './snapline'
+import type { CoordinateHelper } from '../utils/coordinateHelper'
+import type { PointerHub, PointerMessage } from './pointerHub'
 
 export type ContainerLayoutMode = 'absolute' | 'default' | 'flex'
 
@@ -39,9 +41,8 @@ export interface MoveToContainerPayload {
 }
 
 export interface DropPreviewStoreOptions {
-  wrapperRef: Ref<HTMLElement | null>
-  scale: Ref<number>
-  panOffset: Ref<{ x: number; y: number }>
+  coord: CoordinateHelper
+  pointerHub: PointerHub
   getContainers: () => ContainerHit[]
   canDragIntoContainer?: (componentId: string) => boolean
   hoverActivateMs?: number
@@ -89,19 +90,6 @@ export function useDropPreviewStore(options: DropPreviewStoreOptions) {
     if (hoverTimer) {
       window.clearTimeout(hoverTimer)
       hoverTimer = null
-    }
-  }
-
-  function screenToCanvas(screenX: number, screenY: number): { x: number; y: number } {
-    const wrapperRect = options.wrapperRef.value?.getBoundingClientRect()
-    if (!wrapperRect) return { x: 0, y: 0 }
-
-    const wrapperX = screenX - wrapperRect.left
-    const wrapperY = screenY - wrapperRect.top
-
-    return {
-      x: (wrapperX - options.panOffset.value.x) / options.scale.value,
-      y: (wrapperY - options.panOffset.value.y) / options.scale.value
     }
   }
 
@@ -176,9 +164,19 @@ export function useDropPreviewStore(options: DropPreviewStoreOptions) {
     }, hoverActivateMs)
   }
 
-  function onWindowMouseMove(e: MouseEvent) {
-    mouseClient.value = { x: e.clientX, y: e.clientY }
-    mouseCanvas.value = screenToCanvas(e.clientX, e.clientY)
+  function onPointerMessage(msg: PointerMessage) {
+    if (msg.type !== 'move' && msg.type !== 'down' && msg.type !== 'up') return
+    mouseClient.value = msg.pos.client
+    mouseCanvas.value = msg.pos.canvas
+  }
+
+  let unsubscribePointer: (() => void) | null = null
+
+  function detachPointerHub() {
+    if (unsubscribePointer) {
+      unsubscribePointer()
+      unsubscribePointer = null
+    }
   }
 
   watch(
@@ -250,9 +248,10 @@ export function useDropPreviewStore(options: DropPreviewStoreOptions) {
     isDraggingComponent,
     (dragging) => {
       if (dragging) {
-        window.addEventListener('mousemove', onWindowMouseMove)
+        detachPointerHub()
+        unsubscribePointer = options.pointerHub.subscribe(onPointerMessage)
       } else {
-        window.removeEventListener('mousemove', onWindowMouseMove)
+        detachPointerHub()
         mouseClient.value = null
         mouseCanvas.value = null
       }
@@ -262,7 +261,7 @@ export function useDropPreviewStore(options: DropPreviewStoreOptions) {
 
   onUnmounted(() => {
     clearHoverTimer()
-    window.removeEventListener('mousemove', onWindowMouseMove)
+    detachPointerHub()
   })
 
   return {

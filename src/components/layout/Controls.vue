@@ -15,17 +15,19 @@
       class="resize-handle"
       :class="control.handle"
       :style="getResizeHandleStyle(control)"
-      @mousedown.stop="handleResizeStart(control, $event)"
+      @pointerdown.stop="handleResizeStart(control, $event)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useControlStore } from '../../stores/control'
 import { useResizable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
 import { HandleDir } from '../../stores/control'
+import { COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
+import { usePointerHubStore } from '../../stores/pointerHub'
 
 // 手柄尺寸常量配置
 const HANDLE_CONFIG = {
@@ -36,17 +38,18 @@ const HANDLE_CONFIG = {
   }
 } as const
 
-interface Props {
-  scale: number
-}
-
-const props = defineProps<Props>()
 const emit = defineEmits<{
   update: [componentId: string, updates: any]
 }>()
 
 const controlStore = useControlStore()
 const pageStore = usePageStore()
+const pointerHubStore = usePointerHubStore()
+const coord = inject(COORDINATE_HELPER_KEY)
+
+if (!coord) {
+  throw new Error('Controls must be used under CoordinateHelper provider')
+}
 
 // 分离选中边框和调整手柄
 const selectionControls = computed(() => 
@@ -151,7 +154,8 @@ function getResizeCursor(handle: HandleDir) {
 
 // 调整大小功能
 const { startResize } = useResizable({
-  scale: computed(() => props.scale),
+  coord,
+  pointerHub: pointerHubStore,
   onUpdate: (updates) => {
     // 通过emit向Board组件传递更新事件
     const selectedComp = pageStore.selectedComps[0]
@@ -162,7 +166,7 @@ const { startResize } = useResizable({
 })
 
 // 处理调整大小开始
-function handleResizeStart(control: any, e: MouseEvent) {
+function handleResizeStart(control: any, e: PointerEvent) {
   const selectedComp = pageStore.selectedComps[0]
   if (!selectedComp) return
   

@@ -14,22 +14,10 @@
 import { computed } from 'vue'
 import { useSnaplineStore } from '../../stores/snapline'
 import type { SnapLine } from '../../stores/snapline'
-
-interface Props {
-  scale: number
-  offset: { x: number; y: number }
-}
-
-const props = defineProps<Props>()
 const snaplineStore = useSnaplineStore()
 
 const snapLines = computed(() => {
-  const lines = snaplineStore.snapLines
-  console.log('SnapLines computed:', {
-    linesCount: lines.length,
-    lines
-  })
-  return lines
+  return snaplineStore.snapLines
 })
 
 function getLineStyle(line: SnapLine): Record<string, string> {

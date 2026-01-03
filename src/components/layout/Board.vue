@@ -27,9 +27,6 @@
               <!-- 多选组件 - 放在底层但能接收事件 -->
               <MultiSelect 
                 :components="props.components"
-                :scale="scale"
-                :offset="panOffset"
-                :canvas-ref="canvasRef"
               />
 
               <!-- 拖动已有组件：600ms 激活容器拖入模式 + 影子预览 -->
@@ -78,12 +75,9 @@
               
               <!-- 其他组件保持原有层级 -->
               <SnapLines 
-                :scale="scale"
-                :offset="panOffset"
               />
               
               <Controls 
-                :scale="scale" 
                 @update="handleUpdatePosition"
               />
               
@@ -174,7 +168,9 @@ import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
 import { resolveBindingRef } from '../../utils/bindingRef';
 import DropPreviewBox from './DropPreviewBox.vue'
-import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from './useDropPreviewStore'
+import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from '../../stores/dropPreview'
+import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
+import { usePointerHubStore } from '../../stores/pointerHub'
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -201,6 +197,7 @@ function log(...args: any[]) {
 
 const snaplineStore = useSnaplineStore();
 const pageStore = usePageStore();
+const pointerHubStore = usePointerHubStore()
 
 const renderedPropsMap = computed(() => {
   const map = new Map<string, Record<string, any>>();
@@ -289,10 +286,17 @@ function isNaiveComp(type: CompType) {
 // 画布偏移（画布左上角相对于wrapper的位置）
 const panOffset = ref({ x: 0, y: 0 });
 
-const dropPreviewStore = useDropPreviewStore({
+const coord = createCoordinateHelper({
   wrapperRef,
   scale,
-  panOffset,
+  panOffset
+})
+
+provide(COORDINATE_HELPER_KEY, coord)
+
+const dropPreviewStore = useDropPreviewStore({
+  coord,
+  pointerHub: pointerHubStore,
   getContainers: getContainerHits,
   canDragIntoContainer: (componentId) => pageStore.getComponentById(componentId)?.type !== 'container',
   hoverActivateMs: 400,
@@ -773,6 +777,13 @@ function initializeCanvas() {
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', handleKeyUp);
+
+  nextTick(() => {
+    pointerHubStore.attach({
+      coord,
+      stageEl: wrapperRef.value
+    })
+  })
   
 
   
@@ -785,6 +796,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('keyup', handleKeyUp);
+  pointerHubStore.detach()
 });
 
 // 撤销重做状态

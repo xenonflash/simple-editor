@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 import { computed, inject } from 'vue'
-import { DROP_PREVIEW_STORE_KEY } from './useDropPreviewStore'
+import { DROP_PREVIEW_STORE_KEY } from '../../stores/dropPreview'
 
 const store = inject(DROP_PREVIEW_STORE_KEY)
 if (!store) {
