@@ -247,11 +247,19 @@ function getContainerHits(): ContainerHit[] {
     const measuredW = Number((p as any)?._measuredWidth)
     const measuredH = Number((p as any)?._measuredHeight)
 
+    const widthSizing = (p as any)?.widthSizing as string | undefined
+    const heightSizing = (p as any)?.heightSizing as string | undefined
+
     const rawW = typeof p?.width === 'number' ? p.width : Number(p?.width)
     const rawH = typeof p?.height === 'number' ? p.height : Number(p?.height)
 
-    const width = Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100)
-    const height = Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100)
+    const width = (widthSizing && widthSizing !== 'fixed' && Number.isFinite(measuredW))
+      ? measuredW
+      : (Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100))
+
+    const height = (heightSizing && heightSizing !== 'fixed' && Number.isFinite(measuredH))
+      ? measuredH
+      : (Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100))
 
     res.push({
       id: c.id,
@@ -732,25 +740,14 @@ const dropIndicatorStyle = computed(() => ({
 } as any));
 
 function findContainerHit(canvasX: number, canvasY: number): { containerId: string; x: number; y: number; width: number; height: number } | null {
-  const candidates = props.components
-    .filter((c) => c.type === 'container')
-    .map((c) => {
-      const p: any = getRenderedProps(c);
-      return {
-        id: c.id,
-        x: p.x || 0,
-        y: p.y || 0,
-        width: p.width || 100,
-        height: p.height || 100,
-        z: p.zIndex || 1
-      };
-    })
+  const candidates = getContainerHits()
+    .map((c) => ({ id: c.id, x: c.rect.x, y: c.rect.y, width: c.rect.width, height: c.rect.height, z: c.zIndex }))
     .filter((r) => canvasX >= r.x && canvasX <= r.x + r.width && canvasY >= r.y && canvasY <= r.y + r.height)
-    .sort((a, b) => b.z - a.z);
+    .sort((a, b) => b.z - a.z)
 
-  const top = candidates[0];
-  if (!top) return null;
-  return { containerId: top.id, x: top.x, y: top.y, width: top.width, height: top.height };
+  const top = candidates[0]
+  if (!top) return null
+  return { containerId: top.id, x: top.x, y: top.y, width: top.width, height: top.height }
 }
 
 // 初始化画布居中
