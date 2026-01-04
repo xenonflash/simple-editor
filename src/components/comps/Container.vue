@@ -10,10 +10,10 @@
         <template v-for="rep in getRenderRepeatsForChild(child, index)" :key="rep.key">
           <div class="child-wrapper" v-show="rep.visible" :style="{ zIndex: rep.zIndex }">
             <Container
-              v-if="child.type === 'container'"
-              :id="child.id"
-              :comp="child"
-              v-bind="getRenderedProps(child, rep.bindingContext)"
+              v-if="rep.comp.type === 'container'"
+              :id="rep.instanceId"
+              :comp="rep.comp"
+              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
@@ -21,36 +21,36 @@
               @update="(payload) => emit('update', payload)"
             />
             <Text
-              v-else-if="child.type === 'text'"
-              :id="child.id"
-              :content="getRenderedProps(child, rep.bindingContext).content || '新建文本'"
-              :x="getRenderedProps(child, rep.bindingContext).x || 0"
-              :y="getRenderedProps(child, rep.bindingContext).y || 0"
-              v-bind="getRenderedProps(child, rep.bindingContext)"
+              v-else-if="rep.comp.type === 'text'"
+              :id="rep.instanceId"
+              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+              :content="getRenderedProps(rep.comp, rep.bindingContext).content ?? '新建文本'"
+              :x="getRenderedProps(rep.comp, rep.bindingContext).x ?? 0"
+              :y="getRenderedProps(rep.comp, rep.bindingContext).y ?? 0"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
-              @update="(updates) => emit('update', { id: child.id, updates })"
+              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
             <Button
-              v-else-if="child.type === 'button'"
-              :id="child.id"
-              :x="getRenderedProps(child, rep.bindingContext).x || 0"
-              :y="getRenderedProps(child, rep.bindingContext).y || 0"
-              v-bind="getRenderedProps(child, rep.bindingContext)"
+              v-else-if="rep.comp.type === 'button'"
+              :id="rep.instanceId"
+              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+              :x="getRenderedProps(rep.comp, rep.bindingContext).x ?? 0"
+              :y="getRenderedProps(rep.comp, rep.bindingContext).y ?? 0"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
-              @update="(updates) => emit('update', { id: child.id, updates })"
+              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
             <NaiveWrapper
-              v-else-if="child.type && child.type.startsWith('n-')"
-              :comp="child"
+              v-else-if="rep.comp.type && rep.comp.type.startsWith('n-')"
+              :comp="rep.comp"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
               :bindingContext="rep.bindingContext"
-              @update="(updates) => emit('update', { id: child.id, updates })"
+              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
           </div>
         </template>
@@ -342,22 +342,47 @@ function getLoopItems(comp: Comp, context: any): any[] | null {
   return Array.isArray(items) ? items : []
 }
 
-function getRenderRepeatsForChild(child: Comp, index: number): Array<{ key: string; bindingContext: any; visible: boolean; zIndex: number }> {
+type ChildRenderRepeat = {
+  key: string
+  sourceId: string
+  instanceId: string
+  comp: Comp
+  bindingContext: any
+  visible: boolean
+  zIndex: number
+}
+
+function getRenderRepeatsForChild(child: Comp, index: number): ChildRenderRepeat[] {
   const baseContext = getBindingContextForChild(child)
   const visible = isVisibleByRenderControl(child, baseContext)
   const zIndex = ((child.props as any)?.zIndex || 1) + index
 
   const items = getLoopItems(child, baseContext)
   if (!items) {
-    return [{ key: child.id, bindingContext: baseContext, visible, zIndex }]
+    return [{
+      key: child.id,
+      sourceId: child.id,
+      instanceId: child.id,
+      comp: child,
+      bindingContext: baseContext,
+      visible,
+      zIndex
+    }]
   }
 
-  return items.map((item, i) => ({
-    key: `${child.id}__loop__${i}`,
-    bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
-    visible,
-    zIndex
-  }))
+  return items.map((item, i) => {
+    const instanceId = `${child.id}__loop__${i}`
+    const instanceComp: Comp = { ...child, id: instanceId }
+    return {
+      key: instanceId,
+      sourceId: child.id,
+      instanceId,
+      comp: instanceComp,
+      bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
+      visible,
+      zIndex
+    }
+  })
 }
 
 // 计算容器样式

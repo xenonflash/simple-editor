@@ -15,6 +15,15 @@ export type BuildPageVariableTreeOptions = {
   customProps?: Record<string, any>
   customPropsCtxPath?: string
   customPropsLabel?: string
+
+  /** 是否在变量选择中展示“循环数据（ctx.loop）” */
+  loopAvailable?: boolean
+  /** 循环 item 的样本值（用于推断字段结构；为空/未知时仅提供 item 本身） */
+  loopItemSample?: any
+  /** 循环上下文根路径，默认 loop（即 ctx:loop.item / ctx:loop.index） */
+  loopCtxPath?: string
+  /** 循环数据分组名称 */
+  loopLabel?: string
 }
 
 function previewValue(v: any): string {
@@ -94,6 +103,73 @@ function buildCustomPropsTree(customProps: Record<string, any>, basePath: string
       value: `ctx:${nextPath}`
     }
   })
+}
+
+function buildCtxObjectTree(obj: Record<string, any>, basePath: string, keyPrefix: string, desc: string): VariableTreeNode[] {
+  const keys = Object.keys(obj).sort()
+  return keys.map((k) => {
+    const v = obj[k]
+    const nextPath = `${basePath}.${k}`
+    const nodeKey = `${keyPrefix}-${k}`
+
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const children = buildCtxObjectTree(v, nextPath, nodeKey, desc)
+      return {
+        label: `${k} = ${previewValue(v)}`,
+        key: nodeKey,
+        desc,
+        children
+      }
+    }
+
+    return {
+      label: `${k} = ${previewValue(v)}`,
+      key: nodeKey,
+      isLeaf: true,
+      desc,
+      value: `ctx:${nextPath}`
+    }
+  })
+}
+
+function buildLoopTreeChildren(loopItemSample: any, loopCtxPath: string): VariableTreeNode[] {
+  const itemPath = `${loopCtxPath}.item`
+  const indexPath = `${loopCtxPath}.index`
+
+  const indexNode: VariableTreeNode = {
+    label: `index = ${previewValue(0)}`,
+    key: 'loop-index',
+    isLeaf: true,
+    desc: '循环下标',
+    value: `ctx:${indexPath}`
+  }
+
+  // item：原始类型/数组/空/未知 -> 直接叶子；对象 -> 可展开
+  const itemIsObject = loopItemSample && typeof loopItemSample === 'object' && !Array.isArray(loopItemSample)
+  if (!itemIsObject) {
+    return [
+      {
+        label: `item = ${previewValue(loopItemSample)}`,
+        key: 'loop-item',
+        isLeaf: true,
+        desc: '循环 item',
+        value: `ctx:${itemPath}`
+      },
+      indexNode
+    ]
+  }
+
+  const children = buildCtxObjectTree(loopItemSample as Record<string, any>, itemPath, 'loop-item', '循环 item')
+  return [
+    {
+      label: `item = ${previewValue(loopItemSample)}`,
+      key: 'loop-item',
+      desc: '循环 item',
+      value: `ctx:${itemPath}`,
+      children
+    },
+    indexNode
+  ]
 }
 
 export function buildScriptVariableTree(pageStore: ReturnType<typeof usePageStore>): VariableTreeNode[] {
@@ -178,6 +254,17 @@ export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>
       }
     : null
 
+  const loopAvailable = !!opts?.loopAvailable
+  const loopCtxPath = (opts?.loopCtxPath || 'loop').trim() || 'loop'
+  const loopLabel = (opts?.loopLabel || '循环数据').trim() || '循环数据'
+  const loopNode: VariableTreeNode | null = loopAvailable
+    ? {
+        label: loopLabel,
+        key: 'loop-data',
+        children: buildLoopTreeChildren(opts?.loopItemSample, loopCtxPath)
+      }
+    : null
+
   const vars: VariableTreeNode[] = (pageStore.currentPage?.variables || []).map((v) => ({
     label: `${v.name}`,
     key: `page-var-${v.name}`,
@@ -206,6 +293,7 @@ export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>
   return [
     { label: '操作', key: 'binding-actions', children: [unbind] },
     ...(customPropsNode ? [customPropsNode] : []),
+    ...(loopNode ? [loopNode] : []),
     { label: '页面变量', key: 'page-vars', children: vars },
     { label: '页面组件属性', key: 'page-comp-props', children: components }
   ]

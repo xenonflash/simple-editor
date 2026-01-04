@@ -1,11 +1,11 @@
 <template>
   <div class="board-toolbar">
     <div class="button-group">
-      <button @click="$emit('undo')" :disabled="!canUndo" data-tooltip="撤销 (⌘Z)">
+      <button @click="undo" :disabled="!canUndo" data-tooltip="撤销 (⌘Z)">
         <span class="icon">↩</span>
         <span class="text">撤销</span>
       </button>
-      <button @click="$emit('redo')" :disabled="!canRedo" data-tooltip="重做 (⌘⇧Z)">
+      <button @click="redo" :disabled="!canRedo" data-tooltip="重做 (⌘⇧Z)">
         <span class="icon">↪</span>
         <span class="text">重做</span>
       </button>
@@ -14,14 +14,14 @@
     <div class="divider"></div>
 
     <div class="zoom-controls">
-      <button @click="$emit('zoomOut')" data-tooltip="缩小 (⌘-)">
+      <button @click="props.onZoomOut?.()" data-tooltip="缩小 (⌘-)">
         <span class="icon">－</span>
       </button>
       <span class="zoom-value">{{ Math.round(scale * 100) }}%</span>
-      <button @click="$emit('zoomIn')" data-tooltip="放大 (⌘+)">
+      <button @click="props.onZoomIn?.()" data-tooltip="放大 (⌘+)">
         <span class="icon">＋</span>
       </button>
-      <button @click="$emit('resetZoom')" data-tooltip="重置缩放 (⌘0)">
+      <button @click="props.onResetZoom?.()" data-tooltip="重置缩放 (⌘0)">
         <span class="icon">↺</span>
       </button>
     </div>
@@ -29,7 +29,7 @@
     <div class="divider"></div>
 
     <button class="delete-button" 
-            @click="$emit('delete')" 
+          @click="deleteSelected"
             :disabled="!selected"
             data-tooltip="删除 (Delete)">
       <AppIcon name="trash" />
@@ -39,22 +39,22 @@
     <div class="divider"></div>
 
     <div class="button-group">
-      <button @click="$emit('bringToFront')" 
+      <button @click="bringToFront" 
               :disabled="!selected"
               data-tooltip="置于顶层">
         <span class="icon">⬆</span>
       </button>
-      <button @click="$emit('bringForward')" 
+      <button @click="bringForward" 
               :disabled="!selected"
               data-tooltip="上移一层">
         <span class="icon">↑</span>
       </button>
-      <button @click="$emit('sendBackward')" 
+      <button @click="sendBackward" 
               :disabled="!selected"
               data-tooltip="下移一层">
         <span class="icon">↓</span>
       </button>
-      <button @click="$emit('sendToBack')" 
+      <button @click="sendToBack" 
               :disabled="!selected"
               data-tooltip="置于底层">
         <span class="icon">⬇</span>
@@ -64,36 +64,104 @@
     <div class="divider"></div>
 
     <div class="button-group">
-      <button @click="$emit('export')" data-tooltip="导出到JSON">
+      <button @click="handleExport" data-tooltip="导出到JSON">
         <span class="icon">⬇</span>
         <span class="text">导出</span>
       </button>
-      <button @click="$emit('import')" data-tooltip="从JSON导入">
+      <button @click="handleImport" data-tooltip="从JSON导入">
         <span class="icon">⬆</span>
         <span class="text">导入</span>
       </button>
+      <input ref="fileInput" type="file" accept="application/json" style="display: none" @change="onFileChange" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { computed, ref } from 'vue'
+import { useMessage } from 'naive-ui'
+import { usePageStore } from '../../stores/page'
+import { history } from '../../utils/history'
+import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io'
 
-defineProps({
-  canUndo: Boolean,
-  canRedo: Boolean,
-  scale: {
-    type: Number,
-    default: 1
-  },
-  selected: Boolean
-});
+const props = defineProps<{
+  scale: number
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  onResetZoom?: () => void
+}>()
 
-defineEmits([
-  'undo', 'redo', 'zoomOut', 'zoomIn', 'resetZoom', 'delete',
-  'bringToFront', 'bringForward', 'sendBackward', 'sendToBack',
-  'export', 'import'
-]);
+const message = useMessage()
+const pageStore = usePageStore()
+
+const canUndo = computed(() => history.canUndo())
+const canRedo = computed(() => history.canRedo())
+const selected = computed(() => pageStore.selectedComps.length > 0)
+
+function deleteSelected() {
+  const res = pageStore.deleteSelectedComponents()
+  if (res.blockedCount > 0) {
+    message.warning('组件编辑模式下不允许删除最外层容器')
+  }
+}
+
+function undo() {
+  pageStore.undoHistoryAction()
+}
+
+function redo() {
+  pageStore.redoHistoryAction()
+}
+
+function bringToFront() {
+  pageStore.bringSelectedToFront()
+}
+
+function bringForward() {
+  pageStore.bringSelectedForward()
+}
+
+function sendBackward() {
+  pageStore.sendSelectedBackward()
+}
+
+function sendToBack() {
+  pageStore.sendSelectedToBack()
+}
+
+function handleExport() {
+  try {
+    const jsonStr = exportToJSON(pageStore.currentComponents)
+    const filename = `page-export-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`
+    downloadJSON(jsonStr, filename)
+  } catch (error) {
+    console.error('导出失败:', error)
+    message.error('导出失败')
+  }
+}
+
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function handleImport() {
+  fileInput.value?.click()
+}
+
+async function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const jsonStr = await readJSONFile(file)
+    const components = importFromJSON(jsonStr)
+    pageStore.updateCurrentPageComponents(components)
+  } catch (error) {
+    console.error('导入失败:', error)
+    message.error('导入失败')
+  } finally {
+    input.value = ''
+  }
+}
 </script>
 
 <style scoped>

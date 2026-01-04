@@ -45,6 +45,8 @@
                 :modelValue="customMeta.props"
                 :bindings="customMeta.bindings"
                 :propsSchema="customDef.propsSchema || {}"
+                :loopAvailable="loopContextInfo.available"
+                :loopItemSample="loopContextInfo.itemSample"
                 @change="updateCustomInstanceProps"
                 @update:bindings="updateCustomInstanceBindings"
               />
@@ -78,6 +80,8 @@
                                :customProps="bindingCustomProps"
                                :customPropsCtxPath="bindingCustomPropsCtxPath"
                                :customPropsLabel="bindingCustomPropsLabel"
+                               :loopAvailable="loopContextInfo.available"
+                               :loopItemSample="loopContextInfo.itemSample"
                                :propsSchema="naiveConfig.propsSchema"
                                @change="updateProps"
                                @update:bindings="updateBindings" />
@@ -103,6 +107,8 @@
                          :customProps="bindingCustomProps"
                          :customPropsCtxPath="bindingCustomPropsCtxPath"
                          :customPropsLabel="bindingCustomPropsLabel"
+                         :loopAvailable="loopContextInfo.available"
+                         :loopItemSample="loopContextInfo.itemSample"
                          @update:bindings="updateBindings"
                          @update="updateProps" />
 
@@ -195,6 +201,8 @@
             :customProps="bindingCustomProps"
             :customPropsCtxPath="bindingCustomPropsCtxPath"
             :customPropsLabel="bindingCustomPropsLabel"
+            :loopAvailable="loopContextInfo.available"
+            :loopItemSample="loopContextInfo.itemSample"
             :propsSchema="renderVisibilitySchema"
             @change="updateProps"
             @update:bindings="updateBindings"
@@ -207,6 +215,8 @@
             :customProps="bindingCustomProps"
             :customPropsCtxPath="bindingCustomPropsCtxPath"
             :customPropsLabel="bindingCustomPropsLabel"
+            :loopAvailable="loopContextInfo.available"
+            :loopItemSample="loopContextInfo.itemSample"
             :propsSchema="renderLoopSchema"
             @change="updateProps"
             @update:bindings="updateBindings"
@@ -463,6 +473,42 @@ const bindingContextForValidation = computed(() => {
     base.props = cp
   }
   return base
+})
+
+const loopContextInfo = computed(() => {
+  const selected = props.component
+  if (!selected) return { available: false, itemSample: undefined as any }
+
+  let cur: Comp | null = selected
+  while (cur) {
+    const enabled = (cur.props as any)?.loopEnabled === true
+    if (enabled) {
+      const ref = (cur.bindings as any)?.loopItems
+      const hasRef = typeof ref === 'string' && !!ref
+      const raw = (cur.props as any)?.loopItems
+
+      const resolved = hasRef
+        ? resolveBindingRef(ref, {
+            getVarValue: (name) => pageStore.getVariableValue(name),
+            getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+            context: bindingContextForValidation.value
+          })
+        : raw
+
+      if (Array.isArray(resolved)) {
+        return {
+          available: true,
+          itemSample: resolved.length > 0 ? resolved[0] : undefined
+        }
+      }
+    }
+
+    const parentId = pageStore.findParentContainerId(cur.id)
+    if (!parentId) break
+    cur = pageStore.getComponentById(parentId) || null
+  }
+
+  return { available: false, itemSample: undefined as any }
 })
 
 const loopValidationMessage = computed(() => {

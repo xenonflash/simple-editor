@@ -335,6 +335,7 @@ import { usePageStore } from '../../stores/page';
 import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { PageVariable, PageFlow } from '../../types/page';
 import type { PropSchema } from '../../config/naive-ui-registry'
+import { resolveBindingRef } from '../../utils/bindingRef'
 
 const emit = defineEmits<{
   (e: 'open-flow-editor', flowId?: string): void
@@ -550,6 +551,44 @@ type ComponentTreeNode = {
   children?: ComponentTreeNode[]
 }
 
+function previewLoopItem(v: any): string {
+  if (v === undefined) return 'undefined'
+  if (v === null) return 'null'
+  if (typeof v === 'string') {
+    const trimmed = v.length > 16 ? `${v.slice(0, 16)}…` : v
+    return JSON.stringify(trimmed)
+  }
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (Array.isArray(v)) return `Array(${v.length})`
+  if (typeof v === 'object') return '{…}'
+  return String(v)
+}
+
+function resolveLoopItemsForTree(comp: Comp): any[] | null {
+  const raw: any = comp.props || {}
+  const enabled = raw?.loopEnabled === true
+  if (!enabled) return null
+
+  const ref = (comp.bindings as any)?.loopItems
+  if (typeof ref === 'string' && ref) {
+    const resolved = resolveBindingRef(ref, {
+      getVarValue: (name) => pageStore.getVariableValue(name),
+      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+      context: undefined
+    })
+    return Array.isArray(resolved) ? resolved : []
+  }
+
+  const items = raw?.loopItems
+  return Array.isArray(items) ? items : []
+}
+
+function unwrapLoopInstanceKey(key: string): string {
+  const idx = key.indexOf('__loop__')
+  if (idx > 0) return key.slice(0, idx)
+  return key
+}
+
 function getComponentLabel(comp: Comp): string {
   if (comp.type === CompType.CONTAINER) return '容器'
   if (comp.type === CompType.TEXT) return '文字'
@@ -563,11 +602,40 @@ function getComponentLabel(comp: Comp): string {
 
 function buildTreeNode(comp: Comp): ComponentTreeNode {
   const children = (comp.children || []).map(buildTreeNode)
+
+  const loopItems = resolveLoopItemsForTree(comp)
+  const loopChildren: ComponentTreeNode[] = []
+  if (loopItems) {
+    const max = Math.min(loopItems.length, 50)
+    for (let i = 0; i < max; i++) {
+      loopChildren.push({
+        key: `${comp.id}__loop__${i}`,
+        label: `#${i} ${previewLoopItem(loopItems[i])}`
+      })
+    }
+    if (loopItems.length > max) {
+      loopChildren.push({
+        key: `${comp.id}__loop__more`,
+        label: `…还有 ${loopItems.length - max} 项`
+      })
+    }
+  }
+
   const node: ComponentTreeNode = {
     key: comp.id,
     label: getComponentLabel(comp)
   }
-  if (children.length > 0) node.children = children
+
+  const mergedChildren: ComponentTreeNode[] = []
+  if (loopChildren.length > 0) {
+    mergedChildren.push({
+      key: `${comp.id}__loop__group`,
+      label: `循环实例（${loopItems?.length ?? 0}）`,
+      children: loopChildren
+    })
+  }
+  if (children.length > 0) mergedChildren.push(...children)
+  if (mergedChildren.length > 0) node.children = mergedChildren
   return node
 }
 
@@ -583,7 +651,7 @@ function handleTreeSelect(keys: Array<string | number>, options: any) {
   const lastNode = Array.isArray(options) ? options[options.length - 1] : options
   const isLeaf = !lastNode?.children || lastNode.children.length === 0
   if (isLeaf && typeof lastKey === 'string') {
-    pageStore.selectComponent(lastKey)
+    pageStore.selectComponent(unwrapLoopInstanceKey(lastKey))
   }
 }
 

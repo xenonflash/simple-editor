@@ -42,37 +42,39 @@
                 <div class="component-wrapper"
                      v-show="rep.visible"
                      :style="{ zIndex: rep.zIndex }">
-                  <Container v-if="comp.type === 'container'"
-                    :id="comp.id"
-                    :comp="comp"
-                    v-bind="getRenderedProps(comp)"
+                  <Container v-if="rep.comp.type === 'container'"
+                    :id="rep.instanceId"
+                    :comp="rep.comp"
+                    v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+                    :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+                    :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
                     :scale="scale"
                     :bindingContext="rep.bindingContext"
-                    @contextmenu.prevent="showContextMenu($event, comp)"
+                    @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
                     @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
-                  <Text v-else-if="comp.type === 'text'"
-                    :id="comp.id"
-                    :content="getRenderedProps(comp).content || '新建文本'"
-                    :x="getRenderedProps(comp).x || 0"
-                    :y="getRenderedProps(comp).y || 0"
-                    v-bind="getRenderedProps(comp)"
+                  <Text v-else-if="rep.comp.type === 'text'"
+                    :id="rep.instanceId"
+                    v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+                    :content="getRenderedProps(rep.comp, rep.bindingContext).content ?? '新建文本'"
+                    :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+                    :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
                     :scale="scale"
-                    @contextmenu.prevent="showContextMenu($event, comp)"
-                    @update="(updates) => handleUpdatePosition(comp.id, updates)" />
-                  <Button v-else-if="comp.type === 'button'"
-                      :id="comp.id"
-                      :x="getRenderedProps(comp).x || 0"
-                      :y="getRenderedProps(comp).y || 0"
-                      v-bind="getRenderedProps(comp)"
+                    @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
+                    @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
+                  <Button v-else-if="rep.comp.type === 'button'"
+                      :id="rep.instanceId"
+                      v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+                      :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+                      :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
                       :scale="scale"
-                      @contextmenu.prevent="showContextMenu($event, comp)"
-                      @update="(updates) => handleUpdatePosition(comp.id, updates)" />
-                  <NaiveWrapper v-else-if="isNaiveComp(comp.type)"
-                        :comp="comp"
+                      @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
+                      @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
+                  <NaiveWrapper v-else-if="isNaiveComp(rep.comp.type)"
+                        :comp="rep.comp"
                         :scale="scale"
                         :bindingContext="rep.bindingContext"
-                        @contextmenu.prevent="showContextMenu($event, comp)"
-                        @update="(updates) => handleUpdatePosition(comp.id, updates)" />
+                        @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
+                        @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
                 </div>
                   </template>
               </template>
@@ -95,22 +97,10 @@
     </div>
     <!-- 新的悬浮工具栏 -->
     <BoardToolbar
-      :canUndo="canUndo"
-      :canRedo="canRedo"
       :scale="scale"
-      :selected="hasSelection"
-      @undo="undo"
-      @redo="redo"
-      @zoomOut="zoomOut"
-      @zoomIn="zoomIn"
-      @resetZoom="resetZoom"
-      @delete="deleteSelectedComponent"
-      @bringToFront="bringSelectedToFront"
-      @bringForward="bringSelectedForward"
-      @sendBackward="sendSelectedBackward"
-      @sendToBack="sendSelectedToBack"
-      @export="handleExport"
-      @import="handleImport"
+      :onZoomOut="zoomOut"
+      :onZoomIn="zoomIn"
+      :onResetZoom="resetZoom"
     />
     
     <!-- 右键菜单 -->
@@ -167,7 +157,7 @@ import MultiSelect from './MultiSelect.vue';
 import type { Comp } from '../comps/base';
 import { createComp } from '../comps/base';
 import { history, ActionType } from '../../utils/history';
-import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io';
+import { importFromJSON } from '../../utils/io';
 
 import BoardToolbar from './BoardToolbar.vue';
 import { useSnaplineStore } from '../../stores/snapline';
@@ -184,11 +174,12 @@ import DropPreviewBox from './DropPreviewBox.vue'
 import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from '../../stores/dropPreview'
 import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
 import { usePointerHubStore } from '../../stores/pointerHub'
+import { getLoopSourceId } from '../../utils/loopInstance'
+import { useBoardContextMenu } from './useBoardContextMenu'
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLElement | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
 
 const props = defineProps<{
   components: Comp[];
@@ -259,46 +250,29 @@ function getCustomPropsBindingContext(comp: Comp, baseContext: any): any {
   }
 }
 
-const renderedPropsMap = computed(() => {
-  const map = new Map<string, Record<string, any>>();
-  const variables = pageStore.currentPage?.variables || [];
-  const components = pageStore.currentPage?.components || [];
-
-  function resolveBinding(bindingRef: string, context?: any): any {
-    return resolveBindingRef(bindingRef, {
-      getVarValue: (name) => pageStore.getVariableValue(name),
-      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-      context
-    })
-  }
-
-  for (const comp of props.components) {
-    const raw = { ...(comp.props || {}) };
-    const baseContext = props.bindingContext
-    const context = mergeBindingContext(baseContext, getCustomPropsBindingContext(comp, baseContext))
-    if (comp.bindings) {
-      for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
-        if (typeof bindingRef !== 'string') continue;
-        raw[propName] = resolveBinding(bindingRef, context);
-      }
-    }
-    map.set(comp.id, raw);
-  }
-
-  return map;
-});
-
-function getRenderedProps(comp: Comp): Record<string, any> {
-  return renderedPropsMap.value.get(comp.id) || comp.props || {};
-}
-
 function getBindingContextForRoot(comp: Comp): any {
   const baseContext = props.bindingContext
   return mergeBindingContext(baseContext, getCustomPropsBindingContext(comp, baseContext))
 }
 
-function isVisibleByRenderControl(comp: Comp): boolean {
-  const raw: any = getRenderedProps(comp)
+function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
+  const raw = { ...(comp.props || {}) }
+  const ctx = context ?? getBindingContextForRoot(comp)
+  if (comp.bindings) {
+    for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
+      if (typeof bindingRef !== 'string' || !bindingRef) continue
+      raw[propName] = resolveBindingRef(bindingRef, {
+        getVarValue: (name) => pageStore.getVariableValue(name),
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+        context: ctx
+      })
+    }
+  }
+  return raw
+}
+
+function isVisibleByRenderControl(comp: Comp, context: any): boolean {
+  const raw: any = getRenderedProps(comp, context)
   // 默认显示；绑定返回 false 则隐藏
   if (raw && Object.prototype.hasOwnProperty.call(raw, 'renderVisible')) {
     return raw.renderVisible !== false
@@ -306,30 +280,80 @@ function isVisibleByRenderControl(comp: Comp): boolean {
   return true
 }
 
-function getLoopItemsForRoot(comp: Comp): any[] | null {
-  const raw: any = getRenderedProps(comp)
+function getLoopItemsForRoot(comp: Comp, context: any): any[] | null {
+  const raw: any = getRenderedProps(comp, context)
   const enabled = raw?.loopEnabled === true
   if (!enabled) return null
   const items = raw?.loopItems
   return Array.isArray(items) ? items : []
 }
 
-function getRenderRepeatsForRoot(comp: Comp, index: number): Array<{ key: string; bindingContext: any; visible: boolean; zIndex: number }> {
-  const baseContext = getBindingContextForRoot(comp)
-  const visible = isVisibleByRenderControl(comp)
-  const zIndex = (getRenderedProps(comp) as any)?.zIndex || index + 1000
+type RootRenderRepeat = {
+  key: string
+  sourceId: string
+  instanceId: string
+  comp: Comp
+  bindingContext: any
+  visible: boolean
+  zIndex: number
+  offsetX: number
+  offsetY: number
+}
 
-  const items = getLoopItemsForRoot(comp)
+const ROOT_LOOP_OFFSET_STEP = 8
+
+function getRenderRepeatsForRoot(comp: Comp, index: number): RootRenderRepeat[] {
+  const baseContext = getBindingContextForRoot(comp)
+  const visible = isVisibleByRenderControl(comp, baseContext)
+  const zIndex = (getRenderedProps(comp, baseContext) as any)?.zIndex || index + 1000
+
+  const items = getLoopItemsForRoot(comp, baseContext)
   if (!items) {
-    return [{ key: comp.id, bindingContext: baseContext, visible, zIndex }]
+    return [{
+      key: comp.id,
+      sourceId: comp.id,
+      instanceId: comp.id,
+      comp,
+      bindingContext: baseContext,
+      visible,
+      zIndex,
+      offsetX: 0,
+      offsetY: 0
+    }]
   }
 
-  return items.map((item, i) => ({
-    key: `${comp.id}__loop__${i}`,
-    bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
-    visible,
-    zIndex
-  }))
+  return items.map((item, i) => {
+    const instanceId = `${comp.id}__loop__${i}`
+    const delta = i <= 0 ? 0 : i * ROOT_LOOP_OFFSET_STEP
+
+    let instanceComp: Comp = { ...comp, id: instanceId }
+    // NaiveWrapper 的定位依赖 comp.props.x/y（而不是绑定求值），所以根层 offset 需要写入 props
+    if (delta !== 0 && typeof comp.type === 'string' && comp.type.startsWith('n-')) {
+      const rawX: any = (comp.props as any)?.x
+      const rawY: any = (comp.props as any)?.y
+      const baseX = typeof rawX === 'number' ? rawX : Number(rawX)
+      const baseY = typeof rawY === 'number' ? rawY : Number(rawY)
+      instanceComp = {
+        ...instanceComp,
+        props: {
+          ...(comp.props || {}),
+          x: (Number.isFinite(baseX) ? baseX : 0) + delta,
+          y: (Number.isFinite(baseY) ? baseY : 0) + delta
+        }
+      }
+    }
+    return {
+      key: instanceId,
+      sourceId: comp.id,
+      instanceId,
+      comp: instanceComp,
+      bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
+      visible,
+      zIndex,
+      offsetX: delta,
+      offsetY: delta
+    }
+  })
 }
 
 function getContainerHits(): ContainerHit[] {
@@ -450,23 +474,22 @@ const dropPreviewStore = useDropPreviewStore({
 
 provide(DROP_PREVIEW_STORE_KEY, dropPreviewStore)
 
-// 右键菜单状态
-const contextMenu = ref({
-  show: false,
-  x: 0,
-  y: 0,
-  component: null as Comp | null
-});
-
-// 计算选中的组件ID（保持向下兼容）
-const selectedId = computed(() => {
-  return pageStore.selectedComps.length > 0 ? pageStore.selectedComps[0].id : null;
-});
-
-// 新增：计算是否有选中组件（支持多选）
-const hasSelection = computed(() => {
-  return pageStore.selectedComps.length > 0;
-});
+const {
+  contextMenu,
+  showContextMenu,
+  hideContextMenu,
+  duplicateComponent,
+  saveAsCustomComponent,
+  bringToFront,
+  bringForward,
+  sendBackward,
+  sendToBack,
+  deleteComponentFromMenu
+} = useBoardContextMenu({
+  pageStore,
+  customComponentsStore,
+  message
+})
 
 // 监听组件变化，更新 store
 watch(() => props.components, (newComponents) => {
@@ -507,15 +530,18 @@ function handleKeyDown(e: KeyboardEvent) {
   }
   if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
     if (e.shiftKey) {
-      redo();
+      pageStore.redoHistoryAction();
     } else {
-      undo();
+      pageStore.undoHistoryAction();
     }
     e.preventDefault();
   }
   // 修复：支持多选删除
   if ((e.key === 'Delete' || e.key === 'Backspace') && pageStore.selectedComps.length > 0) {
-    deleteSelectedComponent();
+    const res = pageStore.deleteSelectedComponents()
+    if (res.blockedCount > 0) {
+      message.warning('组件编辑模式下不允许删除最外层容器')
+    }
     e.preventDefault();
   }
 }
@@ -527,41 +553,34 @@ function handleKeyUp(e: KeyboardEvent) {
   }
 }
 
-// 缩放函数
+// 缩放函数（工具栏按钮用）
 function zoomIn() {
-  setScale(scale.value + scaleStep);
+  setScale(scale.value + scaleStep)
 }
 
 function zoomOut() {
-  setScale(scale.value - scaleStep);
+  setScale(scale.value - scaleStep)
 }
 
 function resetZoom() {
-  setScale(1);
+  setScale(1)
 }
 
-// 处理缩放，保持鼠标位置不变
-function setScale(newScale: number, center?: { x: number, y: number }) {
-  const oldScale = scale.value;
-  // 限制缩放范围并使缩放更平滑
-  newScale = Math.max(minScale, Math.min(maxScale, newScale));
-  
-  if (Math.abs(newScale - oldScale) < 0.00001) return;
+function setScale(newScale: number, center?: { x: number; y: number }) {
+  const oldScale = scale.value
+  newScale = Math.max(minScale, Math.min(maxScale, newScale))
+  if (Math.abs(newScale - oldScale) < 0.00001) return
 
-  // 如果没有指定缩放中心，使用视口中心
-  const zoomCenter = center || viewportCenter.value;
-  
-  // 计算缩放前后的偏移差
-  const scaleFactor = newScale / oldScale;
-  const dx = (zoomCenter.x - panOffset.value.x) * (1 - scaleFactor);
-  const dy = (zoomCenter.y - panOffset.value.y) * (1 - scaleFactor);
-  
-  // 更新缩放和偏移
-  scale.value = newScale;
+  const zoomCenter = center || viewportCenter.value
+  const scaleFactor = newScale / oldScale
+  const dx = (zoomCenter.x - panOffset.value.x) * (1 - scaleFactor)
+  const dy = (zoomCenter.y - panOffset.value.y) * (1 - scaleFactor)
+
+  scale.value = newScale
   panOffset.value = {
     x: panOffset.value.x + dx,
     y: panOffset.value.y + dy
-  };
+  }
 }
 
 // 处理触控板手势
@@ -668,15 +687,10 @@ function handleCanvasClick(e: MouseEvent) {
   }
 }
 
-// 处理组件选中
-function handleSelect(id: string) {
-  emit('select', id);
-  log('Component selected:', id);
-}
-
 // 处理组件位置更新
 function handleUpdatePosition(id: string, updates: Record<string, any>) {
-  const comp = pageStore.getComponentById(id);
+  const normalizedId = getLoopSourceId(id)
+  const comp = pageStore.getComponentById(normalizedId);
   if (!comp) return;
 
   const oldProps = { ...comp.props };
@@ -685,7 +699,7 @@ function handleUpdatePosition(id: string, updates: Record<string, any>) {
   // 记录更新操作
   history.addAction({
     type: ActionType.UPDATE,
-    componentId: id,
+    componentId: normalizedId,
     data: {
       before: { props: oldProps },
       after: { props: newProps }
@@ -699,8 +713,6 @@ function handleUpdatePosition(id: string, updates: Record<string, any>) {
   };
   emit('update', updatedComp);
 }
-
-
 
 // 处理拖拽
 function handleDragOver(e: DragEvent) {
@@ -987,581 +999,7 @@ onUnmounted(() => {
   pointerHubStore.detach()
 });
 
-// 撤销重做状态
-const canUndo = computed(() => history.canUndo());
-const canRedo = computed(() => history.canRedo());
 
-// 删除选中的组件（已支持多选）
-function deleteSelectedComponent() {
-  const selectedSnapshot = [...pageStore.selectedComps]
-  if (selectedSnapshot.length === 0) return
-
-  let blockedCount = 0
-
-  // 重要：emit('delete') 会触发外部更新组件树/选中状态，
-  // 不能直接遍历 pageStore.selectedComps（会被边删边改导致只删一个或跳删）。
-  for (const comp of selectedSnapshot) {
-    if (isProtectedRootContainerInCustomEdit(comp)) {
-      blockedCount++
-      continue
-    }
-
-    const parentContainerId = pageStore.findParentContainerId(comp.id)
-
-    history.addAction({
-      type: ActionType.DELETE,
-      componentId: comp.id,
-      data: {
-        before: comp,
-        parentContainerId: typeof parentContainerId === 'string' ? parentContainerId : null
-      } as any
-    })
-
-    emit('delete', comp.id)
-  }
-
-  if (blockedCount > 0) {
-    message.warning('组件编辑模式下不允许删除最外层容器')
-  }
-
-  // 仅当确实删除了内容时才清空选中，避免误清
-  if (blockedCount !== selectedSnapshot.length) {
-    pageStore.selectComponent(null)
-  }
-}
-
-// 撤销
-function undo() {
-  const action = history.undo();
-  if (action) {
-    switch (action.type) {
-      case ActionType.ADD:
-        emit('delete', action.componentId);
-        break;
-      case ActionType.DELETE:
-        if (action.data.before) {
-          const parentContainerId = (action.data as any).parentContainerId as string | null | undefined;
-          if (parentContainerId) {
-            emit('addToContainer', { containerId: parentContainerId, comp: action.data.before as Comp });
-          } else {
-            emit('add', action.data.before as Comp);
-          }
-        }
-        break;
-      case ActionType.UPDATE:
-        const comp = pageStore.getComponentById(action.componentId);
-        if (comp && action.data.before) {
-          emit('update', {
-            ...comp,
-            ...action.data.before
-          });
-        }
-        break;
-    }
-  }
-}
-
-// 重做
-function redo() {
-  const action = history.redo();
-  if (action) {
-    switch (action.type) {
-      case ActionType.ADD:
-        if (action.data.after) {
-          const parentContainerId = (action.data as any).parentContainerId as string | null | undefined;
-          if (parentContainerId) {
-            emit('addToContainer', { containerId: parentContainerId, comp: action.data.after as Comp });
-          } else {
-            emit('add', action.data.after as Comp);
-          }
-        }
-        break;
-      case ActionType.DELETE:
-        emit('delete', action.componentId);
-        break;
-      case ActionType.UPDATE:
-        const comp = pageStore.getComponentById(action.componentId);
-        if (comp && action.data.after) {
-          emit('update', {
-            ...comp,
-            ...action.data.after
-          });
-        }
-        break;
-    }
-  }
-}
-
-// 导出功能
-function handleExport() {
-  try {
-    const jsonStr = exportToJSON(props.components);
-    const filename = `layout_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.json`;
-    downloadJSON(jsonStr, filename);
-  } catch (error) {
-    console.error('导出失败:', error);
-    // 这里可以添加错误提示UI
-  }
-}
-
-// 导入功能
-function handleImport() {
-  fileInput.value?.click();
-}
-
-// 处理文件选择
-async function handleFileSelect(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file) return;
-
-  try {
-    const jsonStr = await readJSONFile(file);
-    const components = importFromJSON(jsonStr);
-    
-    // 记录导入操作 - 这里不记录历史，因为导入是一个完整的替换操作
-    // 如果需要撤销导入，可以考虑添加专门的导入操作类型
-
-    // 更新组件列表
-    emit('update', components);
-    
-    // 清除文件选择
-    input.value = '';
-  } catch (error) {
-    console.error('导入失败:', error);
-    // 这里可以添加错误提示UI
-  }
-}
-
-// 右键菜单方法
-function showContextMenu(event: MouseEvent, component: Comp) {
-  event.preventDefault();
-  contextMenu.value = {
-    show: true,
-    x: event.clientX,
-    y: event.clientY,
-    component
-  };
-  
-  // 选中组件：若当前是多选且右键命中的组件已在选区中，保留多选；否则切到单选。
-  const isAlreadySelected = pageStore.selectedComps.some((c) => c.id === component.id)
-  if (!isAlreadySelected) emit('select', component.id)
-  
-  // 点击其他地方隐藏菜单
-  document.addEventListener('click', hideContextMenu, { once: true });
-}
-
-function hideContextMenu() {
-  contextMenu.value.show = false;
-}
-
-// 复制组件
-function duplicateComponent() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-  const newComp = createComp(comp.type, `${comp.name} 副本`);
-  
-  // 复制属性并偏移位置
-  newComp.props = {
-    ...comp.props,
-    x: (comp.props.x || 0) + 20,
-    y: (comp.props.y || 0) + 20
-  };
-  
-  // 记录添加操作
-  history.addAction({
-    type: ActionType.ADD,
-    componentId: newComp.id,
-    data: { after: newComp }
-  });
-  
-  emit('add', newComp);
-  hideContextMenu();
-}
-
-function deepClone<T>(v: T): T {
-  try {
-    return structuredClone(v)
-  } catch {
-    return JSON.parse(JSON.stringify(v))
-  }
-}
-
-function getCompCanvasRectForGroup(comp: Comp): { x: number; y: number; width: number; height: number } {
-  const pos = pageStore.getComponentCanvasPosition(comp.id)
-  const x = pos?.x ?? (comp.props?.x || 0)
-  const y = pos?.y ?? (comp.props?.y || 0)
-
-  const p: any = comp.props || {}
-  const widthSizing = p.widthSizing as string | undefined
-  const heightSizing = p.heightSizing as string | undefined
-  const measuredW = Number(p._measuredWidth)
-  const measuredH = Number(p._measuredHeight)
-  const rawW = typeof p.width === 'number' ? p.width : Number(p.width)
-  const rawH = typeof p.height === 'number' ? p.height : Number(p.height)
-
-  const width = (widthSizing && widthSizing !== 'fixed' && Number.isFinite(measuredW))
-    ? measuredW
-    : (Number.isFinite(rawW) ? rawW : (Number.isFinite(measuredW) ? measuredW : 100))
-
-  const height = (heightSizing && heightSizing !== 'fixed' && Number.isFinite(measuredH))
-    ? measuredH
-    : (Number.isFinite(rawH) ? rawH : (Number.isFinite(measuredH) ? measuredH : 100))
-
-  return { x, y, width, height }
-}
-
-function saveAsCustomComponent() {
-  const selected = pageStore.selectedComps
-  const targetComps = selected.length > 0 ? selected : (contextMenu.value.component ? [contextMenu.value.component] : [])
-  if (targetComps.length === 0) {
-    hideContextMenu()
-    return
-  }
-
-  const defaultName = targetComps.length > 1 ? `组件组(${targetComps.length})` : `${targetComps[0].name || '组件'}`
-  const name = (window.prompt('组件名称', defaultName) || '').trim() || defaultName
-
-  let root: Comp
-  if (targetComps.length === 1) {
-    root = deepClone(targetComps[0])
-    root.props = { ...(root.props || {}), x: 0, y: 0 }
-  } else {
-    const rects = targetComps.map(getCompCanvasRectForGroup)
-    const minX = Math.min(...rects.map(r => r.x))
-    const minY = Math.min(...rects.map(r => r.y))
-    const maxX = Math.max(...rects.map(r => r.x + r.width))
-    const maxY = Math.max(...rects.map(r => r.y + r.height))
-    const groupW = Math.max(1, maxX - minX)
-    const groupH = Math.max(1, maxY - minY)
-
-    root = createComp(CompType.CONTAINER, name)
-    root.props = {
-      ...(root.props || {}),
-      x: 0,
-      y: 0,
-      width: groupW,
-      height: groupH,
-      widthSizing: 'fixed',
-      heightSizing: 'fixed',
-      layoutMode: 'absolute'
-    }
-
-    root.children = targetComps.map((c) => {
-      const cloned = deepClone(c)
-      const r = getCompCanvasRectForGroup(c)
-      cloned.props = { ...(cloned.props || {}), x: r.x - minX, y: r.y - minY }
-      return cloned
-    })
-  }
-
-  const templateJson = exportToJSON([root])
-  customComponentsStore.addCustomComponent(name, templateJson)
-  hideContextMenu()
-}
-
-// 组件层级调整
-function bringToFront() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 0));
-  const newZIndex = maxZIndex + 1;
-  
-  console.log('[Board] bringToFront:', {
-    componentId: comp.id,
-    currentZIndex: comp.props.zIndex || 0,
-    maxZIndex,
-    newZIndex
-  });
-  
-  const updatedComp = {
-    ...comp,
-    props: {
-      ...comp.props,
-      zIndex: newZIndex
-    }
-  };
-  
-  emit('update', updatedComp);
-  hideContextMenu();
-}
-
-function sendToBack() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-  const currentZIndex = comp.props.zIndex || 1;
-  
-  // 如果只有一个组件，则不需要操作
-  const otherComponents = props.components.filter(c => c.id !== comp.id);
-  if (otherComponents.length === 0) {
-    console.log('[Board] sendToBack: only one component');
-    hideContextMenu();
-    return;
-  }
-  
-  const minZIndex = Math.min(...otherComponents.map(c => c.props.zIndex || 1));
-  
-  // 如果当前组件已经是最底层，则不需要操作
-  if (currentZIndex <= minZIndex) {
-    console.log('[Board] sendToBack: already at bottom');
-    hideContextMenu();
-    return;
-  }
-  
-  console.log('[Board] sendToBack:', {
-    componentId: comp.id,
-    currentZIndex,
-    minZIndex,
-    action: 'moving to bottom'
-  });
-  
-  // 将目标组件设为zIndex=1，其他所有组件zIndex+1
-  const updatedComp = {
-    ...comp,
-    props: {
-      ...comp.props,
-      zIndex: 1
-    }
-  };
-  
-  // 更新目标组件
-  emit('update', updatedComp);
-  
-  // 将其他所有组件的zIndex增加1
-  otherComponents.forEach(otherComp => {
-    const updatedOtherComp = {
-      ...otherComp,
-      props: {
-        ...otherComp.props,
-        zIndex: (otherComp.props.zIndex || 1) + 1
-      }
-    };
-    emit('update', updatedOtherComp);
-  });
-  
-  hideContextMenu();
-}
-
-function bringForward() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-  const currentZIndex = comp.props.zIndex || 1;
-  const higherComponents = props.components.filter(c => (c.props.zIndex || 1) > currentZIndex);
-  
-  if (higherComponents.length > 0) {
-    const nextZIndex = Math.min(...higherComponents.map(c => c.props.zIndex || 1));
-    const newZIndex = nextZIndex + 1;
-    
-    console.log('[Board] bringForward:', {
-      componentId: comp.id,
-      currentZIndex,
-      nextZIndex,
-      newZIndex,
-      higherComponentsCount: higherComponents.length
-    });
-    
-    const updatedComp = {
-      ...comp,
-      props: {
-        ...comp.props,
-        zIndex: newZIndex
-      }
-    };
-    
-    emit('update', updatedComp);
-  } else {
-    console.log('[Board] bringForward: already at top');
-  }
-  
-  hideContextMenu();
-}
-
-function sendBackward() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-  const currentZIndex = comp.props.zIndex || 1;
-  const lowerComponents = props.components.filter(c => (c.props.zIndex || 1) < currentZIndex);
-  
-  if (lowerComponents.length > 0) {
-    const nextZIndex = Math.max(...lowerComponents.map(c => c.props.zIndex || 1));
-    const newZIndex = nextZIndex - 1;
-    
-    console.log('[Board] sendBackward:', {
-      componentId: comp.id,
-      currentZIndex,
-      nextZIndex,
-      newZIndex,
-      lowerComponentsCount: lowerComponents.length
-    });
-    
-    const updatedComp = {
-      ...comp,
-      props: {
-        ...comp.props,
-        zIndex: Math.max(1, newZIndex)
-      }
-    };
-    
-    emit('update', updatedComp);
-  } else {
-    console.log('[Board] sendBackward: already at bottom');
-  }
-  
-  hideContextMenu();
-}
-
-// 删除组件（从右键菜单）
-function deleteComponentFromMenu() {
-  if (!contextMenu.value.component) return;
-  
-  const comp = contextMenu.value.component;
-
-  if (isProtectedRootContainerInCustomEdit(comp)) {
-    message.warning('组件编辑模式下不允许删除最外层容器')
-    hideContextMenu();
-    return;
-  }
-  
-  // 记录删除操作
-  history.addAction({
-    type: ActionType.DELETE,
-    componentId: comp.id,
-    data: { before: comp }
-  });
-  
-  emit('delete', comp.id);
-  hideContextMenu();
-}
-
-// 选中组件的层级调整方法
-function bringSelectedToFront() {
-  if (pageStore.selectedComps.length === 0) return;
-  
-  const comp = pageStore.selectedComps[0];
-  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 1));
-  const newZIndex = maxZIndex + 1;
-  
-  console.log('[Board] bringSelectedToFront:', {
-    componentId: comp.id,
-    currentZIndex: comp.props.zIndex || 1,
-    maxZIndex,
-    newZIndex
-  });
-  
-  const updatedComp = {
-    ...comp,
-    props: {
-      ...comp.props,
-      zIndex: newZIndex
-    }
-  };
-  
-  emit('update', updatedComp);
-}
-
-function bringSelectedForward() {
-  if (pageStore.selectedComps.length === 0) return;
-  
-  const comp = pageStore.selectedComps[0];
-  const currentZIndex = comp.props.zIndex || 1;
-  const higherComponents = props.components.filter(c => (c.props.zIndex || 1) > currentZIndex);
-  
-  if (higherComponents.length > 0) {
-    const nextZIndex = Math.min(...higherComponents.map(c => c.props.zIndex || 1));
-    const newZIndex = nextZIndex + 1;
-    
-    const updatedComp = {
-      ...comp,
-      props: {
-        ...comp.props,
-        zIndex: newZIndex
-      }
-    };
-    
-    emit('update', updatedComp);
-  }
-}
-
-function sendSelectedBackward() {
-  if (pageStore.selectedComps.length === 0) return;
-  
-  const comp = pageStore.selectedComps[0];
-  const currentZIndex = comp.props.zIndex || 1;
-  const lowerComponents = props.components.filter(c => (c.props.zIndex || 1) < currentZIndex);
-  
-  if (lowerComponents.length > 0) {
-    const nextZIndex = Math.max(...lowerComponents.map(c => c.props.zIndex || 1));
-    const newZIndex = nextZIndex - 1;
-    
-    const updatedComp = {
-      ...comp,
-      props: {
-        ...comp.props,
-        zIndex: Math.max(1, newZIndex)
-      }
-    };
-    
-    emit('update', updatedComp);
-  }
-}
-
-function sendSelectedToBack() {
-  if (pageStore.selectedComps.length === 0) return;
-  
-  const comp = pageStore.selectedComps[0];
-  const currentZIndex = comp.props.zIndex || 1;
-  
-  // 如果只有一个组件，则不需要操作
-  const otherComponents = props.components.filter(c => c.id !== comp.id);
-  if (otherComponents.length === 0) {
-    console.log('[Board] sendSelectedToBack: only one component');
-    return;
-  }
-  
-  const minZIndex = Math.min(...otherComponents.map(c => c.props.zIndex || 1));
-  
-  // 如果当前组件已经是最底层，则不需要操作
-  if (currentZIndex <= minZIndex) {
-    console.log('[Board] sendSelectedToBack: already at bottom');
-    return;
-  }
-  
-  console.log('[Board] sendSelectedToBack:', {
-    componentId: comp.id,
-    currentZIndex,
-    minZIndex,
-    action: 'moving to bottom'
-  });
-  
-  // 将目标组件设为zIndex=1，其他所有组件zIndex+1
-  const updatedComp = {
-    ...comp,
-    props: {
-      ...comp.props,
-      zIndex: 1
-    }
-  };
-  
-  // 更新目标组件
-  emit('update', updatedComp);
-  
-  // 将其他所有组件的zIndex增加1
-  otherComponents.forEach(otherComp => {
-    const updatedOtherComp = {
-      ...otherComp,
-      props: {
-        ...otherComp.props,
-        zIndex: (otherComp.props.zIndex || 1) + 1
-      }
-    };
-    emit('update', updatedOtherComp);
-  });
-}
 </script>
 
 <style scoped>

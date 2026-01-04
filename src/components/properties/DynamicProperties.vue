@@ -107,6 +107,9 @@ const props = defineProps<{
   customProps?: Record<string, any> | null;
   customPropsCtxPath?: string;
   customPropsLabel?: string;
+
+  loopAvailable?: boolean;
+  loopItemSample?: any;
 }>();
 
 const emit = defineEmits(['update:modelValue', 'change', 'update:bindings']);
@@ -117,7 +120,9 @@ const openKey = ref<string | null>(null)
 const pageVariableTree = computed(() => buildPageVariableTree(pageStore, {
   customProps: props.customProps || undefined,
   customPropsCtxPath: props.customPropsCtxPath,
-  customPropsLabel: props.customPropsLabel
+  customPropsLabel: props.customPropsLabel,
+  loopAvailable: props.loopAvailable,
+  loopItemSample: props.loopItemSample
 }))
 
 function updateValue(key: string, value: any) {

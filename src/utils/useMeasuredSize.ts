@@ -1,6 +1,7 @@
 import { inject, onMounted, onUnmounted, type Ref } from 'vue'
 import { usePageStore } from '../stores/page'
 import { COORDINATE_HELPER_KEY } from './coordinateHelper'
+import { parseLoopInstanceId } from './loopInstance'
 
 export interface UseMeasuredSizeOptions {
   elementRef: Ref<HTMLElement | null>
@@ -20,7 +21,12 @@ export function useMeasuredSize(options: UseMeasuredSizeOptions) {
   let resizeObserver: ResizeObserver | null = null
 
   function updateMeasured(width: number, height: number) {
-    const comp = pageStore.getComponentById(options.componentId)
+    const info = parseLoopInstanceId(options.componentId)
+    // loop 实例会同时渲染多份 DOM，不能把所有实例的测量值都写回同一个源组件，否则会抖动。
+    // 约定：仅 index=0 的实例写回源组件，其他实例跳过。
+    if (info.index !== null && info.index !== 0) return
+
+    const comp = pageStore.getComponentById(info.sourceId)
     if (!comp) return
 
     const prevW = (comp.props as any)._measuredWidth || 0

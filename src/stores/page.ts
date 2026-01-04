@@ -6,6 +6,8 @@ import type { Comp } from '../components/comps/base';
 import type { PropSchema } from '../config/naive-ui-registry'
 import { exportToJSON, importFromJSON } from '../utils/io'
 import { instantiateFromCustomComponentTemplate } from '../utils/customComponentInstance'
+import { getLoopSourceId } from '../utils/loopInstance'
+import { history, ActionType } from '../utils/history'
 
 export const usePageStore = defineStore('page', () => {
   // ==================== 状态定义 ====================
@@ -140,18 +142,38 @@ export const usePageStore = defineStore('page', () => {
   function ensureRuntimeVarsForPage(page: Page) {
     if (!page) return;
     const existing = runtimeVarValuesByPageId.value[page.id];
-    const next: Record<string, any> = { ...(existing || {}) };
-    for (const def of page.variables || []) {
-      if (!(def.name in next)) {
+    const defs = page.variables || [];
+    const definedNames = new Set(defs.map(v => v.name));
+
+    // 首次初始化：只做一次写入，避免在 render/computed 中反复触发更新。
+    if (!existing) {
+      const next: Record<string, any> = {};
+      for (const def of defs) {
         next[def.name] = cloneValue(def.defaultValue);
       }
+      runtimeVarValuesByPageId.value[page.id] = next;
+      return;
     }
-    // 清理已删除的变量
-    const definedNames = new Set((page.variables || []).map(v => v.name));
-    for (const k of Object.keys(next)) {
-      if (!definedNames.has(k)) delete next[k];
+
+    // 仅当确实需要补齐/清理时才 mutate，避免递归更新。
+    let changed = false;
+
+    for (const def of defs) {
+      if (!(def.name in existing)) {
+        existing[def.name] = cloneValue(def.defaultValue);
+        changed = true;
+      }
     }
-    runtimeVarValuesByPageId.value[page.id] = next;
+
+    for (const k of Object.keys(existing)) {
+      if (!definedNames.has(k)) {
+        delete existing[k];
+        changed = true;
+      }
+    }
+
+    // 当没有变化时不写回，避免触发无意义的 reactive 更新。
+    if (!changed) return;
   }
 
   function ensureCurrentRuntimeVars() {
@@ -409,6 +431,8 @@ export const usePageStore = defineStore('page', () => {
       return;
     }
 
+    componentId = getLoopSourceId(componentId)
+
     // 页面编辑模式下：自定义组件实例内部不允许直接选中子组件，自动提升到实例根。
     if (editorMode.value === 'page') {
       const rootId = findCustomComponentInstanceRootId(componentId)
@@ -432,8 +456,8 @@ export const usePageStore = defineStore('page', () => {
 
   function selectComponents(componentIds: string[]) {
     const normalized = editorMode.value === 'page'
-      ? componentIds.map((id) => findCustomComponentInstanceRootId(id) || id)
-      : componentIds
+      ? componentIds.map((id) => findCustomComponentInstanceRootId(getLoopSourceId(id)) || getLoopSourceId(id))
+      : componentIds.map((id) => getLoopSourceId(id))
 
     const components = normalized
       .map((id) => findComponentInTree(id))
@@ -616,7 +640,211 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function isComponentSelected(componentId: string): boolean {
-    return selectedCompIds.value.includes(componentId);
+    return selectedCompIds.value.includes(getLoopSourceId(componentId));
+  }
+
+  function isProtectedRootContainerInCustomEdit(comp: Comp): boolean {
+    if (editorMode.value !== 'custom-edit') return false
+    if (!comp || comp.type !== 'container') return false
+    const parentId = findParentContainerId(comp.id)
+    return parentId === null
+  }
+
+  type DeleteSelectedResult = { deletedCount: number; blockedCount: number }
+
+  function deleteSelectedComponents(): DeleteSelectedResult {
+    const selectedSnapshot = [...selectedComps.value]
+    if (selectedSnapshot.length === 0) return { deletedCount: 0, blockedCount: 0 }
+
+    let blockedCount = 0
+    let deletedCount = 0
+
+    for (const comp of selectedSnapshot) {
+      if (isProtectedRootContainerInCustomEdit(comp)) {
+        blockedCount++
+        continue
+      }
+
+      const parentContainerId = findParentContainerId(comp.id)
+
+      history.addAction({
+        type: ActionType.DELETE,
+        componentId: comp.id,
+        data: {
+          before: comp,
+          parentContainerId: typeof parentContainerId === 'string' ? parentContainerId : null
+        } as any
+      })
+
+      const ok = deleteComponentFromCurrentPage(comp.id)
+      if (ok) deletedCount++
+    }
+
+    if (deletedCount > 0) {
+      selectComponent(null)
+    }
+
+    return { deletedCount, blockedCount }
+  }
+
+  function undoHistoryAction(): boolean {
+    const action = history.undo()
+    if (!action) return false
+
+    switch (action.type) {
+      case ActionType.ADD:
+        return deleteComponentFromCurrentPage(action.componentId)
+      case ActionType.DELETE: {
+        const before = (action.data as any)?.before as Comp | undefined
+        if (!before) return false
+        const parentContainerId = (action.data as any)?.parentContainerId as string | null | undefined
+        if (parentContainerId) return addComponentToContainer(parentContainerId, before)
+        return addComponentToCurrentPage(before)
+      }
+      case ActionType.UPDATE: {
+        const comp = getComponentById(action.componentId)
+        if (!comp) return false
+        const beforePatch = (action.data as any)?.before
+        if (!beforePatch) return false
+        return updateComponentInCurrentPage({
+          ...comp,
+          ...beforePatch
+        })
+      }
+      default:
+        return false
+    }
+  }
+
+  function redoHistoryAction(): boolean {
+    const action = history.redo()
+    if (!action) return false
+
+    switch (action.type) {
+      case ActionType.ADD: {
+        const after = (action.data as any)?.after as Comp | undefined
+        if (!after) return false
+        const parentContainerId = (action.data as any)?.parentContainerId as string | null | undefined
+        if (parentContainerId) return addComponentToContainer(parentContainerId, after)
+        return addComponentToCurrentPage(after)
+      }
+      case ActionType.DELETE:
+        return deleteComponentFromCurrentPage(action.componentId)
+      case ActionType.UPDATE: {
+        const comp = getComponentById(action.componentId)
+        if (!comp) return false
+        const afterPatch = (action.data as any)?.after
+        if (!afterPatch) return false
+        return updateComponentInCurrentPage({
+          ...comp,
+          ...afterPatch
+        })
+      }
+      default:
+        return false
+    }
+  }
+
+  function bringSelectedToFront(): boolean {
+    if (selectedComps.value.length === 0) return false
+    return bringComponentToFront(selectedComps.value[0].id)
+  }
+
+  function bringSelectedForward(): boolean {
+    if (selectedComps.value.length === 0) return false
+    return bringComponentForward(selectedComps.value[0].id)
+  }
+
+  function sendSelectedBackward(): boolean {
+    if (selectedComps.value.length === 0) return false
+    return sendComponentBackward(selectedComps.value[0].id)
+  }
+
+  function sendSelectedToBack(): boolean {
+    if (selectedComps.value.length === 0) return false
+    return sendComponentToBack(selectedComps.value[0].id)
+  }
+
+  function bringComponentToFront(componentId: string): boolean {
+    if (!currentPage.value) return false
+
+    const normalizedId = getLoopSourceId(componentId)
+    const comp = getComponentById(normalizedId)
+    if (!comp) return false
+
+    const roots = currentPage.value.components || []
+    const maxZIndex = Math.max(0, ...roots.map((c) => (c.props as any)?.zIndex || 0))
+    return updateComponentInCurrentPage({
+      ...comp,
+      props: { ...(comp.props || {}), zIndex: maxZIndex + 1 }
+    })
+  }
+
+  function bringComponentForward(componentId: string): boolean {
+    if (!currentPage.value) return false
+
+    const normalizedId = getLoopSourceId(componentId)
+    const comp = getComponentById(normalizedId)
+    if (!comp) return false
+
+    const roots = currentPage.value.components || []
+    const currentZIndex = (comp.props as any)?.zIndex || 1
+    const higher = roots.filter((c) => ((c.props as any)?.zIndex || 1) > currentZIndex)
+    if (higher.length === 0) return false
+    const nextZIndex = Math.min(...higher.map((c) => ((c.props as any)?.zIndex || 1)))
+    return updateComponentInCurrentPage({
+      ...comp,
+      props: { ...(comp.props || {}), zIndex: nextZIndex + 1 }
+    })
+  }
+
+  function sendComponentBackward(componentId: string): boolean {
+    if (!currentPage.value) return false
+
+    const normalizedId = getLoopSourceId(componentId)
+    const comp = getComponentById(normalizedId)
+    if (!comp) return false
+
+    const roots = currentPage.value.components || []
+    const currentZIndex = (comp.props as any)?.zIndex || 1
+    const lower = roots.filter((c) => ((c.props as any)?.zIndex || 1) < currentZIndex)
+    if (lower.length === 0) return false
+    const nextZIndex = Math.max(...lower.map((c) => ((c.props as any)?.zIndex || 1)))
+    const newZIndex = Math.max(1, nextZIndex - 1)
+    return updateComponentInCurrentPage({
+      ...comp,
+      props: { ...(comp.props || {}), zIndex: newZIndex }
+    })
+  }
+
+  function sendComponentToBack(componentId: string): boolean {
+    if (!currentPage.value) return false
+
+    const normalizedId = getLoopSourceId(componentId)
+    const comp = getComponentById(normalizedId)
+    if (!comp) return false
+
+    const roots = currentPage.value.components || []
+    const otherComponents = roots.filter((c) => c.id !== comp.id)
+    if (otherComponents.length === 0) return false
+
+    const currentZIndex = (comp.props as any)?.zIndex || 1
+    const minZIndex = Math.min(...otherComponents.map((c) => ((c.props as any)?.zIndex || 1)))
+    if (currentZIndex <= minZIndex) return false
+
+    const ok1 = updateComponentInCurrentPage({
+      ...comp,
+      props: { ...(comp.props || {}), zIndex: 1 }
+    })
+    let okAll = ok1
+    for (const otherComp of otherComponents) {
+      const ok = updateComponentInCurrentPage({
+        ...otherComp,
+        props: { ...(otherComp.props || {}), zIndex: (((otherComp.props as any)?.zIndex || 1) + 1) }
+      })
+      if (!ok) okAll = false
+    }
+    return okAll
   }
 
   // ==================== 组件操作方法 ====================
@@ -889,7 +1117,7 @@ export const usePageStore = defineStore('page', () => {
 
   function getComponentById(componentId: string) {
     if (!currentPage.value) return undefined
-    return findComponentInTree(componentId) || undefined
+    return findComponentInTree(getLoopSourceId(componentId)) || undefined
   }
 
   function getComponentProps(componentId: string) {
@@ -939,6 +1167,21 @@ export const usePageStore = defineStore('page', () => {
     selectComponent,
     selectComponents,
     isComponentSelected,
+
+    // 工具栏/快捷键动作
+    deleteSelectedComponents,
+    undoHistoryAction,
+    redoHistoryAction,
+    bringSelectedToFront,
+    bringSelectedForward,
+    sendSelectedBackward,
+    sendSelectedToBack,
+
+    // 指定组件层级调整（用于右键菜单等）
+    bringComponentToFront,
+    bringComponentForward,
+    sendComponentBackward,
+    sendComponentToBack,
     setEditorMode,
     
     // 组件操作方法

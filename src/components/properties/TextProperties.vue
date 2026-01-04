@@ -143,6 +143,9 @@ const props = defineProps<{
   customProps?: Record<string, any> | null;
   customPropsCtxPath?: string;
   customPropsLabel?: string;
+
+  loopAvailable?: boolean;
+  loopItemSample?: any;
 }>();
 
 const emit = defineEmits(['update', 'update:bindings']);
@@ -154,7 +157,9 @@ const contentBinding = computed(() => props.bindings?.content)
 const pageVariableTree = computed(() => buildPageVariableTree(pageStore, {
   customProps: props.customProps || undefined,
   customPropsCtxPath: props.customPropsCtxPath,
-  customPropsLabel: props.customPropsLabel
+  customPropsLabel: props.customPropsLabel,
+  loopAvailable: props.loopAvailable,
+  loopItemSample: props.loopItemSample
 }))
 
 function updateValue(key: string, event: Event) {
