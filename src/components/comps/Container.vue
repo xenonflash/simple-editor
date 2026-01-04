@@ -14,6 +14,8 @@
               :id="rep.instanceId"
               :comp="rep.comp"
               v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
+              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
@@ -25,8 +27,8 @@
               :id="rep.instanceId"
               v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
               :content="getRenderedProps(rep.comp, rep.bindingContext).content ?? '新建文本'"
-              :x="getRenderedProps(rep.comp, rep.bindingContext).x ?? 0"
-              :y="getRenderedProps(rep.comp, rep.bindingContext).y ?? 0"
+              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
@@ -36,8 +38,8 @@
               v-else-if="rep.comp.type === 'button'"
               :id="rep.instanceId"
               v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-              :x="getRenderedProps(rep.comp, rep.bindingContext).x ?? 0"
-              :y="getRenderedProps(rep.comp, rep.bindingContext).y ?? 0"
+              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
+              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
               :inFlowLayout="effectiveLayoutMode !== 'absolute'"
               :locked="lockedForChildren"
@@ -68,9 +70,18 @@ import { usePageStore } from '../../stores/page'
 import { resolveBindingRef } from '../../utils/bindingRef'
 import { useMeasuredSize } from '../../utils/useMeasuredSize'
 import { COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
+import { parseLoopInstanceId } from '../../utils/loopInstance'
 import Text from './Text.vue'
 import Button from './Button.vue'
 import NaiveWrapper from './NaiveWrapper.vue'
+import {
+  mergeBindingContext,
+  getCustomPropsBindingContext,
+  getRenderedProps as getRenderedPropsUtil,
+  createBindingResolver,
+  getRenderRepeatsForChild as getRenderRepeatsForChildUtil,
+  type RenderRepeat
+} from '../../utils/renderLoop'
 
 defineOptions({ name: 'Container' })
 
@@ -165,9 +176,15 @@ function measureDescendantPositions() {
   if (effectiveLayoutMode.value === 'absolute') return
 
   const nodes = Array.from(el.querySelectorAll('[data-comp-id]')) as HTMLElement[]
+  const patches: Comp[] = []
   for (const node of nodes) {
     const id = node.getAttribute('data-comp-id')
     if (!id || id === props.id) continue
+
+    const info = parseLoopInstanceId(id)
+    // loop 实例会渲染多份 DOM：在 flow/flex 下若把所有实例的位置都写回同一个 source，会导致更新风暴（甚至卡死）。
+    // 约定：仅 index=0 的实例参与写回。
+    if (info.index !== null && info.index !== 0) continue
 
     const comp = pageStore.getComponentById(id)
     if (!comp) continue
@@ -187,7 +204,7 @@ function measureDescendantPositions() {
 
     if (!changed) continue
 
-    pageStore.updateComponentInCurrentPage({
+    patches.push({
       ...comp,
       props: {
         ...comp.props,
@@ -195,6 +212,10 @@ function measureDescendantPositions() {
         _measuredCanvasY: canvasPos.y
       }
     })
+  }
+
+  if (patches.length > 0) {
+    pageStore.updateComponentsInCurrentPage(patches)
   }
 }
 
@@ -266,123 +287,25 @@ function onMouseDown(e: MouseEvent) {
   handleMouseDown(e, props.x || 0, props.y || 0)
 }
 
-function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
-  const raw = { ...(comp.props || {}) }
-  const ctx = context ?? localBindingContext.value
-  if (comp.bindings) {
-    for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
-      if (typeof bindingRef !== 'string' || !bindingRef) continue
-      raw[propName] = resolveBindingRef(bindingRef, {
-        getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-        context: ctx
-      })
-    }
-  }
-  return raw
-}
-
+// 使用公共模块的本地绑定上下文
 const localBindingContext = computed(() => {
   const base = props.bindingContext || {}
   const custom = props.comp?.custom
-  
-  // 如果当前容器是自定义组件实例根，注入其 custom props/state
-  const rawProps = custom?.props
-  const rawState = custom?.state
-  const bindings = custom?.bindings
-  const hasRawProps = rawProps && typeof rawProps === 'object'
-  const hasRawState = rawState && typeof rawState === 'object'
-  const hasBindings = bindings && typeof bindings === 'object'
-
-  if (hasRawProps || hasRawState) {
-    const effectiveProps: Record<string, any> = hasRawProps ? { ...(rawProps as any) } : {}
-    if (hasBindings) {
-      for (const [k, ref] of Object.entries(bindings as any)) {
-        if (typeof ref !== 'string' || !ref) continue
-        effectiveProps[k] = resolveBindingRef(ref, {
-          getVarValue: (name) => pageStore.getVariableValue(name),
-          getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-          context: base
-        })
-      }
-    }
-
-    return {
-      ...base,
-      ...(hasRawProps ? { customProps: effectiveProps, props: effectiveProps } : {}),
-      ...(hasRawState ? { customState: rawState, state: rawState } : {})
-    }
-  }
-  return base
+  const resolver = createBindingResolver(base)
+  const customCtx = getCustomPropsBindingContext(props.comp, base, resolver)
+  return mergeBindingContext(base, customCtx)
 })
 
-function getBindingContextForChild(comp: Comp): any {
-  return localBindingContext.value
+// 使用公共模块的工具函数
+function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
+  const ctx = context ?? localBindingContext.value
+  const resolver = createBindingResolver(ctx)
+  return getRenderedPropsUtil(comp, ctx, resolver)
 }
 
-function mergeBindingContext(base: any, extra: any): any {
-  if (!extra) return base
-  if (!base) return extra
-  return { ...base, ...extra }
-}
-
-function isVisibleByRenderControl(comp: Comp, context: any): boolean {
-  const raw: any = getRenderedProps(comp, context)
-  if (raw && Object.prototype.hasOwnProperty.call(raw, 'renderVisible')) {
-    return raw.renderVisible !== false
-  }
-  return true
-}
-
-function getLoopItems(comp: Comp, context: any): any[] | null {
-  const raw: any = getRenderedProps(comp, context)
-  const enabled = raw?.loopEnabled === true
-  if (!enabled) return null
-  const items = raw?.loopItems
-  return Array.isArray(items) ? items : []
-}
-
-type ChildRenderRepeat = {
-  key: string
-  sourceId: string
-  instanceId: string
-  comp: Comp
-  bindingContext: any
-  visible: boolean
-  zIndex: number
-}
-
-function getRenderRepeatsForChild(child: Comp, index: number): ChildRenderRepeat[] {
-  const baseContext = getBindingContextForChild(child)
-  const visible = isVisibleByRenderControl(child, baseContext)
-  const zIndex = ((child.props as any)?.zIndex || 1) + index
-
-  const items = getLoopItems(child, baseContext)
-  if (!items) {
-    return [{
-      key: child.id,
-      sourceId: child.id,
-      instanceId: child.id,
-      comp: child,
-      bindingContext: baseContext,
-      visible,
-      zIndex
-    }]
-  }
-
-  return items.map((item, i) => {
-    const instanceId = `${child.id}__loop__${i}`
-    const instanceComp: Comp = { ...child, id: instanceId }
-    return {
-      key: instanceId,
-      sourceId: child.id,
-      instanceId,
-      comp: instanceComp,
-      bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
-      visible,
-      zIndex
-    }
-  })
+// 使用公共模块的循环渲染函数
+function getRenderRepeatsForChild(child: Comp, index: number): RenderRepeat[] {
+  return getRenderRepeatsForChildUtil(child, index, localBindingContext.value)
 }
 
 // 计算容器样式

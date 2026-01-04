@@ -1,11 +1,31 @@
 <template>
   <div class="board-toolbar">
+    <!-- 预览模式切换 -->
+    <div class="mode-toggle">
+      <button 
+        :class="{ active: isDesignMode }"
+        @click="switchToDesign"
+        data-tooltip="设计模式">
+        <span class="icon">✏️</span>
+        <span class="text">设计</span>
+      </button>
+      <button 
+        :class="{ active: isPreviewMode }"
+        @click="switchToPreview"
+        data-tooltip="预览模式">
+        <span class="icon">👁</span>
+        <span class="text">预览</span>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
     <div class="button-group">
-      <button @click="undo" :disabled="!canUndo" data-tooltip="撤销 (⌘Z)">
+      <button @click="undo" :disabled="!canUndo || isPreviewMode" data-tooltip="撤销 (⌘Z)">
         <span class="icon">↩</span>
         <span class="text">撤销</span>
       </button>
-      <button @click="redo" :disabled="!canRedo" data-tooltip="重做 (⌘⇧Z)">
+      <button @click="redo" :disabled="!canRedo || isPreviewMode" data-tooltip="重做 (⌘⇧Z)">
         <span class="icon">↪</span>
         <span class="text">重做</span>
       </button>
@@ -30,7 +50,7 @@
 
     <button class="delete-button" 
           @click="deleteSelected"
-            :disabled="!selected"
+            :disabled="!selected || isPreviewMode"
             data-tooltip="删除 (Delete)">
       <AppIcon name="trash" />
       <span class="text">删除</span>
@@ -40,22 +60,22 @@
 
     <div class="button-group">
       <button @click="bringToFront" 
-              :disabled="!selected"
+              :disabled="!selected || isPreviewMode"
               data-tooltip="置于顶层">
         <span class="icon">⬆</span>
       </button>
       <button @click="bringForward" 
-              :disabled="!selected"
+              :disabled="!selected || isPreviewMode"
               data-tooltip="上移一层">
         <span class="icon">↑</span>
       </button>
       <button @click="sendBackward" 
-              :disabled="!selected"
+              :disabled="!selected || isPreviewMode"
               data-tooltip="下移一层">
         <span class="icon">↓</span>
       </button>
       <button @click="sendToBack" 
-              :disabled="!selected"
+              :disabled="!selected || isPreviewMode"
               data-tooltip="置于底层">
         <span class="icon">⬇</span>
       </button>
@@ -68,7 +88,7 @@
         <span class="icon">⬇</span>
         <span class="text">导出</span>
       </button>
-      <button @click="handleImport" data-tooltip="从JSON导入">
+      <button @click="handleImport" :disabled="isPreviewMode" data-tooltip="从JSON导入">
         <span class="icon">⬆</span>
         <span class="text">导入</span>
       </button>
@@ -81,6 +101,7 @@
 import { computed, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import { usePageStore } from '../../stores/page'
+import { useEditorStore } from '../../stores/editor'
 import { history } from '../../utils/history'
 import { exportToJSON, importFromJSON, downloadJSON, readJSONFile } from '../../utils/io'
 
@@ -93,10 +114,25 @@ const props = defineProps<{
 
 const message = useMessage()
 const pageStore = usePageStore()
+const editorStore = useEditorStore()
 
 const canUndo = computed(() => history.canUndo())
 const canRedo = computed(() => history.canRedo())
 const selected = computed(() => pageStore.selectedComps.length > 0)
+
+// 编辑器模式
+const isDesignMode = computed(() => editorStore.isDesignMode)
+const isPreviewMode = computed(() => editorStore.isPreviewMode)
+
+function switchToDesign() {
+  editorStore.switchToDesign()
+  pageStore.clearSelection()
+}
+
+function switchToPreview() {
+  editorStore.switchToPreview()
+  pageStore.clearSelection()
+}
 
 function deleteSelected() {
   const res = pageStore.deleteSelectedComponents()
@@ -218,6 +254,31 @@ button:disabled {
   color: #ccc;
   cursor: not-allowed;
   background-color: transparent;
+}
+
+/* 模式切换按钮组 */
+.mode-toggle {
+  display: flex;
+  gap: 2px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.mode-toggle button {
+  border-radius: 4px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.mode-toggle button.active {
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #2563eb;
+}
+
+.mode-toggle button:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .icon {

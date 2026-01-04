@@ -38,7 +38,7 @@
               <!-- 组件渲染 - 提高层级 -->
               <template v-for="(comp, index) in props.components"
                         :key="comp.id">
-                  <template v-for="rep in getRenderRepeatsForRoot(comp, index)" :key="rep.key">
+                  <template v-for="rep in getRenderRepeats(comp, index)" :key="rep.key">
                 <div class="component-wrapper"
                      v-show="rep.visible"
                      :style="{ zIndex: rep.zIndex }">
@@ -177,6 +177,15 @@ import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coord
 import { usePointerHubStore } from '../../stores/pointerHub'
 import { getLoopSourceId } from '../../utils/loopInstance'
 import { useBoardContextMenu } from './useBoardContextMenu'
+import {
+  mergeBindingContext,
+  getCustomPropsBindingContext,
+  getRenderedProps as getRenderedPropsUtil,
+  createBindingResolver,
+  getRenderRepeatsForRoot,
+  type RenderRepeat
+} from '../../utils/renderLoop'
+import { useEditorStore } from '../../stores/editor'
 
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -205,156 +214,26 @@ const snaplineStore = useSnaplineStore();
 const pageStore = usePageStore();
 const customComponentsStore = useCustomComponentsStore()
 const pointerHubStore = usePointerHubStore()
+const editorStore = useEditorStore()
 const message = useMessage()
 
-function isProtectedRootContainerInCustomEdit(comp: Comp): boolean {
-  if (pageStore.editorMode !== 'custom-edit') return false
-  if (!comp || comp.type !== 'container') return false
-  const parentId = pageStore.findParentContainerId(comp.id)
-  return parentId === null
-}
-
-function mergeBindingContext(base: any, extra: any): any {
-  if (!extra) return base
-  if (!base) return extra
-  return { ...base, ...extra }
-}
-
-function getCustomPropsBindingContext(comp: Comp, baseContext: any): any {
-  const custom = comp?.custom
-  const rawProps = custom?.props
-  const rawState = custom?.state
-  const bindings = custom?.bindings
-
-  const hasRawProps = rawProps && typeof rawProps === 'object'
-  const hasRawState = rawState && typeof rawState === 'object'
-  const hasBindings = bindings && typeof bindings === 'object'
-
-  if (!hasRawProps && !hasRawState) return undefined
-
-  const effectiveProps: Record<string, any> = hasRawProps ? { ...rawProps } : {}
-  if (hasBindings) {
-    for (const [k, ref] of Object.entries(bindings)) {
-      if (typeof ref !== 'string' || !ref) continue
-      effectiveProps[k] = resolveBindingRef(ref, {
-        getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-        context: baseContext
-      })
-    }
-  }
-
-  // 兼容现有 binding DSL：默认暴露 customProps/props 双别名；state 同理
-  return {
-    ...(hasRawProps ? { customProps: effectiveProps, props: effectiveProps } : {}),
-    ...(hasRawState ? { customState: rawState, state: rawState } : {})
-  }
-}
-
+// 使用公共模块的工具函数，创建本地包装器以保持向后兼容
 function getBindingContextForRoot(comp: Comp): any {
   const baseContext = props.bindingContext
-  return mergeBindingContext(baseContext, getCustomPropsBindingContext(comp, baseContext))
+  const resolver = createBindingResolver(baseContext)
+  const customCtx = getCustomPropsBindingContext(comp, baseContext, resolver)
+  return mergeBindingContext(baseContext, customCtx)
 }
 
 function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
-  const raw = { ...(comp.props || {}) }
   const ctx = context ?? getBindingContextForRoot(comp)
-  if (comp.bindings) {
-    for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
-      if (typeof bindingRef !== 'string' || !bindingRef) continue
-      raw[propName] = resolveBindingRef(bindingRef, {
-        getVarValue: (name) => pageStore.getVariableValue(name),
-        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-        context: ctx
-      })
-    }
-  }
-  return raw
+  const resolver = createBindingResolver(ctx)
+  return getRenderedPropsUtil(comp, ctx, resolver)
 }
 
-function isVisibleByRenderControl(comp: Comp, context: any): boolean {
-  const raw: any = getRenderedProps(comp, context)
-  // 默认显示；绑定返回 false 则隐藏
-  if (raw && Object.prototype.hasOwnProperty.call(raw, 'renderVisible')) {
-    return raw.renderVisible !== false
-  }
-  return true
-}
-
-function getLoopItemsForRoot(comp: Comp, context: any): any[] | null {
-  const raw: any = getRenderedProps(comp, context)
-  const enabled = raw?.loopEnabled === true
-  if (!enabled) return null
-  const items = raw?.loopItems
-  return Array.isArray(items) ? items : []
-}
-
-type RootRenderRepeat = {
-  key: string
-  sourceId: string
-  instanceId: string
-  comp: Comp
-  bindingContext: any
-  visible: boolean
-  zIndex: number
-  offsetX: number
-  offsetY: number
-}
-
-const ROOT_LOOP_OFFSET_STEP = 8
-
-function getRenderRepeatsForRoot(comp: Comp, index: number): RootRenderRepeat[] {
-  const baseContext = getBindingContextForRoot(comp)
-  const visible = isVisibleByRenderControl(comp, baseContext)
-  const zIndex = (getRenderedProps(comp, baseContext) as any)?.zIndex || index + 1000
-
-  const items = getLoopItemsForRoot(comp, baseContext)
-  if (!items) {
-    return [{
-      key: comp.id,
-      sourceId: comp.id,
-      instanceId: comp.id,
-      comp,
-      bindingContext: baseContext,
-      visible,
-      zIndex,
-      offsetX: 0,
-      offsetY: 0
-    }]
-  }
-
-  return items.map((item, i) => {
-    const instanceId = `${comp.id}__loop__${i}`
-    const delta = i <= 0 ? 0 : i * ROOT_LOOP_OFFSET_STEP
-
-    let instanceComp: Comp = { ...comp, id: instanceId }
-    // NaiveWrapper 的定位依赖 comp.props.x/y（而不是绑定求值），所以根层 offset 需要写入 props
-    if (delta !== 0 && typeof comp.type === 'string' && comp.type.startsWith('n-')) {
-      const rawX: any = (comp.props as any)?.x
-      const rawY: any = (comp.props as any)?.y
-      const baseX = typeof rawX === 'number' ? rawX : Number(rawX)
-      const baseY = typeof rawY === 'number' ? rawY : Number(rawY)
-      instanceComp = {
-        ...instanceComp,
-        props: {
-          ...(comp.props || {}),
-          x: (Number.isFinite(baseX) ? baseX : 0) + delta,
-          y: (Number.isFinite(baseY) ? baseY : 0) + delta
-        }
-      }
-    }
-    return {
-      key: instanceId,
-      sourceId: comp.id,
-      instanceId,
-      comp: instanceComp,
-      bindingContext: mergeBindingContext(baseContext, { loop: { item, index: i } }),
-      visible,
-      zIndex,
-      offsetX: delta,
-      offsetY: delta
-    }
-  })
+// 使用公共模块的循环渲染函数
+function getRenderRepeats(comp: Comp, index: number): RenderRepeat[] {
+  return getRenderRepeatsForRoot(comp, index, props.bindingContext)
 }
 
 function getContainerHits(): ContainerHit[] {
@@ -642,6 +521,9 @@ const contentStyle = computed(() => ({
 
 // 处理画布点击
 function handleCanvasClick(e: MouseEvent) {
+  // 预览模式下不处理选中
+  if (editorStore.isPreviewMode) return
+  
   // MultiSelect 组件会处理框选逻辑
   // 这里只处理简单的取消选中
   const targetEl = e.target as HTMLElement
@@ -658,6 +540,9 @@ function handleCanvasClick(e: MouseEvent) {
 
 // 处理组件位置更新
 function handleUpdatePosition(id: string, updates: Record<string, any>) {
+  // 预览模式下不处理更新
+  if (editorStore.isPreviewMode) return
+  
   const normalizedId = getLoopSourceId(id)
   const comp = pageStore.getComponentById(normalizedId);
   if (!comp) return;

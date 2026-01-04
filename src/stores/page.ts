@@ -6,7 +6,7 @@ import type { Comp } from '../components/comps/base';
 import type { PropSchema } from '../config/naive-ui-registry'
 import { exportToJSON, importFromJSON } from '../utils/io'
 import { instantiateFromCustomComponentTemplate } from '../utils/customComponentInstance'
-import { getLoopSourceId } from '../utils/loopInstance'
+import { getLoopSourceId, parseLoopInstanceId } from '../utils/loopInstance'
 import { history, ActionType } from '../utils/history'
 
 export const usePageStore = defineStore('page', () => {
@@ -43,6 +43,7 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function sanitizePageForPersist(page: Page): Page {
+    
     return {
       ...page,
       components: (page.components || []).map(sanitizeCompForPersist)
@@ -431,26 +432,35 @@ export const usePageStore = defineStore('page', () => {
       return;
     }
 
-    componentId = getLoopSourceId(componentId)
+    const rawId = componentId
+    const info = parseLoopInstanceId(rawId)
+    let treeId = info.sourceId
 
     // 页面编辑模式下：自定义组件实例内部不允许直接选中子组件，自动提升到实例根。
     if (editorMode.value === 'page') {
-      const rootId = findCustomComponentInstanceRootId(componentId)
-      if (rootId) componentId = rootId
+      const rootId = findCustomComponentInstanceRootId(treeId)
+      if (rootId) {
+        treeId = rootId
+      }
     }
 
-    const component = findComponentInTree(componentId);
+    const component = findComponentInTree(treeId);
     if (!component) return;
 
+    // loop 实例：允许以 instanceId 进行单独选中（用于高亮/右键菜单等 UI），但底层数据仍来自 source 组件。
+    // 注意：若发生 custom instance root 提升，则不保留 loop index（选择根组件）。
+    const selectedId = (info.index !== null && treeId === info.sourceId) ? rawId : treeId
+    const selectedComp = selectedId === treeId ? component : ({ ...component, id: selectedId } as Comp)
+
     if (multiSelect) {
-      const index = selectedComps.value.findIndex(comp => comp.id === componentId);
+      const index = selectedComps.value.findIndex(comp => comp.id === selectedId);
       if (index >= 0) {
         selectedComps.value.splice(index, 1);
       } else {
-        selectedComps.value.push(component);
+        selectedComps.value.push(selectedComp);
       }
     } else {
-      selectedComps.value = [component];
+      selectedComps.value = [selectedComp];
     }
   }
 
@@ -640,7 +650,8 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function isComponentSelected(componentId: string): boolean {
-    return selectedCompIds.value.includes(getLoopSourceId(componentId));
+    // instanceId 选中时只高亮该 instance；sourceId 选中时只高亮 source。
+    return selectedCompIds.value.includes(componentId);
   }
 
   function isProtectedRootContainerInCustomEdit(comp: Comp): boolean {
@@ -659,7 +670,11 @@ export const usePageStore = defineStore('page', () => {
     let blockedCount = 0
     let deletedCount = 0
 
-    for (const comp of selectedSnapshot) {
+    for (const selected of selectedSnapshot) {
+      const normalizedId = getLoopSourceId(selected.id)
+      const comp = getComponentById(normalizedId)
+      if (!comp) continue
+
       if (isProtectedRootContainerInCustomEdit(comp)) {
         blockedCount++
         continue
@@ -1004,10 +1019,50 @@ export const usePageStore = defineStore('page', () => {
     currentPage.value.components = res.next
     currentPage.value.updatedAt = new Date()
 
-    const nextSelected = selectedComps.value
-      .map((sc) => findComponentInTree(sc.id, res.next))
+    selectedComps.value = selectedComps.value
+      .map((sc) => {
+        const base = findComponentInTree(getLoopSourceId(sc.id), res.next)
+        if (!base) return null
+        // 维持 loop 实例选中：用源组件数据，但保留 instanceId 作为选中 id
+        return sc.id === base.id ? base : ({ ...base, id: sc.id } as Comp)
+      })
       .filter(Boolean) as Comp[]
-    selectedComps.value = nextSelected
+    return true
+  }
+
+  function updateComponentsInCurrentPage(components: Comp[]): boolean {
+    if (!currentPage.value) return false
+    if (!components || components.length === 0) return false
+
+    const updates = new Map<string, Comp>()
+    for (const c of components) {
+      if (!c || !c.id) continue
+      updates.set(c.id, c)
+    }
+    if (updates.size === 0) return false
+
+    const res = mapComponentTree(currentPage.value.components, (c) => {
+      const patch = updates.get(c.id)
+      if (!patch) return c
+      return {
+        ...c,
+        ...patch,
+        props: { ...(c.props || {}), ...(patch.props || {}) }
+      }
+    })
+
+    if (!res.changed) return false
+    currentPage.value.components = res.next
+    currentPage.value.updatedAt = new Date()
+
+    selectedComps.value = selectedComps.value
+      .map((sc) => {
+        const base = findComponentInTree(getLoopSourceId(sc.id), res.next)
+        if (!base) return null
+        return sc.id === base.id ? base : ({ ...base, id: sc.id } as Comp)
+      })
+      .filter(Boolean) as Comp[]
+
     return true
   }
 
@@ -1191,6 +1246,7 @@ export const usePageStore = defineStore('page', () => {
     moveComponentToContainer,
     deleteComponentFromCurrentPage,
     updateComponentInCurrentPage,
+    updateComponentsInCurrentPage,
     updateComponentPosition,
 
     // 自定义组件：同步定义到实例

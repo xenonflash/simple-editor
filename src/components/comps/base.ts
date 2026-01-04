@@ -144,7 +144,6 @@ interface BaseProps {
   shadowSpread?: number;
   shadowColor?: string;
   zIndex?: number;
-
   // 渲染控制
   renderVisible?: boolean;
   loopEnabled?: boolean;
@@ -282,6 +281,8 @@ export function createComp(type: CompType, name: string): Comp {
           height: 40
         },
         children: [],
+        icon: 'T',
+        description: '用于显示文本内容的组件',
       };
     default:
       // 默认返回一个空容器，防止报错
