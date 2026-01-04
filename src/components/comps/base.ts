@@ -34,6 +34,18 @@ export interface CompStyle {
   [key: string]: string | number | undefined;
 }
 
+// 自定义组件实例元信息（方案 B：从 props 抽离）
+export interface CustomComponentInstance {
+  /** 引用的自定义组件 Definition ID */
+  defId: string;
+  /** 自定义组件参数（由 propsSchema 定义） */
+  props: Record<string, any>;
+  /** 自定义组件参数绑定（propName -> bindingRef） */
+  bindings?: Record<string, string>;
+  /** 自定义组件状态值（由 stateSchema 定义，可选/按需使用） */
+  state: Record<string, any>;
+}
+
 // 组件尺寸接口
 export interface CompSize {
   width: number;
@@ -46,11 +58,15 @@ export interface Comp {
   name: string;
   type: CompType;
   props: Record<string, any>;
+  /** 自定义组件实例元信息：仅自定义组件实例根节点存在 */
+  custom?: CustomComponentInstance;
   bindings?: Record<string, string>; // 属性绑定: propName -> 绑定引用（var:<name> / comp:<id>:<prop>，兼容旧: <name>）
   events: Record<string, CompEvent[]>; // 支持多个动作
   style: CompStyle;
   /** @deprecated Use props.width and props.height instead */
   size?: CompSize;
+  /** 自定义组件模板同步用：该节点在 definition 模板中的源 id */
+  ccSourceId?: string;
   children: Comp[];
   isContainer?: boolean;
   icon?: string;

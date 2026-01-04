@@ -9,10 +9,12 @@ export function exportToJSON(components: Comp[]): string {
       name: comp.name,
       type: comp.type,
       props: comp.props,
+      custom: comp.custom,
       bindings: comp.bindings,
       events: comp.events,
       style: comp.style,
       size: comp.size,
+      ccSourceId: comp.ccSourceId,
       children: comp.children ? comp.children.map(processComponent) : [],
       isContainer: comp.isContainer,
     }
@@ -44,11 +46,15 @@ export function importFromJSON(jsonStr: string): Comp[] {
 
       // 复制属性
       newComp.props = { ...comp.props };
+      newComp.custom = (comp.custom && typeof comp.custom === 'object') ? { ...comp.custom } : undefined;
       newComp.bindings = { ...comp.bindings };
       newComp.events = { ...comp.events };
       newComp.style = { ...comp.style };
       newComp.size = { ...comp.size };
       newComp.isContainer = comp.isContainer;
+      if (typeof comp.ccSourceId === 'string' && comp.ccSourceId) {
+        newComp.ccSourceId = comp.ccSourceId;
+      }
       
       // 处理子组件
       if (comp.children && Array.isArray(comp.children)) {

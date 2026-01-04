@@ -110,7 +110,7 @@ function exitCustomEdit(save: boolean) {
     const schema = editingCustomPropsSchema.value || {}
     const stateSchema = editingCustomStateSchema.value || {}
     customComponentsStore.updateCustomComponent(defId, { templateJson, propsSchema: schema, stateSchema })
-    pageStore.syncCustomComponentInstances({ id: defId, templateJson, propsSchema: schema })
+    pageStore.syncCustomComponentInstances({ id: defId, templateJson, propsSchema: schema, stateSchema })
   }
 
   pageStore.removeCustomComponentEditPage(defId)

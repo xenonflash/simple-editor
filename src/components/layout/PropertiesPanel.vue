@@ -43,10 +43,10 @@
             <div class="section-content" style="padding: 0;">
               <DynamicProperties
                 :modelValue="customMeta.props"
-                :bindings="{}"
+                :bindings="customMeta.bindings"
                 :propsSchema="customDef.propsSchema || {}"
                 @change="updateCustomInstanceProps"
-                @update:bindings="() => {}"
+                @update:bindings="updateCustomInstanceBindings"
               />
             </div>
           </div>
@@ -399,12 +399,14 @@ const renderLoopSchema: Record<string, PropSchema> = {
 const customMeta = computed(() => {
   const c = props.component
   if (!c) return null
-  const p: any = c.props || {}
-  if (!p.__customComponentId) return null
+  const custom = c.custom
+  if (!custom?.defId) return null
+  const def = customComponentsStore.getById(custom.defId)
   return {
-    id: String(p.__customComponentId),
-    name: String(p.__customComponentName || ''),
-    props: (p.__customProps && typeof p.__customProps === 'object') ? p.__customProps : {}
+    id: String(custom.defId),
+    name: String(def?.name || ''),
+    props: (custom.props && typeof custom.props === 'object') ? custom.props : {},
+    bindings: (custom.bindings && typeof custom.bindings === 'object') ? custom.bindings : {}
   }
 })
 
@@ -420,8 +422,7 @@ const customInstanceRoot = computed(() => {
 
   let cur: Comp | undefined = c
   while (cur) {
-    const p: any = cur.props || {}
-    if (p.__customComponentId) return cur
+    if (cur.custom?.defId) return cur
     const parentId = pageStore.findParentContainerId(cur.id)
     if (!parentId) break
     cur = pageStore.getComponentById(parentId)
@@ -446,8 +447,7 @@ const bindingCustomProps = computed(() => {
 
   const root = customInstanceRoot.value
   if (!root) return null
-  const p: any = root.props || {}
-  const cp = p.__customProps
+  const cp = root.custom?.props
   return (cp && typeof cp === 'object') ? cp : null
 })
 
@@ -492,10 +492,50 @@ const loopValidationMessage = computed(() => {
 
 function updateCustomInstanceProps(updates: Record<string, any>) {
   if (!props.component) return
-  const p: any = props.component.props || {}
-  const next = { ...(p.__customProps || {}) }
-  Object.assign(next, updates)
-  updateProps({ __customProps: next })
+  const custom = props.component.custom
+  if (!custom) return
+
+  const processedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+    if (typeof value === 'string' && !isNaN(Number(value))) {
+      acc[key] = Number(value)
+    } else {
+      acc[key] = value
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  const next = { ...(custom.props || {}) }
+  Object.assign(next, processedUpdates)
+
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    custom: {
+      ...custom,
+      props: next
+    }
+  } as any)
+}
+
+function updateCustomInstanceBindings(updates: Record<string, string | null>) {
+  if (!props.component) return
+  const custom = props.component.custom
+  if (!custom) return
+
+  const next = { ...(custom.bindings || {}) }
+  for (const [k, v] of Object.entries(updates || {})) {
+    if (v === null) delete next[k]
+    else next[k] = v
+  }
+
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    custom: {
+      ...custom,
+      bindings: next
+    }
+  } as any)
 }
 
 // Flow 相关

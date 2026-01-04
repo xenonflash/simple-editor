@@ -228,13 +228,35 @@ function mergeBindingContext(base: any, extra: any): any {
   return { ...base, ...extra }
 }
 
-function getCustomPropsBindingContext(comp: Comp): any {
-  const p: any = comp?.props || {}
-  const customProps = p.__customProps
-  if (customProps && typeof customProps === 'object') {
-    return { customProps, props: customProps }
+function getCustomPropsBindingContext(comp: Comp, baseContext: any): any {
+  const custom = comp?.custom
+  const rawProps = custom?.props
+  const rawState = custom?.state
+  const bindings = custom?.bindings
+
+  const hasRawProps = rawProps && typeof rawProps === 'object'
+  const hasRawState = rawState && typeof rawState === 'object'
+  const hasBindings = bindings && typeof bindings === 'object'
+
+  if (!hasRawProps && !hasRawState) return undefined
+
+  const effectiveProps: Record<string, any> = hasRawProps ? { ...rawProps } : {}
+  if (hasBindings) {
+    for (const [k, ref] of Object.entries(bindings)) {
+      if (typeof ref !== 'string' || !ref) continue
+      effectiveProps[k] = resolveBindingRef(ref, {
+        getVarValue: (name) => pageStore.getVariableValue(name),
+        getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+        context: baseContext
+      })
+    }
   }
-  return undefined
+
+  // 兼容现有 binding DSL：默认暴露 customProps/props 双别名；state 同理
+  return {
+    ...(hasRawProps ? { customProps: effectiveProps, props: effectiveProps } : {}),
+    ...(hasRawState ? { customState: rawState, state: rawState } : {})
+  }
 }
 
 const renderedPropsMap = computed(() => {
@@ -252,7 +274,8 @@ const renderedPropsMap = computed(() => {
 
   for (const comp of props.components) {
     const raw = { ...(comp.props || {}) };
-    const context = mergeBindingContext(props.bindingContext, getCustomPropsBindingContext(comp))
+    const baseContext = props.bindingContext
+    const context = mergeBindingContext(baseContext, getCustomPropsBindingContext(comp, baseContext))
     if (comp.bindings) {
       for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
         if (typeof bindingRef !== 'string') continue;
@@ -270,7 +293,8 @@ function getRenderedProps(comp: Comp): Record<string, any> {
 }
 
 function getBindingContextForRoot(comp: Comp): any {
-  return mergeBindingContext(props.bindingContext, getCustomPropsBindingContext(comp))
+  const baseContext = props.bindingContext
+  return mergeBindingContext(baseContext, getCustomPropsBindingContext(comp, baseContext))
 }
 
 function isVisibleByRenderControl(comp: Comp): boolean {
@@ -778,11 +802,10 @@ function handleDrop(e: DragEvent) {
     // 实例化：为该次拖入生成全新的唯一 id（并修正内部 comp: 绑定引用）
     instantiateFromCustomComponentTemplate(root)
 
-    root.props = {
-      ...(root.props || {}),
-      __customComponentId: def.id,
-      __customComponentName: def.name,
-      __customProps: buildDefaultsFromSchema((def as any).propsSchema)
+    root.custom = {
+      defId: def.id,
+      props: buildDefaultsFromSchema((def as any).propsSchema),
+      state: buildDefaultsFromSchema((def as any).stateSchema)
     }
 
     if (hit) {

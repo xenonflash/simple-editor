@@ -2,8 +2,6 @@ import type { Comp } from '../components/comps/base'
 import { parseBindingRef } from './bindingRef'
 import { newComponentId } from './id'
 
-const SOURCE_KEY = 'ccSourceId'
-
 function walk(root: Comp, visit: (c: Comp) => void) {
   const stack: Comp[] = [root]
   while (stack.length) {
@@ -19,7 +17,7 @@ function buildSourceToExistingId(existingRoot: Comp | undefined): Record<string,
   const map: Record<string, string> = {}
   if (!existingRoot) return map
   walk(existingRoot, (c) => {
-    const sid = (c.props as any)?.[SOURCE_KEY]
+    const sid = c.ccSourceId
     if (typeof sid === 'string' && sid) map[sid] = c.id
   })
   return map
@@ -65,9 +63,7 @@ export function instantiateFromCustomComponentTemplate(
   // 先为每个 template 节点确定 instance id
   walk(templateRoot, (c) => {
     const sourceId = c.id
-    const nextProps = (c.props && typeof c.props === 'object') ? c.props : {}
-    ;(nextProps as any)[SOURCE_KEY] = sourceId
-    c.props = nextProps
+    c.ccSourceId = sourceId
 
     const assigned = fixed[sourceId] || sourceToExistingId[sourceId] || newComponentId(String(c.type))
     sourceToAssigned[sourceId] = assigned

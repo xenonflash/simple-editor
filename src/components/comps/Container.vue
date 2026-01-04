@@ -136,8 +136,7 @@ const pageStore = usePageStore()
 const effectiveLayoutMode = computed(() => props.layoutMode || 'absolute')
 
 const isCustomComponentInstanceRoot = computed(() => {
-  const p: any = props.comp?.props || {}
-  return !!p.__customComponentId
+  return !!props.comp?.custom?.defId
 })
 
 const lockedForSelf = computed(() => {
@@ -285,14 +284,33 @@ function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
 
 const localBindingContext = computed(() => {
   const base = props.bindingContext || {}
-  const currentProps = props.comp?.props || {}
+  const custom = props.comp?.custom
   
-  // 如果当前容器是自定义组件实例，注入其 props
-  if (currentProps.__customProps) {
+  // 如果当前容器是自定义组件实例根，注入其 custom props/state
+  const rawProps = custom?.props
+  const rawState = custom?.state
+  const bindings = custom?.bindings
+  const hasRawProps = rawProps && typeof rawProps === 'object'
+  const hasRawState = rawState && typeof rawState === 'object'
+  const hasBindings = bindings && typeof bindings === 'object'
+
+  if (hasRawProps || hasRawState) {
+    const effectiveProps: Record<string, any> = hasRawProps ? { ...(rawProps as any) } : {}
+    if (hasBindings) {
+      for (const [k, ref] of Object.entries(bindings as any)) {
+        if (typeof ref !== 'string' || !ref) continue
+        effectiveProps[k] = resolveBindingRef(ref, {
+          getVarValue: (name) => pageStore.getVariableValue(name),
+          getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+          context: base
+        })
+      }
+    }
+
     return {
       ...base,
-      customProps: currentProps.__customProps,
-      props: currentProps.__customProps
+      ...(hasRawProps ? { customProps: effectiveProps, props: effectiveProps } : {}),
+      ...(hasRawState ? { customState: rawState, state: rawState } : {})
     }
   }
   return base

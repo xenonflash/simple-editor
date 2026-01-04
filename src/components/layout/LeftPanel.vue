@@ -524,8 +524,7 @@ function pageHasCustomComponentRef(page: any, defId: string): boolean {
   const stack: any[] = [...roots]
   while (stack.length) {
     const cur = stack.pop()
-    const props: any = cur?.props || {}
-    if (props.__customComponentId === defId) return true
+    if (cur?.custom?.defId === defId) return true
     const children: any[] = Array.isArray(cur?.children) ? cur.children : []
     for (const ch of children) stack.push(ch)
   }

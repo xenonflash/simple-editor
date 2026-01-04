@@ -445,8 +445,7 @@ export const usePageStore = defineStore('page', () => {
     let cur: Comp | null = findComponentInTree(componentId)
     if (!cur) return null
     while (cur) {
-      const p: any = cur.props || {}
-      if (p.__customComponentId) return cur.id
+      if (cur.custom?.defId) return cur.id
       const parentId = findParentContainerId(cur.id)
       if (!parentId) break
       cur = findComponentInTree(parentId)
@@ -532,7 +531,7 @@ export const usePageStore = defineStore('page', () => {
     return base
   }
 
-  function syncCustomComponentInstances(def: { id: string; templateJson: string; propsSchema: Record<string, PropSchema> }): boolean {
+  function syncCustomComponentInstances(def: { id: string; templateJson: string; propsSchema: Record<string, PropSchema>; stateSchema?: Record<string, PropSchema> }): boolean {
     const preserveKeys = new Set([
       'x', 'y', 'zIndex',
       'width', 'height', 'widthSizing', 'heightSizing',
@@ -540,8 +539,7 @@ export const usePageStore = defineStore('page', () => {
     ])
 
     function replaceIfMatch(comp: Comp): Comp {
-      const p: any = comp.props || {}
-      if (p.__customComponentId !== def.id) return comp
+      if (comp.custom?.defId !== def.id) return comp
 
       const next = (() => {
         try {
@@ -566,17 +564,21 @@ export const usePageStore = defineStore('page', () => {
         if (preserveKeys.has(k)) preserved[k] = instProps[k]
       }
 
-      const nextCustomProps = applyCustomPropsDefaults(instProps.__customProps, def.propsSchema)
+      const nextCustomProps = applyCustomPropsDefaults(comp.custom?.props, def.propsSchema)
+      const nextCustomState = applyCustomPropsDefaults(comp.custom?.state, def.stateSchema || {})
 
       next.id = comp.id
       next.name = comp.name
 
+      next.custom = {
+        defId: def.id,
+        props: nextCustomProps,
+        state: nextCustomState
+      }
+
       next.props = {
         ...(next.props || {}),
         ...preserved,
-        __customComponentId: instProps.__customComponentId,
-        __customComponentName: instProps.__customComponentName,
-        __customProps: nextCustomProps
       }
 
       return next
