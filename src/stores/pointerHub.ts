@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import type { CoordinateHelper, CoordinateSnapshot } from '../utils/coordinateHelper'
 
 export type PointerMessageType =
@@ -34,6 +34,15 @@ export interface PointerHub {
 export const usePointerHubStore = defineStore('pointerHub', () => {
   const latest = ref<PointerMessage | null>(null)
   const isDown = ref(false)
+
+  // 画布平移（pan）状态：从 Board 收口到这里，便于统一指针与键盘驱动的平移逻辑
+  const panOffset = ref({ x: 0, y: 0 })
+  const panState = reactive({
+    isPanning: false,
+    lastX: 0,
+    lastY: 0,
+    spaceKeyPressed: false
+  })
 
   let coord: CoordinateHelper | null = null
   let target: Document | HTMLElement | null = null
@@ -127,11 +136,75 @@ export const usePointerHubStore = defineStore('pointerHub', () => {
     }
   }
 
+  function isTypingInInput(): boolean {
+    const activeElement = document.activeElement as HTMLElement | null
+    if (!activeElement) return false
+    return (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      (activeElement as any).isContentEditable
+    )
+  }
+
+  function handlePanKeyDown(e: KeyboardEvent) {
+    if (isTypingInInput()) return
+    if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
+      panState.spaceKeyPressed = true
+      if (!panState.isPanning) document.body.style.cursor = 'grab'
+    }
+  }
+
+  function handlePanKeyUp(e: KeyboardEvent) {
+    if (e.code === 'Space') {
+      panState.spaceKeyPressed = false
+      if (!panState.isPanning) document.body.style.cursor = ''
+    }
+  }
+
+  function startPan(e: MouseEvent) {
+    if (e.button === 1 || (e.button === 0 && panState.spaceKeyPressed)) {
+      panState.isPanning = true
+      panState.lastX = e.clientX
+      panState.lastY = e.clientY
+      document.body.style.cursor = 'grabbing'
+    }
+  }
+
+  function doPan(e: MouseEvent) {
+    if (!panState.isPanning) return
+
+    const dx = e.clientX - panState.lastX
+    const dy = e.clientY - panState.lastY
+
+    panOffset.value = {
+      x: panOffset.value.x + dx,
+      y: panOffset.value.y + dy
+    }
+
+    panState.lastX = e.clientX
+    panState.lastY = e.clientY
+  }
+
+  function endPan() {
+    if (!panState.isPanning) return
+    panState.isPanning = false
+    document.body.style.cursor = panState.spaceKeyPressed ? 'grab' : ''
+  }
+
   return {
     latest,
     isDown,
+    panOffset,
+    panState,
     subscribe,
     attach,
-    detach
+    detach,
+
+    // pan: 供 Board 事件直接调用
+    handlePanKeyDown,
+    handlePanKeyUp,
+    startPan,
+    doPan,
+    endPan
   }
 })

@@ -147,6 +147,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, provide } from 'vue';
+import { storeToRefs } from 'pinia'
 import Container from '../comps/Container.vue';
 import Text from '../comps/Text.vue';
 import Button from '../comps/Button.vue';
@@ -433,20 +434,12 @@ const viewportCenter = computed(() => {
   } : { x: 0, y: 0 };
 });
 
-// 视口中心点
-const panState = reactive({
-  isPanning: false,
-  lastX: 0,
-  lastY: 0,
-  spaceKeyPressed: false
-});
+// pan 状态收口到 pointerHub store（注意：Pinia 会自动解包 ref，需要 storeToRefs 保留 Ref<Point>）
+const { panOffset } = storeToRefs(pointerHubStore)
 
 function isNaiveComp(type: CompType) {
   return type.startsWith('n-');
 }
-
-// 画布偏移（画布左上角相对于wrapper的位置）
-const panOffset = ref({ x: 0, y: 0 });
 
 const coord = createCoordinateHelper({
   wrapperRef,
@@ -524,10 +517,8 @@ function handleKeyDown(e: KeyboardEvent) {
     return;
   }
 
-  if (e.code === 'Space' && !e.repeat && !panState.spaceKeyPressed) {
-    panState.spaceKeyPressed = true;
-    document.body.style.cursor = 'grab';
-  }
+  // pan(space+drag) 收口到 pointerHub
+  pointerHubStore.handlePanKeyDown(e)
   if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
     if (e.shiftKey) {
       pageStore.redoHistoryAction();
@@ -547,10 +538,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function handleKeyUp(e: KeyboardEvent) {
-  if (e.code === 'Space') {
-    panState.spaceKeyPressed = false;
-    document.body.style.cursor = '';
-  }
+  pointerHubStore.handlePanKeyUp(e)
 }
 
 // 缩放函数（工具栏按钮用）
@@ -624,34 +612,15 @@ function handleWheel(e: WheelEvent) {
 
 // 优化平移处理
 function startPan(e: MouseEvent) {
-  if (e.button === 1 || (e.button === 0 && panState.spaceKeyPressed)) {
-    panState.isPanning = true;
-    panState.lastX = e.clientX;
-    panState.lastY = e.clientY;
-    document.body.style.cursor = 'grabbing';
-  }
+  pointerHubStore.startPan(e)
 }
 
 function doPan(e: MouseEvent) {
-  if (!panState.isPanning) return;
-
-  const dx = e.clientX - panState.lastX;
-  const dy = e.clientY - panState.lastY;
-
-  panOffset.value = {
-    x: panOffset.value.x + dx,
-    y: panOffset.value.y + dy
-  };
-
-  panState.lastX = e.clientX;
-  panState.lastY = e.clientY;
+  pointerHubStore.doPan(e)
 }
 
 function endPan() {
-  if (panState.isPanning) {
-    panState.isPanning = false;
-    document.body.style.cursor = panState.spaceKeyPressed ? 'grab' : '';
-  }
+  pointerHubStore.endPan()
 }
 
 // 画布样式
