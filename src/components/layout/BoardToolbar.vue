@@ -126,12 +126,12 @@ const isPreviewMode = computed(() => editorStore.isPreviewMode)
 
 function switchToDesign() {
   editorStore.switchToDesign()
-  pageStore.clearSelection()
+  pageStore.selectComponent(null)
 }
 
 function switchToPreview() {
   editorStore.switchToPreview()
-  pageStore.clearSelection()
+  pageStore.selectComponent(null)
 }
 
 function deleteSelected() {
