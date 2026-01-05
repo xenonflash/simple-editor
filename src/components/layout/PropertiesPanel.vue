@@ -14,11 +14,6 @@
                 @click="activeTab = 'events'">
           事件
         </button>
-        <button class="tab-button" 
-                :class="{ active: activeTab === 'render' }"
-                @click="activeTab = 'render'">
-          渲染
-        </button>
       </div>
 
       <!-- 标签页内容 -->
@@ -122,7 +117,135 @@
                           @update="updateProps" />
 
           <BackgroundProperties v-bind="props.component.props"
-                          @update="updateProps" />
+                           @update="updateProps" />
+
+          <!-- 渲染配置 -->
+          <div class="section" style="margin-top: 12px;">
+            <div class="section-header">
+              <span>渲染配置</span>
+            </div>
+            <div class="dynamic-properties">
+              <!-- 是否显示 -->
+              <div class="property-row">
+                <div class="prop-label">
+                  <span class="label-text">是否显示</span>
+                  <span v-if="renderVisibleBinding" class="bind-badge">
+                    {{ formatBindingDisplay(renderVisibleBinding) }}
+                  </span>
+                </div>
+                <div class="input-wrapper">
+                  <div v-if="renderVisibleBinding" class="bound-placeholder" />
+                  <div v-else class="checkbox-wrapper">
+                    <input type="checkbox"
+                           :checked="renderVisibleValue"
+                           @change="updateProps({ renderVisible: ($event.target as HTMLInputElement).checked })" />
+                  </div>
+                </div>
+                <n-popover
+                  trigger="click"
+                  placement="left"
+                  :show-arrow="false"
+                  style="width: 420px"
+                  :show="renderBindingOpenKey === 'renderVisible'"
+                  @update:show="(v) => (renderBindingOpenKey = v ? 'renderVisible' : null)"
+                >
+                  <template #trigger>
+                    <n-button
+                      size="tiny"
+                      quaternary
+                      circle
+                      :type="renderVisibleBinding ? 'error' : 'default'"
+                      class="bind-btn"
+                      title="绑定变量"
+                    >
+                      <template #icon>
+                        <n-icon><Link v-if="renderVisibleBinding" /><LinkOutline v-else /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  <VariablePanel
+                    :data="pageVariableTree"
+                    tip="点击变量直接绑定"
+                    select-mode="value"
+                    confirmable
+                    @select="(p) => p.value && handleRenderBindPick('renderVisible', p.value)"
+                    @cancel="renderBindingOpenKey = null"
+                  />
+                </n-popover>
+              </div>
+
+              <!-- 启用循环渲染 -->
+              <div class="property-row">
+                <div class="prop-label">
+                  <span class="label-text">启用循环渲染</span>
+                </div>
+                <div class="input-wrapper">
+                  <div class="checkbox-wrapper">
+                    <input type="checkbox"
+                           :checked="loopEnabledValue"
+                           @change="updateProps({ loopEnabled: ($event.target as HTMLInputElement).checked })" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 绑定循环数据 -->
+              <div v-if="loopEnabledValue" class="property-row">
+                <div class="prop-label">
+                  <span class="label-text">循环数据</span>
+                  <span v-if="loopItemsBinding" class="bind-badge">
+                    {{ formatBindingDisplay(loopItemsBinding) }}
+                  </span>
+                </div>
+                <div class="input-wrapper">
+                  <div v-if="loopItemsBinding" class="bound-placeholder" />
+                  <n-select
+                    v-else
+                    size="small"
+                    placeholder="选择数组变量"
+                    :options="arrayVariableOptions"
+                    :value="loopItemsBinding"
+                    @update:value="updateLoopItemsBinding"
+                    clearable
+                  />
+                </div>
+                <n-popover
+                  trigger="click"
+                  placement="left"
+                  :show-arrow="false"
+                  style="width: 420px"
+                  :show="renderBindingOpenKey === 'loopItems'"
+                  @update:show="(v) => (renderBindingOpenKey = v ? 'loopItems' : null)"
+                >
+                  <template #trigger>
+                    <n-button
+                      size="tiny"
+                      quaternary
+                      circle
+                      :type="loopItemsBinding ? 'error' : 'default'"
+                      class="bind-btn"
+                      title="绑定变量"
+                    >
+                      <template #icon>
+                        <n-icon><Link v-if="loopItemsBinding" /><LinkOutline v-else /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  <VariablePanel
+                    :data="pageVariableTree"
+                    tip="点击变量直接绑定"
+                    select-mode="value"
+                    confirmable
+                    @select="(p) => p.value && handleRenderBindPick('loopItems', p.value)"
+                    @cancel="renderBindingOpenKey = null"
+                  />
+                </n-popover>
+              </div>
+
+              <div v-if="loopValidationMessage" class="loop-warning">
+                {{ loopValidationMessage }}
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 事件面板 -->
@@ -191,43 +314,6 @@
             </div>
           </div>
         </div>
-
-        <!-- 渲染面板 -->
-        <div v-show="activeTab === 'render'">
-          <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">显示 / 隐藏</div>
-          <DynamicProperties
-            :modelValue="props.component.props"
-            :bindings="props.component.bindings || {}"
-            :customProps="bindingCustomProps"
-            :customPropsCtxPath="bindingCustomPropsCtxPath"
-            :customPropsLabel="bindingCustomPropsLabel"
-            :loopAvailable="loopContextInfo.available"
-            :loopItemSample="loopContextInfo.itemSample"
-            :propsSchema="renderVisibilitySchema"
-            @change="updateProps"
-            @update:bindings="updateBindings"
-          />
-
-          <div class="section-title" style="padding: 12px 12px 0; font-size: 12px; font-weight: bold; color: #333;">循环渲染</div>
-          <DynamicProperties
-            :modelValue="props.component.props"
-            :bindings="props.component.bindings || {}"
-            :customProps="bindingCustomProps"
-            :customPropsCtxPath="bindingCustomPropsCtxPath"
-            :customPropsLabel="bindingCustomPropsLabel"
-            :loopAvailable="loopContextInfo.available"
-            :loopItemSample="loopContextInfo.itemSample"
-            :propsSchema="renderLoopSchema"
-            @change="updateProps"
-            @update:bindings="updateBindings"
-          />
-
-          <div v-if="loopValidationMessage" class="section" style="margin: 8px 12px 12px;">
-            <div class="section-content" style="padding: 8px; font-size: 12px; color: #ad4e00; background: #fff7e6; border: 1px solid #ffe7ba; border-radius: 6px;">
-              {{ loopValidationMessage }}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
     
@@ -278,9 +364,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { 
-  NButton, NIcon, NModal, NForm, NFormItem, NSelect, NInput, NInputNumber, NSwitch 
+  NButton, NIcon, NModal, NForm, NFormItem, NSelect, NInput, NInputNumber, NSwitch, NCheckbox, NPopover 
 } from 'naive-ui';
-import { Add, Trash, Create, GitNetwork } from '@vicons/ionicons5';
+import { Add, Trash, Create, GitNetwork, Link, LinkOutline } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import ContainerLayoutProperties from '../properties/ContainerLayoutProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
@@ -291,6 +377,8 @@ import BackgroundProperties from '../properties/BackgroundProperties.vue';
 import SpacingProperties from '../properties/SpacingProperties.vue';
 import DynamicProperties from '../properties/DynamicProperties.vue';
 import PageProperties from '../properties/PageProperties.vue';
+import VariablePanel from '../flow/VariablePanel.vue';
+import { buildPageVariableTree } from '../flow/variableTree'
 import { getNaiveConfig } from '../../config/naive-ui-registry';
 import type { PropSchema } from '../../config/naive-ui-registry'
 import { usePageStore } from '../../stores/page';
@@ -298,7 +386,7 @@ import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { Comp } from '../comps/base';
 import type { CompEventAction } from '../comps/base';
 import { actionRegistry } from '../../config/actions';
-import { resolveBindingRef } from '../../utils/bindingRef'
+import { resolveBindingRef, formatBindingRefDisplay } from '../../utils/bindingRef'
 
 const props = defineProps<{
   component: Comp | null;
@@ -404,6 +492,99 @@ const renderVisibilitySchema: Record<string, PropSchema> = {
 const renderLoopSchema: Record<string, PropSchema> = {
   loopEnabled: { label: '启用', type: 'boolean', default: false } as any,
   loopItems: { label: '数组数据', type: 'json', default: [] } as any
+}
+
+// 渲染配置响应式变量
+const renderVisibleValue = computed({
+  get: () => {
+    const comp = props.component
+    if (!comp) return true
+    const visible = (comp.props as any)?.renderVisible
+    return visible !== false
+  },
+  set: (value: boolean) => {
+    updateProps({ renderVisible: value })
+  }
+})
+
+const loopEnabledValue = computed({
+  get: () => {
+    const comp = props.component
+    if (!comp) return false
+    return (comp.props as any)?.loopEnabled === true
+  },
+  set: (value: boolean) => {
+    updateProps({ loopEnabled: value })
+  }
+})
+
+const renderVisibleBinding = computed(() => {
+  const comp = props.component
+  if (!comp) return ''
+  return (comp.bindings as any)?.renderVisible || ''
+})
+
+const loopItemsBinding = computed(() => {
+  const comp = props.component
+  if (!comp) return ''
+  return (comp.bindings as any)?.loopItems || ''
+})
+
+// 绑定面板打开状态
+const renderBindingOpenKey = ref<string | null>(null)
+
+// 页面变量树
+const pageVariableTree = computed(() => buildPageVariableTree(pageStore, {
+  loopAvailable: loopContextInfo.value.available,
+  loopItemSample: loopContextInfo.value.itemSample
+}))
+
+// 数组变量选项（用于循环数据的下拉选择）
+const arrayVariableOptions = computed(() => {
+  const vars = currentPage.value?.variables || []
+  return vars
+    .filter(v => v.type === 'array')
+    .map(v => ({ label: v.name, value: `var:${v.name}` }))
+})
+
+function updateLoopItemsBinding(value: string | null) {
+  if (!props.component) return
+  const newBindings = { ...(props.component.bindings || {}) }
+  if (value === null || value === '') {
+    delete newBindings.loopItems
+  } else {
+    newBindings.loopItems = value
+  }
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    bindings: newBindings
+  })
+}
+
+function handleRenderBindPick(key: string, value: string) {
+  if (!props.component) return
+  const newBindings = { ...(props.component.bindings || {}) }
+  if (value === '__unbind__') {
+    delete newBindings[key]
+  } else {
+    newBindings[key] = value
+  }
+  emit('update', {
+    id: props.component.id,
+    type: props.component.type,
+    bindings: newBindings
+  })
+  renderBindingOpenKey.value = null
+}
+
+function formatBindingDisplay(binding: string): string {
+  return formatBindingRefDisplay(binding, {
+    getComponentLabel: (componentId) => {
+      const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)
+      return comp?.name || componentId
+    }
+  })
 }
 
 const customMeta = computed(() => {
@@ -853,7 +1034,7 @@ function updateBindings(updates: Record<string, string | null>) {
   overflow-y: auto; /* 只在内容区域滚动 */
   overflow-x: hidden;
   min-height: 0; /* 关键：允许flex子项收缩 */
-  height: calc(100% - 36px); /* 关键：减去标签页高度 */
+  /* 不需要固定高度，让flex自动计算 */
   /* 自定义滚动条样式 */
   scrollbar-width: thin;
   scrollbar-color: #d9d9d9 transparent;
@@ -874,6 +1055,28 @@ function updateBindings(updates: Record<string, string | null>) {
 
 .tab-content::-webkit-scrollbar-thumb:hover {
   background: #bfbfbf;
+}
+
+/* 确保tab-content内的v-show div正确布局 */
+.tab-content > div {
+  min-height: 0;
+  display: block;
+}
+
+/* Section样式 */
+.section {
+  margin-bottom: 8px;
+}
+
+.section-header {
+  padding: 12px 12px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-content {
+  padding: 0 12px 12px;
 }
 
 /* 空状态 */
@@ -971,5 +1174,87 @@ function updateBindings(updates: Record<string, string | null>) {
   font-size: 11px;
   color: #999;
   background: #fff;
+}
+
+/* 渲染配置样式（与DynamicProperties一致） */
+.dynamic-properties {
+  padding: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.property-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.prop-label {
+  width: 100px;
+  font-size: 12px;
+  color: #666;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bind-badge {
+  font-size: 11px;
+  color: #999;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.input-wrapper {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.bound-placeholder {
+  width: 100%;
+  height: 28px;
+  border: 1px dashed #e5e5e5;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #999;
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.bind-btn {
+  flex: 0 0 auto;
+}
+
+.loop-warning {
+  padding: 8px;
+  font-size: 11px;
+  color: #ad4e00;
+  background: #fff7e6;
+  border: 1px solid #ffe7ba;
+  border-radius: 6px;
+  margin: 0 12px 12px;
 }
 </style>
