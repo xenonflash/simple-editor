@@ -1,6 +1,6 @@
 # 事件面板组件
 <template>
-  <PropertySection title="事件列表">
+  <PropertySection title="事件列表" :default-collapsed="false">
     <template #content>
       <div class="event-list">
         <div v-for="eventDef in supportedEvents"
