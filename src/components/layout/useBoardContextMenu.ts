@@ -170,7 +170,7 @@ export function useBoardContextMenu(params: {
         height: groupH,
         widthSizing: 'fixed',
         heightSizing: 'fixed',
-        layoutMode: 'absolute'
+        layoutMode: 'manual'
       }
 
       root.children = targetComps.map((c) => {

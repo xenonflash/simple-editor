@@ -4,7 +4,7 @@ import { useSnaplineStore } from './snapline'
 import type { CoordinateHelper } from '../utils/coordinateHelper'
 import type { PointerHub, PointerMessage } from './pointerHub'
 
-export type ContainerLayoutMode = 'absolute' | 'default' | 'flex'
+export type ContainerLayoutMode = 'manual' | 'auto'
 
 export interface CanvasRect {
   x: number
@@ -108,7 +108,7 @@ export function useDropPreviewStore(options: DropPreviewStoreOptions) {
     const contentW = Math.max(0, hit.rect.width - hit.paddingLeft - hit.paddingRight)
     const contentH = Math.max(0, hit.rect.height - hit.paddingTop - hit.paddingBottom)
 
-    if (hit.layoutMode !== 'absolute') {
+    if (hit.layoutMode !== 'manual') {
       return {
         x: contentX,
         y: contentY,

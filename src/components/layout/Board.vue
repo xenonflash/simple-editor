@@ -272,7 +272,7 @@ function getContainerHits(): ContainerHit[] {
       id: c.id,
       rect: { x, y, width, height },
       zIndex: p?.zIndex || 1,
-      layoutMode: (p?.layoutMode || 'absolute') as any,
+      layoutMode: (p?.layoutMode || 'manual') as any,
       paddingTop: p?.paddingTop || 0,
       paddingRight: p?.paddingRight || 0,
       paddingBottom: p?.paddingBottom || 0,
@@ -648,7 +648,7 @@ function handleDrop(e: DragEvent) {
       const src = (schema && typeof schema === 'object') ? schema : {}
       for (const [k, s] of Object.entries(src)) {
         const ss: any = s
-        if (ss && Object.prototype.hasOwnProperty.call(ss, 'default')) {
+        if (ss && Object.prototype.hasOwnProperty.call(ss, 'manual')) {
           res[k] = ss.default
           continue
         }
@@ -676,8 +676,8 @@ function handleDrop(e: DragEvent) {
 
     if (hit) {
       const container = pageStore.getComponentById(hit.containerId);
-      const layoutMode = (container?.props as any)?.layoutMode || 'absolute';
-      if (layoutMode === 'absolute') {
+      const layoutMode = (container?.props as any)?.layoutMode || 'manual';
+      if (layoutMode === 'manual') {
         root.props.x = canvasPos.x - hit.x;
         root.props.y = canvasPos.y - hit.y;
       } else {
@@ -699,10 +699,10 @@ function handleDrop(e: DragEvent) {
   }
   if (hit) {
     const container = pageStore.getComponentById(hit.containerId);
-    const layoutMode = (container?.props as any)?.layoutMode || 'absolute';
+    const layoutMode = (container?.props as any)?.layoutMode || 'manual';
 
     const newComp = createComp(componentType, `新建${componentType}`);
-    if (layoutMode === 'absolute') {
+    if (layoutMode === 'manual') {
       newComp.props.x = canvasPos.x - hit.x;
       newComp.props.y = canvasPos.y - hit.y;
     } else {

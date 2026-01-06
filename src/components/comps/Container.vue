@@ -17,7 +17,7 @@
               :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
               :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
               :bindingContext="rep.bindingContext"
               @update="(payload) => emit('update', payload)"
@@ -30,7 +30,7 @@
               :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
               :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
               @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
@@ -41,7 +41,7 @@
               :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
               :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
               :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
               @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
@@ -49,7 +49,7 @@
               v-else-if="rep.comp.type && rep.comp.type.startsWith('n-')"
               :comp="rep.comp"
               :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'absolute'"
+              :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
               :bindingContext="rep.bindingContext"
               @update="(updates) => emit('update', { id: rep.instanceId, updates })"
@@ -98,10 +98,10 @@ const props = defineProps<{
   widthSizing?: 'fixed' | 'fill' | 'content'
   heightSizing?: 'fixed' | 'fill' | 'content'
 
-  layoutMode?: 'absolute' | 'default' | 'flex'
-  flexDirection?: 'row' | 'column'
-  justifyContent?: string
-  alignItems?: string
+  layoutMode?: 'manual' | 'auto'
+  direction?: 'row' | 'column'
+  primaryAlign?: string
+  crossAlign?: string
   gap?: number
 
   borderWidth?: number
@@ -128,6 +128,7 @@ const props = defineProps<{
   paddingRight?: number
   paddingBottom?: number
   paddingLeft?: number
+  padding?: { top: number; right: number; bottom: number; left: number }
   marginTop?: number
   marginRight?: number
   marginBottom?: number
@@ -144,7 +145,29 @@ const emit = defineEmits<{
 }>()
 
 const pageStore = usePageStore()
-const effectiveLayoutMode = computed(() => props.layoutMode || 'absolute')
+const effectiveLayoutMode = computed(() => props.layoutMode || 'manual')
+
+// 映射对齐值到CSS值
+function mapPrimaryAlign(value: string): string {
+  const map: Record<string, string> = {
+    start: 'flex-start',
+    center: 'center',
+    end: 'flex-end',
+    between: 'space-between',
+    evenly: 'space-evenly'
+  }
+  return map[value] || 'flex-start'
+}
+
+function mapCrossAlign(value: string): string {
+  const map: Record<string, string> = {
+    start: 'flex-start',
+    center: 'center',
+    end: 'flex-end',
+    stretch: 'stretch'
+  }
+  return map[value] || 'stretch'
+}
 
 const isCustomComponentInstanceRoot = computed(() => {
   return !!props.comp?.custom?.defId
@@ -173,7 +196,7 @@ function measureDescendantPositions() {
   if (!el) return
 
   // 仅在非 absolute 布局下需要依赖 DOM 布局位置
-  if (effectiveLayoutMode.value === 'absolute') return
+  if (effectiveLayoutMode.value === 'manual') return
 
   const nodes = Array.from(el.querySelectorAll('[data-comp-id]')) as HTMLElement[]
   const patches: Comp[] = []
@@ -220,7 +243,7 @@ function measureDescendantPositions() {
 }
 
 watch(
-  () => [effectiveLayoutMode.value, props.flexDirection, props.justifyContent, props.alignItems, props.gap, props.paddingTop, props.paddingRight, props.paddingBottom, props.paddingLeft, props.comp?.children?.length],
+  () => [effectiveLayoutMode.value, props.direction, props.primaryAlign, props.crossAlign, props.gap, props.paddingTop, props.paddingRight, props.paddingBottom, props.paddingLeft, props.comp?.children?.length],
   () => {
     nextTick(() => {
       measureDescendantPositions()
@@ -322,7 +345,7 @@ const containerStyle = computed(() => {
       : props.heightSizing === 'content'
         ? 'fit-content'
         : `${props.height || 100}px`,
-    display: effectiveLayoutMode.value === 'flex' ? 'flex' : 'block'
+    display: effectiveLayoutMode.value === 'auto' ? 'flex' : 'block'
   }
 
   if (!props.inFlowLayout) {
@@ -330,10 +353,10 @@ const containerStyle = computed(() => {
     style.top = `${props.y || 0}px`
   }
 
-  if (effectiveLayoutMode.value === 'flex') {
-    style.flexDirection = props.flexDirection || 'row'
-    style.justifyContent = props.justifyContent || 'flex-start'
-    style.alignItems = props.alignItems || 'stretch'
+  if (effectiveLayoutMode.value === 'auto') {
+    style.flexDirection = props.direction === 'column' ? 'column' : 'row'
+    style.justifyContent = mapPrimaryAlign(props.primaryAlign || 'start')
+    style.alignItems = mapCrossAlign(props.crossAlign || 'stretch')
     if (typeof props.gap === 'number') {
       style.gap = `${props.gap}px`
     }
@@ -377,9 +400,15 @@ const containerStyle = computed(() => {
     style.backgroundPosition = 'center'
   }
 
-  // 内边距
-  if (props.paddingTop || props.paddingRight || props.paddingBottom || props.paddingLeft) {
-    style.padding = `${props.paddingTop || 0}px ${props.paddingRight || 0}px ${props.paddingBottom || 0}px ${props.paddingLeft || 0}px`
+  // 内边距 - 支持对象格式和独立属性格式
+  const paddingObj = props.padding
+  const paddingTop = props.paddingTop ?? paddingObj?.top ?? 0
+  const paddingRight = props.paddingRight ?? paddingObj?.right ?? 0
+  const paddingBottom = props.paddingBottom ?? paddingObj?.bottom ?? 0
+  const paddingLeft = props.paddingLeft ?? paddingObj?.left ?? 0
+
+  if (paddingTop || paddingRight || paddingBottom || paddingLeft) {
+    style.padding = `${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px`
   }
 
   // 外边距

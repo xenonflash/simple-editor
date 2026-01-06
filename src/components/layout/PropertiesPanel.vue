@@ -272,7 +272,7 @@ const bindingCustomProps = computed(() => {
     const preview: Record<string, any> = {}
     for (const [k, s] of Object.entries(schema)) {
       const ss: any = s
-      if (ss && Object.prototype.hasOwnProperty.call(ss, 'default')) preview[k] = ss.default
+      if (ss && Object.prototype.hasOwnProperty.call(ss, 'manual')) preview[k] = ss.default
       else if (ss?.type === 'number') preview[k] = 0
       else if (ss?.type === 'boolean') preview[k] = false
       else if (ss?.type === 'json') preview[k] = null

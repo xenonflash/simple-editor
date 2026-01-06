@@ -146,8 +146,8 @@ export function useDraggable(options: DragOptions = {}) {
       const parentId = pageStore.findParentContainerId(componentId)
       if (parentId) {
         const parent = pageStore.getComponentById(parentId)
-        const parentLayoutMode = (parent?.props as any)?.layoutMode || 'absolute'
-        if (parentLayoutMode === 'absolute') {
+        const parentLayoutMode = (parent?.props as any)?.layoutMode || 'manual'
+        if (parentLayoutMode === 'manual') {
           const origin = pageStore.getContainerContentCanvasOrigin(parentId)
           if (origin) {
             originX = origin.x

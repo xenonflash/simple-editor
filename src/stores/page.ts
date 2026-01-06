@@ -229,8 +229,8 @@ export const usePageStore = defineStore('page', () => {
     while (parentId) {
       const parent = findComponentInTree(parentId)
       if (!parent) break
-      const parentLayoutMode = parent.props?.layoutMode || 'absolute'
-      if (parentLayoutMode !== 'absolute') {
+      const parentLayoutMode = parent.props?.layoutMode || 'manual'
+      if (parentLayoutMode !== 'manual') {
         isInFlowLayout = true
         break
       }
@@ -255,8 +255,8 @@ export const usePageStore = defineStore('page', () => {
       const parent = findComponentInTree(parentId)
       if (!parent) break
 
-      const parentLayoutMode = parent.props?.layoutMode || 'absolute'
-      if (parentLayoutMode === 'absolute') {
+      const parentLayoutMode = parent.props?.layoutMode || 'manual'
+      if (parentLayoutMode === 'manual') {
         const px = parent.props?.x || 0
         const py = parent.props?.y || 0
         const border = parent.props?.borderWidth || 0
@@ -543,7 +543,7 @@ export const usePageStore = defineStore('page', () => {
   function buildCustomPropsDefaults(schema: Record<string, PropSchema>): Record<string, any> {
     const res: Record<string, any> = {}
     for (const [k, s] of Object.entries(schema || {})) {
-      if (s && Object.prototype.hasOwnProperty.call(s, 'default')) {
+      if (s && Object.prototype.hasOwnProperty.call(s, 'manual')) {
         res[k] = (s as any).default
         continue
       }
@@ -569,7 +569,7 @@ export const usePageStore = defineStore('page', () => {
     const preserveKeys = new Set([
       'x', 'y', 'zIndex',
       'width', 'height', 'widthSizing', 'heightSizing',
-      'layoutMode', 'flexDirection', 'justifyContent', 'alignItems', 'gap'
+      'layoutMode', 'direction', 'primaryAlign', 'crossAlign', 'gap', 'padding'
     ])
 
     function replaceIfMatch(comp: Comp): Comp {
@@ -910,7 +910,7 @@ export const usePageStore = defineStore('page', () => {
     componentId: string,
     containerId: string,
     options?: {
-      layoutMode?: 'absolute' | 'default' | 'flex'
+      layoutMode?: 'manual' | 'manual' | 'auto'
       localX?: number
       localY?: number
     }
@@ -946,7 +946,7 @@ export const usePageStore = defineStore('page', () => {
     // 2) 根据布局模式更新 props（仅 absolute 需要 local x/y）
     const nextComp: Comp = (() => {
       const layoutMode = options?.layoutMode
-      if (layoutMode !== 'absolute') return removed as Comp
+      if (layoutMode !== 'manual') return removed as Comp
       const nextProps: any = { ...(removed as Comp).props }
       if (typeof options?.localX === 'number') nextProps.x = options!.localX
       if (typeof options?.localY === 'number') nextProps.y = options!.localY
