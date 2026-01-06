@@ -104,7 +104,7 @@ function toggleSizing(axis: 'width' | 'height', mode: 'fill' | 'content') {
 .property-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
+  gap: 8px;
 }
 
 .span-2 {
@@ -119,9 +119,9 @@ function toggleSizing(axis: 'width' | 'height', mode: 'fill' | 'content') {
 }
 
 .property-item label {
-  width: 14px;
+  width: 16px;
   font-size: 11px;
-  color: #333;
+  color: #666;
   font-weight: 500;
   text-align: center;
 }
@@ -129,18 +129,25 @@ function toggleSizing(axis: 'width' | 'height', mode: 'fill' | 'content') {
 input[type="number"] {
   width: 100%;
   height: 24px;
-  padding: 0 6px;
+  padding: 0 8px;
   border: 1px solid #e5e5e5;
-  border-radius: 2px;
+  border-radius: 3px;
   font-size: 11px;
   font-family: inherit;
   background: white;
   outline: none;
+  transition: all 0.2s;
+}
+
+input[type="number"]:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
 input[type="number"][disabled] {
   background: #fafafa;
   color: #999;
+  cursor: not-allowed;
 }
 
 .size-row {
@@ -161,32 +168,23 @@ input[type="number"][disabled] {
   min-width: 26px;
   padding: 0 6px;
   border: 1px solid #e5e5e5;
-  border-radius: 2px;
+  border-radius: 3px;
   background: white;
   font-size: 10px;
   line-height: 22px;
   cursor: pointer;
-  color: #333;
+  color: #666;
+  transition: all 0.2s;
 }
 
 .size-btn:hover {
   border-color: #d9d9d9;
+  background: #fafafa;
 }
 
 .size-btn.active {
   border-color: #1890ff;
   color: #1890ff;
-}
-
-input[type="number"]:hover {
-  border-color: #d9d9d9;
-}
-
-input[type="number"]:focus {
-  border-color: #000;
-}
-
-::-webkit-inner-spin-button {
-  display: none;
+  background: rgba(24, 144, 255, 0.05);
 }
 </style>

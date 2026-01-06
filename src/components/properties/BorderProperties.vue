@@ -207,16 +207,17 @@ input[type="text"],
 input[type="color"] {
   height: 24px;
   border: 1px solid #e5e5e5;
-  border-radius: 2px;
+  border-radius: 3px;
   font-size: 11px;
   font-family: inherit;
   background: white;
   outline: none;
+  transition: all 0.2s;
 }
 
 input[type="number"],
 input[type="text"] {
-  padding: 0 6px;
+  padding: 0 8px;
   width: 50px
 }
 
@@ -235,7 +236,8 @@ input[type="color"]:hover {
 input[type="number"]:focus,
 input[type="text"]:focus,
 input[type="color"]:focus {
-  border-color: #000;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
 ::-webkit-inner-spin-button {

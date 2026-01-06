@@ -24,12 +24,13 @@ defineProps<{
 }
 
 .section-header {
-  height: 32px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f3f3f3;
+  background: #fafafa;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .section-header span {
@@ -37,10 +38,10 @@ defineProps<{
   font-weight: 600;
   color: #333;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .section-content {
-  padding: 8px;
+  padding: 8px 12px;
 }
 </style>

@@ -590,6 +590,11 @@ function unwrapLoopInstanceKey(key: string): string {
 }
 
 function getComponentLabel(comp: Comp): string {
+  // 优先显示组件名称，如果名称为空则显示组件类型
+  if (comp.name && comp.name.trim()) {
+    return comp.name
+  }
+
   if (comp.type === CompType.CONTAINER) return '容器'
   if (comp.type === CompType.TEXT) return '文字'
   if (comp.type === CompType.BUTTON) return '按钮'
