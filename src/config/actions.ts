@@ -117,5 +117,14 @@ export const actionRegistry: ActionDefinition[] = [
     paramsSchema: {
       flowId: { label: '目标 Flow', type: 'text' }
     }
+  },
+  {
+    type: 'emitEvent',
+    label: '触发自定义事件',
+    description: '触发当前自定义组件的事件（仅在自定义组件内部有效）',
+    paramsSchema: {
+      eventName: { label: '事件名称', type: 'text' },
+      payload: { label: '数据(Payload)', type: 'json' }
+    }
   }
 ];

@@ -30,7 +30,7 @@ export function useComponentEvents(comp: Comp) {
         }
         
         if (handler.actions && handler.actions.length > 0) {
-            runEvents(handler.actions)
+            runEvents(handler.actions, { componentId: comp.id, executeFlow })
         }
     })
   }

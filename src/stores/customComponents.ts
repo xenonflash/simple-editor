@@ -2,12 +2,15 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { PropSchema } from '../config/naive-ui-registry'
 
+import type { EventSpec } from '../types/event'
+
 export interface CustomComponentDef {
   id: string
   name: string
   templateJson: string
   propsSchema: Record<string, PropSchema>
   stateSchema: Record<string, PropSchema>
+  eventsSchema?: Record<string, EventSpec>
   createdAt: number
   updatedAt: number
 }

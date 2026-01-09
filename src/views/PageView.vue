@@ -9,6 +9,7 @@ import { usePageStore } from '../stores/page';
 import { useCustomComponentsStore } from '../stores/customComponents'
 import type { Comp } from '../components/comps/base';
 import type { PropSchema } from '../config/naive-ui-registry'
+import type { EventSpec } from '../types/event'
 
 // 页面store
 const pageStore = usePageStore();
@@ -19,6 +20,7 @@ const editingCustomDefId = ref<string | null>(null)
 const editingCustomDefName = ref<string | null>(null)
 const editingCustomPropsSchema = ref<Record<string, PropSchema> | null>(null)
 const editingCustomStateSchema = ref<Record<string, PropSchema> | null>(null)
+const editingCustomEventsSchema = ref<Record<string, EventSpec> | null>(null)
 const prevPageId = ref<string | null>(null)
 
 function buildDefaultsFromSchema(schema: Record<string, PropSchema> | null): Record<string, any> {
@@ -86,6 +88,7 @@ function handleEditCustomComponent(defId: string) {
   editingCustomDefName.value = def.name
   editingCustomPropsSchema.value = { ...(def.propsSchema || {}) }
   editingCustomStateSchema.value = { ...(def.stateSchema || {}) }
+  editingCustomEventsSchema.value = { ...(def.eventsSchema || {}) }
 
   pageStore.setEditorMode('custom-edit')
   pageStore.createCustomComponentEditPage(def.id, def.name, def.templateJson)
@@ -99,6 +102,10 @@ function handleUpdateCustomStateSchema(next: Record<string, PropSchema>) {
   editingCustomStateSchema.value = next
 }
 
+function handleUpdateCustomEventsSchema(next: Record<string, EventSpec>) {
+  editingCustomEventsSchema.value = next
+}
+
 function exitCustomEdit(save: boolean) {
   const defId = editingCustomDefId.value
   if (!defId) return
@@ -109,8 +116,9 @@ function exitCustomEdit(save: boolean) {
     const templateJson = pageStore.exportCurrentPageComponentsToJSON()
     const schema = editingCustomPropsSchema.value || {}
     const stateSchema = editingCustomStateSchema.value || {}
-    customComponentsStore.updateCustomComponent(defId, { templateJson, propsSchema: schema, stateSchema })
-    pageStore.syncCustomComponentInstances({ id: defId, templateJson, propsSchema: schema, stateSchema })
+    const eventsSchema = editingCustomEventsSchema.value || {}
+    customComponentsStore.updateCustomComponent(defId, { templateJson, propsSchema: schema, stateSchema, eventsSchema })
+    pageStore.syncCustomComponentInstances({ id: defId, templateJson, propsSchema: schema, stateSchema }) // Sync instance doesn't strictly need eventsSchema yet but good to check
   }
 
   pageStore.removeCustomComponentEditPage(defId)
@@ -172,8 +180,10 @@ function handleDeleteComponent(id: string) {
         :editingCustomDefName="editingCustomDefName"
         :editingCustomPropsSchema="editingCustomPropsSchema"
         :editingCustomStateSchema="editingCustomStateSchema"
+        :editingCustomEventsSchema="editingCustomEventsSchema"
         @update-custom-props-schema="handleUpdateCustomPropsSchema"
         @update-custom-state-schema="handleUpdateCustomStateSchema"
+        @update-custom-events-schema="handleUpdateCustomEventsSchema"
         @open-flow-editor="handleOpenFlowEditor"
         @edit-custom-component="handleEditCustomComponent"
       />
@@ -189,6 +199,7 @@ function handleDeleteComponent(id: string) {
                       :editingCustomDefId="editingCustomDefId"
                       :editingCustomDefName="editingCustomDefName"
                       :editingCustomPropsSchema="editingCustomPropsSchema"
+                      :editingCustomEventsSchema="editingCustomEventsSchema"
                       @update="handleUpdate"
                       @update-custom-props-schema="handleUpdateCustomPropsSchema"
                       @open-flow-editor="handleOpenFlowEditor" />

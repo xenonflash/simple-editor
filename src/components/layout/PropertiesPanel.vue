@@ -143,6 +143,7 @@
             v-if="props.component"
             :component="props.component"
             :currentPage="currentPage"
+            :editingCustomEventsSchema="editingCustomEventsSchema"
             @update="handleUpdate"
             @open-flow-editor="handleOpenFlowEditor"
           />
@@ -184,6 +185,7 @@ import EventTab from './EventTab.vue';
 import { buildPageVariableTree } from '../flow/variableTree'
 import { getNaiveConfig } from '../../config/naive-ui-registry';
 import type { PropSchema } from '../../config/naive-ui-registry'
+import type { EventSpec } from '../../types/event'
 import { usePageStore } from '../../stores/page';
 import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { Comp } from '../comps/base';
@@ -194,6 +196,7 @@ const props = defineProps<{
   editingCustomDefId?: string | null;
   editingCustomDefName?: string | null;
   editingCustomPropsSchema?: Record<string, PropSchema> | null;
+  editingCustomEventsSchema?: Record<string, EventSpec> | null;
 }>();
 
 const emit = defineEmits(['update', 'open-flow-editor', 'update-custom-props-schema']);

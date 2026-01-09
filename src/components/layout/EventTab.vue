@@ -113,6 +113,12 @@
                           :options="variableOptions"
                           placeholder="选择变量" />
 
+                <!-- Special handling for 'emitEvent' -->
+                <n-select v-else-if="currentAction.type === 'emitEvent' && key === 'eventName' && customEventOptions.length > 0"
+                          v-model:value="currentAction.params[key]"
+                          :options="customEventOptions"
+                          placeholder="选择自定义事件" />
+
                 <n-input v-else-if="schema.type === 'text'" v-model:value="currentAction.params[key]" />
                 <n-input-number v-else-if="schema.type === 'number'" v-model:value="currentAction.params[key]" />
                 <n-switch v-else-if="schema.type === 'boolean'" v-model:value="currentAction.params[key]" />
@@ -162,10 +168,12 @@ import { atomConfigs } from '../comps/atomConfig';
 import { usePageStore } from '../../stores/page';
 import type { Comp, CompEventAction, CompEvent } from '../comps/base';
 import type { PageFlow } from '../../types/page';
+import type { EventSpec } from '../../types/event';
 
 const props = defineProps<{
   component: Comp;
   currentPage: any;
+  editingCustomEventsSchema?: Record<string, EventSpec> | null;
 }>();
 
 const emit = defineEmits<{
@@ -291,6 +299,14 @@ const currentActionDef = computed(() => actionRegistry.find(a => a.type === curr
 const variableOptions = computed(() => {
   return (pageStore.currentPage?.variables || []).map(v => ({ label: v.name, value: v.name }));
 });
+
+const customEventOptions = computed(() => {
+  if (!props.editingCustomEventsSchema) return []
+  return Object.keys(props.editingCustomEventsSchema).map(k => ({
+    label: props.editingCustomEventsSchema![k].label || k,
+    value: k
+  }))
+})
 
 function selectActionType(type: string) {
   currentAction.value.type = type;

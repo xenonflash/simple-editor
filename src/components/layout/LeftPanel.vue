@@ -216,6 +216,40 @@
                 </div>
               </div>
             </n-tab-pane>
+
+            <n-tab-pane name="events" tab="Events">
+              <div class="var-header">
+                <n-button block dashed @click="startAddEvent">
+                  <template #icon><n-icon><Add /></n-icon></template>
+                  添加事件
+                </n-button>
+              </div>
+
+              <div class="var-list">
+                <div v-for="item in eventSchemaEntries" :key="item.key" class="var-item">
+                  <div class="var-info">
+                    <div class="var-name" :title="item.key">{{ item.key }}</div>
+                    <n-tag size="small" :bordered="false">{{ item.spec.label }}</n-tag>
+                  </div>
+                  <div class="var-actions">
+                    <n-button size="tiny" quaternary circle @click.stop="startEditEvent(item.key)">
+                      <template #icon><n-icon><Create /></n-icon></template>
+                    </n-button>
+                    <n-popconfirm @positive-click="removeEventSchema(item.key)">
+                      <template #trigger>
+                        <n-button size="tiny" quaternary circle type="error" @click.stop>
+                          <template #icon><n-icon><Trash /></n-icon></template>
+                        </n-button>
+                      </template>
+                      确定删除事件 {{ item.key }}?
+                    </n-popconfirm>
+                  </div>
+                </div>
+                <div v-if="eventSchemaEntries.length === 0" class="empty-tip">
+                  暂未定义 Events
+                </div>
+              </div>
+            </n-tab-pane>
           </n-tabs>
         </div>
       </n-tab-pane>
@@ -313,6 +347,33 @@
       </template>
     </n-modal>
 
+    <!-- 事件定义 Modal -->
+    <n-modal v-model:show="showEventModal" preset="dialog" :title="eventEditingKey ? '编辑事件' : '添加事件'">
+      <n-form size="small" label-placement="left" label-width="70">
+        <n-form-item label="事件名" path="key">
+          <n-input v-model:value="eventForm.key" :disabled="!!eventEditingKey" placeholder="例如: success" />
+        </n-form-item>
+        <n-form-item label="展示名" path="label">
+          <n-input v-model:value="eventForm.label" placeholder="例如: 提交成功" />
+        </n-form-item>
+        <n-form-item label="分类" path="category">
+          <n-select v-model:value="eventForm.category" :options="[
+            { label: '交互', value: 'interaction' },
+            { label: '表单', value: 'form' },
+            { label: '生命周期', value: 'lifecycle' },
+            { label: '业务', value: 'business' }
+          ]" />
+        </n-form-item>
+        <n-form-item label="参数定义" path="args">
+          <n-input v-model:value="eventForm.args" type="textarea" :rows="3" placeholder='JSON格式，例如: {"value": "number"}' />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button size="small" @click="showEventModal = false">取消</n-button>
+        <n-button size="small" type="primary" @click="saveEvent">保存</n-button>
+      </template>
+    </n-modal>
+
   </div>
 </template>
 
@@ -335,19 +396,23 @@ import { usePageStore } from '../../stores/page';
 import { useCustomComponentsStore } from '../../stores/customComponents'
 import type { PageVariable, PageFlow } from '../../types/page';
 import type { PropSchema } from '../../config/naive-ui-registry'
+import type { EventSpec } from '../../types/event'
 import { resolveBindingRef } from '../../utils/bindingRef'
+import { EventType } from '../../types/event'
 
 const emit = defineEmits<{
   (e: 'open-flow-editor', flowId?: string): void
   (e: 'edit-custom-component', defId: string): void
   (e: 'update-custom-props-schema', schema: Record<string, PropSchema>): void
   (e: 'update-custom-state-schema', schema: Record<string, PropSchema>): void
+  (e: 'update-custom-events-schema', schema: Record<string, EventSpec>): void
 }>()
 
 const props = defineProps<{
   editingCustomDefName?: string | null
   editingCustomPropsSchema?: Record<string, PropSchema> | null
   editingCustomStateSchema?: Record<string, PropSchema> | null
+  editingCustomEventsSchema?: Record<string, EventSpec> | null
 }>()
 
 const pageStore = usePageStore();
@@ -513,6 +578,119 @@ function removeStateSchema(key: string) {
   const next: Record<string, PropSchema> = { ...cur }
   delete next[key]
   emit('update-custom-state-schema', next)
+}
+
+// Event schema editor
+const eventSchemaEntries = computed(() => {
+  const schema = props.editingCustomEventsSchema || {}
+  return Object.keys(schema)
+    .sort()
+    .map((k) => ({ key: k, spec: schema[k] }))
+})
+
+const showEventModal = ref(false)
+const eventEditingKey = ref<string>('')
+const eventForm = ref<{ key: string; label: string; category: string; args: string }>({
+  key: '', label: '', category: 'interaction', args: '{}'
+})
+
+function startAddEvent() {
+  eventEditingKey.value = ''
+  eventForm.value = { key: '', label: '', category: 'interaction', args: '{}' }
+  showEventModal.value = true
+}
+
+function startEditEvent(key: string) {
+  eventEditingKey.value = key
+  const schema = props.editingCustomEventsSchema || {}
+  const cur = schema[key]
+  eventForm.value = {
+    key,
+    label: cur?.label || key,
+    category: cur?.category || 'interaction',
+    args: cur?.args ? JSON.stringify(cur.args, null, 2) : '{}'
+  }
+  showEventModal.value = true
+}
+
+function removeEventSchema(key: string) {
+  const cur = props.editingCustomEventsSchema || {}
+  if (!(key in cur)) return
+
+  // Check if used in any component in current page
+  if (isCustomEditMode.value) {
+    const pages = getAllPagesSafe()
+    const currentPageId = pageStore.currentPageId
+    const currentPage = pages.find((p) => p.id === currentPageId)
+    
+    if (currentPage && currentPage.components) {
+      const usedInComponents: string[] = []
+      const stack = [...currentPage.components]
+      while (stack.length) {
+        const comp = stack.pop()
+        if (comp.events) {
+          for (const evtName in comp.events) {
+             const handlers = comp.events[evtName]
+             if (Array.isArray(handlers)) {
+               for (const h of handlers) {
+                 if (h.actions && h.actions.some((a: any) => a.type === 'emitEvent' && a.params?.eventName === key)) {
+                   usedInComponents.push(comp.name || comp.id)
+                 }
+               }
+             }
+          }
+        }
+        if (comp.children) stack.push(...comp.children)
+      }
+
+      if (usedInComponents.length > 0) {
+        message.warning(`无法删除事件 "${key}"，因为它已被以下组件使用: ${usedInComponents.slice(0, 3).join(', ')}${usedInComponents.length > 3 ? '...' : ''}`)
+        return
+      }
+    }
+  }
+
+  const next: Record<string, EventSpec> = { ...cur }
+  delete next[key]
+  emit('update-custom-events-schema', next)
+}
+
+function saveEvent() {
+  const editingKey = eventEditingKey.value
+  const key = (editingKey || eventForm.value.key).trim()
+  if (!key) return
+
+  const cur = props.editingCustomEventsSchema || {}
+  if (!editingKey && key in cur) {
+    message.error('事件名已存在')
+    return
+  }
+
+  let parsedArgs: Record<string, string> | undefined = undefined
+  try {
+     const raw = eventForm.value.args.trim()
+     if (raw) parsedArgs = JSON.parse(raw)
+  } catch (e) {
+     message.error('参数定义必须是合法的 JSON (例如 {"value": "number"})')
+     return
+  }
+
+  const next: Record<string, EventSpec> = { ...cur }
+  next[key] = {
+    name: key,
+    label: eventForm.value.label.trim() || key,
+    category: eventForm.value.category as any || 'interaction',
+    args: parsedArgs
+  }
+  delete (next[key] as any).id // clean up
+  
+  // if editing key changed, delete old
+  if (editingKey && editingKey !== key) {
+     delete next[editingKey]
+  }
+
+  emit('update-custom-events-schema', next)
+  showEventModal.value = false
 }
 
 function getAllPagesSafe(): any[] {
