@@ -8,11 +8,13 @@
               <div class="tree-title">{{ isCustomEditMode ? '子组件' : '组件树' }}</div>
               <n-tree
                 block-line
+                draggable
                 :data="componentTreeData"
                 :selected-keys="selectedTreeKeys"
                 :multiple="true"
                 default-expand-all
                 @update:selected-keys="handleTreeSelect"
+                @drop="handleTreeDrop"
               />
               <div v-if="componentTreeData.length === 0" class="empty-tip">
                 暂无组件
@@ -378,18 +380,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { 
-  NTabs, NTabPane, NButton, NInput, NSelect, 
-  NSpace, NTag, NPopconfirm, NIcon, NForm, NFormItem, NModal,
-  NTree,
-  NList, NListItem,
-  NCollapse, NCollapseItem,
-  useMessage
+import { h, type VNode, ref, computed } from 'vue'
+import {
+  NTabs, NTabPane, NButton, NInput, NSelect, NIcon, NTag, NPopconfirm,
+  NTree, NCollapse, NCollapseItem, NForm, NFormItem, NModal,
+  type TreeOption, type TreeDropInfo, useMessage
 } from 'naive-ui';
-import { Add, Trash, Create, Save, Close, GitNetwork } from '@vicons/ionicons5';
-import type { Comp } from '../comps/base'
+import { 
+  Add, Trash, Create, Save, Close, GitNetwork, 
+  CubeOutline, CubeSharp, Text, RadioButtonOn
+} from '@vicons/ionicons5';
+import AppIcon from '../icons/AppIcon.vue'
 import { CompType } from '../comps/base';
+import type { Comp } from '../comps/base'
 import PageManagerVertical from './PageManagerVertical.vue';
 import { naiveComponentRegistry } from '../../config/naive-ui-registry';
 import { usePageStore } from '../../stores/page';
@@ -723,90 +726,139 @@ function handleDeleteCustomComponent(defId: string) {
   if (ok) message.success('已删除自定义组件')
 }
 
+
 type ComponentTreeNode = {
   key: string
   label: string
+  prefix?: () => VNode
   children?: ComponentTreeNode[]
-}
-
-function previewLoopItem(v: any): string {
-  if (v === undefined) return 'undefined'
-  if (v === null) return 'null'
-  if (typeof v === 'string') {
-    const trimmed = v.length > 16 ? `${v.slice(0, 16)}…` : v
-    return JSON.stringify(trimmed)
-  }
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-  if (Array.isArray(v)) return `Array(${v.length})`
-  if (typeof v === 'object') return '{…}'
-  return String(v)
+  isLeaf?: boolean
+  disabled?: boolean
+  comp?: Comp // for drag check
 }
 
 function resolveLoopItemsForTree(comp: Comp): any[] | null {
-  const raw: any = comp.props || {}
-  const enabled = raw?.loopEnabled === true
-  if (!enabled) return null
+  const binding = comp.bindings?.['loopData']
+  if (!binding) return null
+  const bindingRef = resolveBindingRef(binding, {
+    getVarValue: (name: string) => pageStore.getVariableValue(name),
+    getCompProp: (compId: string, prop: string) => pageStore.getComponentById(compId)?.props?.[prop],
+    context: undefined
+  })
+  if (!bindingRef) return null
 
-  const ref = (comp.bindings as any)?.loopItems
-  if (typeof ref === 'string' && ref) {
-    const resolved = resolveBindingRef(ref, {
-      getVarValue: (name) => pageStore.getVariableValue(name),
-      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-      context: undefined
-    })
-    return Array.isArray(resolved) ? resolved : []
+  // 1. 如果是变量绑定 (var:xxx)
+  if (bindingRef.type === 'var') {
+    const raw = pageStore.getVariableValue(bindingRef.varName)
+    if (Array.isArray(raw)) return raw
+    return null // 变量不是数组，或者未定义
   }
+  // 暂时不支持从其他组件属性获取循环数据 (TODO)
+  return null
+}
 
-  const items = raw?.loopItems
-  return Array.isArray(items) ? items : []
+function previewLoopItem(item: any): string {
+  if (item === null || item === undefined) return 'null'
+  if (typeof item === 'object') return JSON.stringify(item)
+  return String(item)
 }
 
 function unwrapLoopInstanceKey(key: string): string {
-  const idx = key.indexOf('__loop__')
-  if (idx > 0) return key.slice(0, idx)
+  // key format: realId__loop__index or realId__loop__group
+  if (key.includes('__loop__')) {
+    return key.split('__loop__')[0]
+  }
   return key
 }
 
 function getComponentLabel(comp: Comp): string {
-  // 优先显示组件名称，如果名称为空则显示组件类型
-  if (comp.name && comp.name.trim()) {
+  // 1. 如果有 custom.defId，说明是自定义组件实例 -> 显示组件名
+  if (comp.custom?.defId) {
+    const def = customComponentsStore.getById(comp.custom.defId)
+    return def ? def.name : (comp.name || '自定义组件')
+  }
+
+  // 2. 如果 comp.name 被用户修改过（不等于默认 id），优先显示 name
+  if (comp.name && comp.name !== comp.id) {
     return comp.name
   }
 
+  // 3. 否则显示类型对应的中文名
   if (comp.type === CompType.CONTAINER) return '容器'
-  if (comp.type === CompType.TEXT) return '文字'
   if (comp.type === CompType.BUTTON) return '按钮'
-  if (typeof comp.type === 'string' && comp.type.startsWith('n-')) {
+  if (comp.type === CompType.TEXT) return '文字'
+  if (String(comp.type).startsWith('n-')) {
     const hit = naiveComponentRegistry.find((x) => x.type === comp.type)
     return hit?.name || comp.type
   }
   return String(comp.type)
 }
 
+function getComponentIcon(comp: Comp) {
+  // 自定义组件图标
+  if (comp.custom?.defId) {
+    return () => h(NIcon, { color: '#18a058' }, { default: () => h(CubeSharp) })
+  }
+  
+  // 基础组件
+  if (comp.type === CompType.CONTAINER) {
+    return () => h(NIcon, null, { default: () => h(CubeOutline) })
+  }
+  if (comp.type === CompType.TEXT) {
+    return () => h(NIcon, null, { default: () => h(Text) })
+  }
+  if (comp.type === CompType.BUTTON) {
+    return () => h(NIcon, null, { default: () => h(RadioButtonOn) })
+  }
+
+  // Naive UI 组件
+  if (String(comp.type).startsWith('n-')) {
+    const hit = naiveComponentRegistry.find((x) => x.type === comp.type)
+    if (hit?.icon) {
+      return () => h(AppIcon, { name: hit.icon, class: 'n-icon' })
+    }
+  }
+
+  return undefined
+}
+
 function buildTreeNode(comp: Comp): ComponentTreeNode {
-  const children = (comp.children || []).map(buildTreeNode)
+  const isCustom = !!comp.custom?.defId
+  // 规则3：自定义组件不需要渲染内部子组件
+  const children = isCustom 
+    ? [] 
+    : (comp.children || []).map(buildTreeNode)
 
   const loopItems = resolveLoopItemsForTree(comp)
   const loopChildren: ComponentTreeNode[] = []
+  
+  // 只有非自定义组件才在树里显示循环展开（防止树太乱），或者也可以都显示
+  // 这里暂时保持原逻辑，如果自定义组件有循环绑定，也显示出来
   if (loopItems) {
     const max = Math.min(loopItems.length, 50)
     for (let i = 0; i < max; i++) {
       loopChildren.push({
         key: `${comp.id}__loop__${i}`,
-        label: `#${i} ${previewLoopItem(loopItems[i])}`
+        label: `#${i} ${previewLoopItem(loopItems[i])}`,
+        isLeaf: true,
+        disabled: true // 循环生成的项在树里只读
       })
     }
     if (loopItems.length > max) {
       loopChildren.push({
         key: `${comp.id}__loop__more`,
-        label: `…还有 ${loopItems.length - max} 项`
+        label: `…还有 ${loopItems.length - max} 项`,
+        isLeaf: true,
+        disabled: true
       })
     }
   }
 
   const node: ComponentTreeNode = {
     key: comp.id,
-    label: getComponentLabel(comp)
+    label: getComponentLabel(comp),
+    prefix: getComponentIcon(comp),
+    comp
   }
 
   const mergedChildren: ComponentTreeNode[] = []
@@ -814,11 +866,14 @@ function buildTreeNode(comp: Comp): ComponentTreeNode {
     mergedChildren.push({
       key: `${comp.id}__loop__group`,
       label: `循环实例（${loopItems?.length ?? 0}）`,
-      children: loopChildren
+      children: loopChildren,
+      disabled: true
     })
   }
   if (children.length > 0) mergedChildren.push(...children)
   if (mergedChildren.length > 0) node.children = mergedChildren
+  else node.isLeaf = true // 没有子节点标记为叶子
+  
   return node
 }
 
@@ -829,14 +884,61 @@ const componentTreeData = computed<ComponentTreeNode[]>(() => {
 
 const selectedTreeKeys = computed(() => pageStore.selectedComps.map((c) => c.id))
 
-function handleTreeSelect(keys: Array<string | number>, options: any) {
-  const lastKey = keys[keys.length - 1]
-  const lastNode = Array.isArray(options) ? options[options.length - 1] : options
-  const isLeaf = !lastNode?.children || lastNode.children.length === 0
-  if (isLeaf && typeof lastKey === 'string') {
-    pageStore.selectComponent(unwrapLoopInstanceKey(lastKey))
-  }
+function handleTreeSelect(keys: Array<string | number>, options: Array<TreeOption | null>) {
+  if (!keys.length) return
+  const lastKey = String(keys[keys.length - 1])
+  
+  // 如果是循环组/项等辅助节点，不处理选中
+  if (lastKey.includes('__loop__')) return
+
+  pageStore.selectComponent(lastKey)
 }
+
+function handleTreeDrop(info: TreeDropInfo) {
+  const { dragNode, node, dropPosition } = info
+  const dragKey = String(dragNode.key)
+  const targetKey = String(node.key)
+
+  if (dragKey.includes('__loop__') || targetKey.includes('__loop__')) return
+
+  // 移动组件
+  // dropPosition: 'before' | 'inside' | 'after'
+  
+  // 1. 如果是 inside，则是移动到目标容器内
+  if (dropPosition === 'inside') {
+    // 检查目标是否是容器
+    const targetComp = (node as any).comp as Comp
+    if (targetComp.type === CompType.CONTAINER) {
+      pageStore.moveComponent(dragKey, targetKey, 0)
+    }
+    return
+  }
+
+  // 2. 如果是 before/after，则是移动到目标节点的同级
+  // 首先找到目标的父节点 ID
+  const parentId = pageStore.findParentContainerId(targetKey)
+  const targetComp = (node as any).comp as Comp
+  
+  // 需要计算目标在父容器中的 index
+  let siblings: Comp[] = []
+  if (!parentId) {
+    siblings = currentPage.value?.components || []
+  } else {
+    const parent = pageStore.getComponentById(parentId)
+    siblings = parent?.children || []
+  }
+  
+  let targetIndex = siblings.findIndex(c => c.id === targetKey)
+  if (targetIndex === -1) return
+
+  // 如果是 after，插入索引加1
+  if (dropPosition === 'after') {
+    targetIndex++
+  }
+
+  pageStore.moveComponent(dragKey, parentId || null, targetIndex)
+}
+
 
 // Flow 操作
 const showFlowModal = ref(false);

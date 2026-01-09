@@ -974,6 +974,73 @@ export const usePageStore = defineStore('page', () => {
     return true
   }
 
+  function isDescendant(parent: Comp, childId: string): boolean {
+    if (!parent.children) return false
+    for (const child of parent.children) {
+        if (child.id === childId) return true
+        if (isDescendant(child, childId)) return true
+    }
+    return false
+  }
+
+  function moveComponent(componentId: string, parentId: string | null, index: number): boolean {
+    if (!currentPage.value) return false
+    if (componentId === parentId) return false
+
+    const dragged = findComponentInTree(componentId)
+    if (!dragged) return false
+
+    if (parentId) {
+      if (isDescendant(dragged, parentId)) return false
+    }
+
+    // 1. 从原位置移除
+    let removedComp: Comp | null = null
+    const removeRes = mapComponentTree(currentPage.value.components, (c) => {
+        if (c.id === componentId) {
+            removedComp = c
+            return null
+        }
+        return c
+    })
+    
+    if (!removeRes.changed || !removedComp) return false
+
+    // 2. 插入到新位置
+    const compToInsert = removedComp as Comp
+    let newRoot = [...removeRes.next]
+
+    if (parentId === null) {
+        // 插入到根
+        const validIndex = Math.min(Math.max(0, index), newRoot.length)
+        newRoot.splice(validIndex, 0, compToInsert)
+        currentPage.value.components = newRoot
+    } else {
+        // 插入到容器
+        const insertRes = mapComponentTree(newRoot, (c) => {
+            if (c.id === parentId) {
+                const children = [...(c.children || [])]
+                const validIndex = Math.min(Math.max(0, index), children.length)
+                children.splice(validIndex, 0, compToInsert)
+                return { ...c, children }
+            }
+            return c
+        })
+        if (!insertRes.changed) return false
+        currentPage.value.components = insertRes.next
+    }
+
+    currentPage.value.updatedAt = new Date()
+
+    // 选中引用保持最新
+    if (selectedComps.value.length > 0) {
+      selectedComps.value = selectedComps.value
+        .map((sc) => findComponentInTree(sc.id, currentPage.value!.components))
+        .filter(Boolean) as Comp[]
+    }
+    return true
+  }
+
   function deleteComponentFromCurrentPage(componentId: string): boolean {
     if (!currentPage.value) return false;
 
@@ -1244,6 +1311,7 @@ export const usePageStore = defineStore('page', () => {
     addComponentToCurrentPage,
     addComponentToContainer,
     moveComponentToContainer,
+    moveComponent,
     deleteComponentFromCurrentPage,
     updateComponentInCurrentPage,
     updateComponentsInCurrentPage,
