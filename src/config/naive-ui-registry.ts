@@ -1,4 +1,5 @@
 import { CompType } from '../types/component';
+import { type EventSpec, CommonEvents } from '../types/event';
 
 export interface PropSchema {
   label: string;
@@ -13,7 +14,7 @@ export interface NaiveCompConfig {
   icon: string; // FontAwesome icon name
   defaultProps: Record<string, any>;
   propsSchema: Record<string, PropSchema>;
-  events?: { label: string; value: string }[]; // Supported events
+  events?: EventSpec[]; // Supported events
 }
 
 export const naiveComponentRegistry: NaiveCompConfig[] = [
@@ -32,7 +33,7 @@ export const naiveComponentRegistry: NaiveCompConfig[] = [
       tertiary: false
     },
     events: [
-      { label: '点击', value: 'click' }
+      CommonEvents.CLICK
     ],
     propsSchema: {
       content: { label: '内容', type: 'text', default: '按钮' },
@@ -78,10 +79,10 @@ export const naiveComponentRegistry: NaiveCompConfig[] = [
       round: false
     },
     events: [
-      { label: '输入', value: 'input' },
-      { label: '聚焦', value: 'focus' },
-      { label: '失焦', value: 'blur' },
-      { label: '值改变', value: 'change' }
+      CommonEvents.INPUT,
+      CommonEvents.CHANGE,
+      CommonEvents.FOCUS,
+      CommonEvents.BLUR
     ],
     propsSchema: {
       placeholder: { label: '占位符', type: 'text' },

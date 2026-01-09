@@ -1,7 +1,9 @@
 import { CompType } from '@/types/component'
+import { type EventSpec, CommonEvents } from '@/types/event'
 
 // 基础属性默认值
 export const defaultBaseProps = {
+
   x: 0,
   y: 0,
   width: 200,
@@ -27,11 +29,13 @@ export interface AtomConfig {
   icon: string
   description: string
   isContainer?: boolean
+  events?: EventSpec[]
 }
 
 export const atomConfigs: Partial<Record<CompType, AtomConfig>> = {
   [CompType.CONTAINER]: {
     defaultProps: {
+
       width: 200,
       height: 200,
       widthSizing: 'fixed',
@@ -55,11 +59,20 @@ export const atomConfigs: Partial<Record<CompType, AtomConfig>> = {
     size: { width: 200, height: 200 },
     icon: '□',
     description: '容器组件，可以包含其他组件',
-    isContainer: true
+    isContainer: true,
+    events: [
+      CommonEvents.CLICK,
+      CommonEvents.DBLCLICK,
+      CommonEvents.MOUSEENTER,
+      CommonEvents.MOUSELEAVE,
+      CommonEvents.MOUNTED,
+      CommonEvents.UNMOUNTED
+    ]
   },
   
   [CompType.BUTTON]: {
     defaultProps: {
+
       width: 100,
       height: 40,
       content: '按钮',
@@ -71,10 +84,15 @@ export const atomConfigs: Partial<Record<CompType, AtomConfig>> = {
     },
     size: { width: 100, height: 40 },
     icon: '⬜',
-    description: '可交互的按钮组件'
+    description: '可交互的按钮组件',
+    events: [
+      CommonEvents.CLICK,
+      CommonEvents.DBLCLICK
+    ]
   },
 
   [CompType.TEXT]: {
+
     defaultProps: {
       content: '一段文字',
       color: '#333',
@@ -93,6 +111,10 @@ export const atomConfigs: Partial<Record<CompType, AtomConfig>> = {
     },
     size: { width: 100, height: 40 },
     icon: 'T',
-    description: '用于显示文本内容的组件'
+    description: '用于显示文本内容的组件',
+    events: [
+      CommonEvents.CLICK,
+      CommonEvents.DBLCLICK
+    ]
   }
 }

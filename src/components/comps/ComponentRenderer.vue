@@ -9,6 +9,7 @@
     :scale="scale"
     :inFlowLayout="inFlowLayout"
     :locked="locked"
+    v-on="eventHandlers"
     @update="handleUpdate"
     @contextmenu="handleContextMenu"
   />
@@ -18,6 +19,7 @@
 import { computed } from 'vue'
 import { resolveComponent } from './componentRegistry'
 import { getRenderedProps, createBindingResolver } from '@/utils/renderLoop'
+import { useComponentEvents } from '@/runtime/useComponentEvents'
 import type { Comp } from './base'
 
 const props = defineProps<{
@@ -35,6 +37,8 @@ const emit = defineEmits<{
   (e: 'update', payload: { id: string; updates: any }): void
   (e: 'contextmenu', event: MouseEvent): void
 }>()
+
+const { eventHandlers } = useComponentEvents(props.comp)
 
 const resolvedComp = computed(() => resolveComponent(props.comp.type))
 const isNaive = computed(() => props.comp.type.startsWith('n-'))
