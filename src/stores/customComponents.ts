@@ -96,7 +96,7 @@ export const useCustomComponentsStore = defineStore('customComponents', () => {
     return def
   }
 
-  function updateCustomComponent(id: string, patch: Partial<Pick<CustomComponentDef, 'name' | 'templateJson' | 'propsSchema' | 'stateSchema'>>): boolean {
+  function updateCustomComponent(id: string, patch: Partial<Pick<CustomComponentDef, 'name' | 'templateJson' | 'propsSchema' | 'stateSchema' | 'eventsSchema'>>): boolean {
     const idx = defs.value.findIndex((d) => d.id === id)
     if (idx < 0) return false
     const cur = defs.value[idx]
