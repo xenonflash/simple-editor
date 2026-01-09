@@ -16,6 +16,7 @@ type PageStoreLike = {
   findParentContainerId: (componentId: string) => string | null | undefined
   selectComponent: (componentId: string | null, multiSelect?: boolean) => void
   addComponentToCurrentPage: (component: Comp) => boolean
+  addComponentToContainer: (containerId: string, component: Comp) => boolean
   updateComponentInCurrentPage: (component: Comp) => boolean
   deleteComponentFromCurrentPage: (componentId: string) => boolean
   getComponentCanvasPosition: (componentId: string) => { x: number; y: number } | null | undefined
@@ -158,8 +159,8 @@ export function useBoardContextMenu(params: {
       const minY = Math.min(...rects.map((r) => r.y))
       const maxX = Math.max(...rects.map((r) => r.x + r.width))
       const maxY = Math.max(...rects.map((r) => r.y + r.height))
-      const groupW = Math.max(1, maxX - minX)
-      const groupH = Math.max(1, maxY - minY)
+      const groupW = Math.max(100, maxX - minX)
+      const groupH = Math.max(100, maxY - minY)
 
       root = createComp(CompType.CONTAINER, name)
       root.props = {
@@ -244,6 +245,110 @@ export function useBoardContextMenu(params: {
     hideContextMenu()
   }
 
+  function groupComponents() {
+    const selected = pageStore.selectedComps
+
+    if (selected.length < 2) {
+      message.warning('请至少选择两个组件进行组合')
+      hideContextMenu()
+      return
+    }
+
+    const rects = selected.map(getCompCanvasRectForGroup)
+    const minX = Math.min(...rects.map((r) => r.x))
+    const minY = Math.min(...rects.map((r) => r.y))
+    const maxX = Math.max(...rects.map((r) => r.x + r.width))
+    const maxY = Math.max(...rects.map((r) => r.y + r.height))
+
+    const groupW = Math.max(100, maxX - minX)
+    const groupH = Math.max(100, maxY - minY)
+
+    const container = createComp(CompType.CONTAINER, '容器')
+    container.props = {
+      ...(container.props || {}),
+      x: minX,
+      y: minY,
+      width: groupW,
+      height: groupH,
+      widthSizing: 'fixed',
+      heightSizing: 'fixed',
+      layoutMode: 'manual'
+    }
+
+    const idsToRemove: string[] = []
+
+    for (const comp of selected) {
+      const r = getCompCanvasRectForGroup(comp)
+      const newX = r.x - minX
+      const newY = r.y - minY
+
+      const updatedComp: Comp = {
+        ...comp,
+        props: {
+          ...(comp.props || {}),
+          x: newX,
+          y: newY
+        }
+      }
+
+      idsToRemove.push(comp.id)
+      container.children!.push(updatedComp)
+    }
+
+    for (const id of idsToRemove) {
+      pageStore.deleteComponentFromCurrentPage(id)
+    }
+    pageStore.addComponentToCurrentPage(container)
+    pageStore.selectComponent(container.id)
+
+    hideContextMenu()
+  }
+
+  function ungroupComponents() {
+    const contextTarget = getContextTarget()
+    const target = contextTarget || (pageStore.selectedComps.length === 1 ? pageStore.selectedComps[0] : null)
+
+    if (!target) {
+      hideContextMenu()
+      return
+    }
+
+    if (target.type !== CompType.CONTAINER || !target.children || target.children.length === 0) {
+      message.warning('所选组件不是容器或没有子组件')
+      hideContextMenu()
+      return
+    }
+
+    const containerPos = pageStore.getComponentCanvasPosition(target.id)
+    const containerX = containerPos?.x ?? ((target.props as any)?.x || 0)
+    const containerY = containerPos?.y ?? ((target.props as any)?.y || 0)
+
+    const children = [...target.children!]
+    const parentId = pageStore.findParentContainerId(target.id)
+
+    for (const child of children) {
+      const updatedChild: Comp = {
+        ...child,
+        props: {
+          ...(child.props || {}),
+          x: ((child.props as any)?.x || 0) + containerX,
+          y: ((child.props as any)?.y || 0) + containerY
+        }
+      }
+
+      if (parentId) {
+        pageStore.addComponentToContainer(parentId, updatedChild)
+      } else {
+        pageStore.addComponentToCurrentPage(updatedChild)
+      }
+    }
+
+    pageStore.deleteComponentFromCurrentPage(target.id)
+    pageStore.selectComponent(null)
+
+    hideContextMenu()
+  }
+
   return {
     contextMenu,
     showContextMenu,
@@ -254,6 +359,8 @@ export function useBoardContextMenu(params: {
     bringForward,
     sendBackward,
     sendToBack,
-    deleteComponentFromMenu
+    deleteComponentFromMenu,
+    groupComponents,
+    ungroupComponents
   }
 }

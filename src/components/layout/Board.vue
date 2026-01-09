@@ -115,6 +115,15 @@
         <span class="text">保存为组件</span>
       </div>
       <div class="menu-divider"></div>
+      <div class="menu-item" @click="groupComponents">
+        <span class="icon">📦</span>
+        <span class="text">组合 (Shift+A)</span>
+      </div>
+      <div class="menu-item" @click="ungroupComponents">
+        <span class="icon">📤</span>
+        <span class="text">取消组合 (Shift+S)</span>
+      </div>
+      <div class="menu-divider"></div>
       <div class="menu-item" @click="duplicateComponent">
         <span class="icon">📋</span>
         <span class="text">复制</span>
@@ -356,7 +365,9 @@ const {
   bringForward,
   sendBackward,
   sendToBack,
-  deleteComponentFromMenu
+  deleteComponentFromMenu,
+  groupComponents,
+  ungroupComponents
 } = useBoardContextMenu({
   pageStore,
   customComponentsStore,
@@ -412,6 +423,16 @@ function handleKeyDown(e: KeyboardEvent) {
     if (res.blockedCount > 0) {
       message.warning('组件编辑模式下不允许删除最外层容器')
     }
+    e.preventDefault();
+  }
+  // 组合组件 (Shift+A)
+  if (e.shiftKey && (e.key === 'a' || e.key === 'A') && pageStore.selectedComps.length >= 2) {
+    groupComponents()
+    e.preventDefault();
+  }
+  // 取消组合 (Shift+S)
+  if (e.shiftKey && (e.key === 's' || e.key === 'S') && pageStore.selectedComps.length === 1) {
+    ungroupComponents()
     e.preventDefault();
   }
 }
