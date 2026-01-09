@@ -2,7 +2,7 @@
     <div class="container" 
     ref="rootRef"
       :data-comp-id="props.id"
-       :style="containerStyle" 
+       :style="[containerStyle, autoLayoutStyle]" 
        @mousedown.stop="onMouseDown"
        @click.stop>
     <template v-if="props.comp?.children?.length">
@@ -417,6 +417,17 @@ const containerStyle = computed(() => {
   }
 
   return style
+})
+
+// 自动布局模式下使用测量值设置内联样式
+const autoLayoutStyle = computed(() => {
+  if (effectiveLayoutMode.value !== 'auto') return {}
+  const measuredW = (props as any)._measuredWidth
+  const measuredH = (props as any)._measuredHeight
+  const result: Record<string, string> = {}
+  if (measuredW) result.width = `${measuredW}px`
+  if (measuredH) result.height = `${measuredH}px`
+  return result
 })
 </script>
 

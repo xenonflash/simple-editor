@@ -109,9 +109,17 @@ function getComponentActualSize(comp: Comp): { width: number; height: number } {
   }
 
   // 非 Naive 组件：若 sizing 非 fixed 且存在测量值，也优先使用
+  // 自动布局模式下（layoutMode: 'auto'），无论 sizing 如何，都应使用测量值
   if (!comp.type.startsWith('n-')) {
-    if (widthSizing && widthSizing !== 'fixed' && comp.props._measuredWidth) width = comp.props._measuredWidth
-    if (heightSizing && heightSizing !== 'fixed' && comp.props._measuredHeight) height = comp.props._measuredHeight
+    const layoutMode = comp.props.layoutMode || 'manual'
+    const isAutoLayout = layoutMode === 'auto'
+    if (isAutoLayout) {
+      if (comp.props._measuredWidth) width = comp.props._measuredWidth
+      if (comp.props._measuredHeight) height = comp.props._measuredHeight
+    } else {
+      if (widthSizing && widthSizing !== 'fixed' && comp.props._measuredWidth) width = comp.props._measuredWidth
+      if (heightSizing && heightSizing !== 'fixed' && comp.props._measuredHeight) height = comp.props._measuredHeight
+    }
   }
   
   return { width, height }

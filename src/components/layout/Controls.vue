@@ -64,11 +64,12 @@ const resizeControls = computed(() =>
 function getSelectionStyle(control: any) {
   return {
     position: 'absolute' as const,
-    left: `${control.x - 1}px`,
-    top: `${control.y - 1}px`,
-    width: `${control.width + 2}px`,
-    height: `${control.height + 2}px`,
-    border: '1px solid #1890ff',
+    left: `${control.x}px`,
+    top: `${control.y}px`,
+    width: `${control.width}px`,
+    height: `${control.height}px`,
+    border: '2px solid #1890ff',
+    boxSizing: 'border-box' as const,
     pointerEvents: 'none' as const,
     zIndex: '1000'
   }

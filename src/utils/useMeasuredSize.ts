@@ -1,4 +1,4 @@
-import { inject, onMounted, onUnmounted, type Ref } from 'vue'
+import { inject, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
 import { usePageStore } from '../stores/page'
 import { COORDINATE_HELPER_KEY } from './coordinateHelper'
 import { parseLoopInstanceId } from './loopInstance'
@@ -59,10 +59,25 @@ export function useMeasuredSize(options: UseMeasuredSizeOptions) {
   onMounted(() => {
     if (!options.elementRef.value) return
 
-    updateMeasured(options.elementRef.value.offsetWidth, options.elementRef.value.offsetHeight)
-    resizeObserver = new ResizeObserver(() => {
+    const doMeasure = () => {
       if (!options.elementRef.value) return
-      updateMeasured(options.elementRef.value.offsetWidth, options.elementRef.value.offsetHeight)
+      const rect = options.elementRef.value.getBoundingClientRect()
+      const width = Math.round(rect.width * 10) / 10
+      const height = Math.round(rect.height * 10) / 10
+      updateMeasured(width, height)
+    }
+
+    nextTick(() => {
+      doMeasure()
+      setTimeout(doMeasure, 100)
+    })
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (!options.elementRef.value) return
+      const rect = options.elementRef.value.getBoundingClientRect()
+      const width = Math.round(rect.width * 10) / 10
+      const height = Math.round(rect.height * 10) / 10
+      updateMeasured(width, height)
     })
     resizeObserver.observe(options.elementRef.value)
   })
