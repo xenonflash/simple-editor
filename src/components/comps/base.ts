@@ -1,8 +1,10 @@
 import { CompType } from '../../types/component';
 import { getNaiveConfig } from '../../config/naive-ui-registry';
+import { atomConfigs, defaultBaseProps } from './atomConfig';
 
 // 导出 CompType 以保持兼容性
 export { CompType };
+
 
 // 基础类型
 export type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue };
@@ -152,27 +154,9 @@ interface BaseProps {
 
 // 组件工厂函数
 export function createComp(type: CompType, name: string): Comp {
-  const baseProps: BaseProps = {
-    x: 0,
-    y: 0,
-    width: 200,
-    height: 100,
-    widthSizing: 'fixed',
-    heightSizing: 'fixed',
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderColor: '#000000',
-    shadowX: 0,
-    shadowY: 0,
-    shadowBlur: 0,
-    shadowSpread: 0,
-    shadowColor: '#000000',
-    zIndex: 1,
-    renderVisible: true,
-    loopEnabled: false
-  };
+  const baseProps: BaseProps = { ...defaultBaseProps };
 
-  // 检查是否为 Naive UI 组件
+  // 1. 检查是否为 Naive UI 组件
   const naiveConfig = getNaiveConfig(type);
   if (naiveConfig) {
     return {
@@ -194,110 +178,38 @@ export function createComp(type: CompType, name: string): Comp {
     };
   }
 
-  switch (type) {
-    case CompType.CONTAINER:
-      return {
-        id: `${type}_${Date.now()}`,
-        name,
-        type,
-        props: {
-          ...baseProps,
-          width: 200,
-          height: 200,
-          widthSizing: 'fixed',
-          heightSizing: 'fixed',
-          layoutMode: 'manual',
-          direction: 'row',
-          primaryAlign: 'start',
-          crossAlign: 'stretch',
-          gap: 8,
-          padding: { top: 8, right: 8, bottom: 8, left: 8 },
-          borderWidth: 1,
-          borderStyle: 'solid',
-          borderColor: '#e0e0e0',
-          backgroundColor: '#ffffff',
-          backgroundImage: '',
-          gradientType: 'none',
-          gradientColor1: '#ffffff',
-          gradientColor2: '#000000',
-          gradientDirection: '135deg',
-        },
-        events: {},
-        style: {},
-        size: { width: 200, height: 200 },
-        children: [],
-        isContainer: true,
-        icon: '□',
-        description: '容器组件，可以包含其他组件',
-      };
-    case CompType.BUTTON:
-      return {
-        id: `${type}_${Date.now()}`,
-        name,
-        type,
-        props: {
-          ...baseProps,
-          width: 100,
-          height: 40,
-          content: '按钮',
-          color: '#ffffff',
-          backgroundColor: '#1890ff',
-          borderRadius: 4,
-          fontSize: 14,
-          fontWeight: 'normal',
-        },
-        events: {},
-        style: {},
-        size: { width: 100, height: 40 },
-        children: [],
-        icon: '⬜',
-        description: '可交互的按钮组件',
-      };
-    case CompType.TEXT:
-      return {
-        id: `${type}_${Date.now()}`,
-        type,
-        name,
-        props: {
-          ...baseProps,
-          content: '一段文字',
-          color: '#333',
-          fontSize: 14,
-          fontWeight: 'normal',
-          fontFamily: 'Arial',
-          textDecoration: 'none',
-          fontStyle: 'normal',
-          width: 60,
-          height: 20,
-          // 新增文字组件默认属性
-          widthMode: 'fixed', // 改为默认固定宽度
-          autoHeight: false, // 改为默认固定高度
-          minWidth: 20,
-          maxWidth: 500
-        },
-        events: {},
-        style: {},
-        size: {
-          width: 100,
-          height: 40
-        },
-        children: [],
-        icon: 'T',
-        description: '用于显示文本内容的组件',
-      };
-    default:
-      // 默认返回一个空容器，防止报错
-      return {
-        id: `${type}_${Date.now()}`,
-        name,
-        type,
-        props: { ...baseProps },
-        events: {},
-        style: {},
-        size: { width: 100, height: 100 },
-        children: []
-      };
+  // 2. 检查是否为原子组件（通过配置表）
+  const atomConfig = atomConfigs[type];
+  if (atomConfig) {
+    return {
+      id: `${type}_${Date.now()}`,
+      name,
+      type,
+      props: {
+        ...baseProps,
+        ...atomConfig.defaultProps
+      },
+      events: {},
+      style: {},
+      size: atomConfig.size,
+      children: [],
+      isContainer: atomConfig.isContainer,
+      icon: atomConfig.icon,
+      description: atomConfig.description
+    };
   }
+
+  // 3. 默认/未知组件（或者自定义组件的基础容器）
+  return {
+    id: `${type}_${Date.now()}`,
+    name,
+    type,
+    props: { ...baseProps },
+    events: {},
+    style: {},
+    size: { width: 100, height: 100 },
+    children: []
+  };
 }
 
 // 组件注册相关

@@ -9,50 +9,16 @@
       <template v-for="(child, index) in props.comp.children" :key="child.id">
         <template v-for="rep in getRenderRepeatsForChild(child, index)" :key="rep.key">
           <div class="child-wrapper" v-show="rep.visible" :style="{ zIndex: rep.zIndex }">
-            <Container
-              v-if="rep.comp.type === 'container'"
-              :id="rep.instanceId"
+            <ComponentRenderer
               :comp="rep.comp"
-              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
+              :instanceId="rep.instanceId"
+              :bindingContext="rep.bindingContext"
               :scale="props.scale || 1"
+              :offsetX="rep.offsetX"
+              :offsetY="rep.offsetY"
               :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
-              :bindingContext="rep.bindingContext"
               @update="(payload) => emit('update', payload)"
-            />
-            <Text
-              v-else-if="rep.comp.type === 'text'"
-              :id="rep.instanceId"
-              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-              :content="getRenderedProps(rep.comp, rep.bindingContext).content ?? '新建文本'"
-              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
-              :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'manual'"
-              :locked="lockedForChildren"
-              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
-            />
-            <Button
-              v-else-if="rep.comp.type === 'button'"
-              :id="rep.instanceId"
-              v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-              :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-              :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
-              :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'manual'"
-              :locked="lockedForChildren"
-              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
-            />
-            <NaiveWrapper
-              v-else-if="rep.comp.type && rep.comp.type.startsWith('n-')"
-              :comp="rep.comp"
-              :scale="props.scale || 1"
-              :inFlowLayout="effectiveLayoutMode !== 'manual'"
-              :locked="lockedForChildren"
-              :bindingContext="rep.bindingContext"
-              @update="(updates) => emit('update', { id: rep.instanceId, updates })"
             />
           </div>
         </template>
@@ -71,9 +37,7 @@ import { resolveBindingRef } from '../../utils/bindingRef'
 import { useMeasuredSize } from '../../utils/useMeasuredSize'
 import { COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
 import { parseLoopInstanceId } from '../../utils/loopInstance'
-import Text from './Text.vue'
-import Button from './Button.vue'
-import NaiveWrapper from './NaiveWrapper.vue'
+import ComponentRenderer from './ComponentRenderer.vue'
 import {
   mergeBindingContext,
   getCustomPropsBindingContext,

@@ -272,7 +272,11 @@ export function useBoardContextMenu(params: {
       height: groupH,
       widthSizing: 'fixed',
       heightSizing: 'fixed',
-      layoutMode: 'manual'
+      layoutMode: 'manual',
+      // Grouping should not introduce visual shifts or styles by default
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      borderWidth: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0)'
     }
 
     const idsToRemove: string[] = []

@@ -11,10 +11,10 @@
         <div class="canvas-wrapper" 
              ref="wrapperRef"
              @wheel="handleWheel"
-             @mousedown="startPan"
-             @mousemove="doPan"
-             @mouseup="endPan"
-             @mouseleave="endPan">
+             @mousedown="pointerHubStore.startPan"
+             @mousemove="pointerHubStore.doPan"
+             @mouseup="pointerHubStore.endPan"
+             @mouseleave="pointerHubStore.endPan">
           <div class="canvas"
                :style="canvasStyle" 
                ref="canvasRef"
@@ -42,39 +42,16 @@
                 <div class="component-wrapper"
                      v-show="rep.visible"
                      :style="{ zIndex: rep.zIndex }">
-                  <Container v-if="rep.comp.type === 'container'"
-                    :id="rep.instanceId"
+                  <ComponentRenderer
                     :comp="rep.comp"
-                    v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-                    :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-                    :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
-                    :scale="scale"
+                    :instanceId="rep.instanceId"
                     :bindingContext="rep.bindingContext"
-                    @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
-                    @update="(payload) => handleUpdatePosition(payload.id, payload.updates)" />
-                  <Text v-else-if="rep.comp.type === 'text'"
-                    :id="rep.instanceId"
-                    v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-                    :content="getRenderedProps(rep.comp, rep.bindingContext).content ?? '新建文本'"
-                    :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-                    :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
                     :scale="scale"
+                    :offsetX="rep.offsetX"
+                    :offsetY="rep.offsetY"
                     @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
-                    @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
-                  <Button v-else-if="rep.comp.type === 'button'"
-                      :id="rep.instanceId"
-                      v-bind="getRenderedProps(rep.comp, rep.bindingContext)"
-                      :x="(getRenderedProps(rep.comp, rep.bindingContext).x ?? 0) + rep.offsetX"
-                      :y="(getRenderedProps(rep.comp, rep.bindingContext).y ?? 0) + rep.offsetY"
-                      :scale="scale"
-                      @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
-                      @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
-                  <NaiveWrapper v-else-if="isNaiveComp(rep.comp.type)"
-                        :comp="rep.comp"
-                        :scale="scale"
-                        :bindingContext="rep.bindingContext"
-                        @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
-                        @update="(updates) => handleUpdatePosition(rep.instanceId, updates)" />
+                    @update="(payload) => handleUpdatePosition(payload.id, payload.updates)"
+                  />
                 </div>
                   </template>
               </template>
@@ -157,9 +134,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, provide } from 'vue';
 import { storeToRefs } from 'pinia'
-import Container from '../comps/Container.vue';
-import Text from '../comps/Text.vue';
-import Button from '../comps/Button.vue';
+import ComponentRenderer from '../comps/ComponentRenderer.vue';
 import Ruler from './Ruler.vue';
 import SnapLines from './SnapLines.vue';
 import Controls from './Controls.vue';
@@ -176,7 +151,6 @@ import { useCustomComponentsStore } from '../../stores/customComponents'
 
 import { useMessage } from 'naive-ui'
 
-import NaiveWrapper from '../comps/NaiveWrapper.vue';
 import { CompType } from '../../types/component';
 import { resolveBindingRef } from '../../utils/bindingRef';
 import { instantiateFromCustomComponentTemplate } from '../../utils/customComponentInstance'
@@ -186,6 +160,8 @@ import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coord
 import { usePointerHubStore } from '../../stores/pointerHub'
 import { getLoopSourceId } from '../../utils/loopInstance'
 import { useBoardContextMenu } from './useBoardContextMenu'
+import { useBoardZoom } from './useBoardZoom'
+import { useBoardDragDrop } from './useBoardDragDrop'
 import {
   mergeBindingContext,
   getCustomPropsBindingContext,
@@ -309,18 +285,6 @@ const canvasHeight = computed(() => pageStore.currentPage?.height || 800);
 
 // 缩放相关
 const scale = ref(1);
-const minScale = 0.1;
-const maxScale = 3;
-const scaleStep = 0.1;
-
-// 缓存视口中心点计算
-const viewportCenter = computed(() => {
-  const rect = wrapperRef.value?.getBoundingClientRect();
-  return rect ? {
-    x: rect.width / 2,
-    y: rect.height / 2
-  } : { x: 0, y: 0 };
-});
 
 // pan 状态收口到 pointerHub store（注意：Pinia 会自动解包 ref，需要 storeToRefs 保留 Ref<Point>）
 const { panOffset } = storeToRefs(pointerHubStore)
@@ -354,6 +318,34 @@ const dropPreviewStore = useDropPreviewStore({
 })
 
 provide(DROP_PREVIEW_STORE_KEY, dropPreviewStore)
+
+const { 
+  zoomIn, 
+  zoomOut, 
+  resetZoom, 
+  handleWheel, 
+  initializeCanvas 
+} = useBoardZoom({
+  wrapperRef,
+  canvasWidth,
+  canvasHeight,
+  scale,
+  coord
+})
+
+const {
+  dropIndicator,
+  dropIndicatorStyle,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop: _handleDrop
+} = useBoardDragDrop({
+  components: props.components,
+  coord,
+  getContainerHits
+})
+
+const handleDrop = (e: DragEvent) => _handleDrop(e, emit)
 
 const {
   contextMenu,
@@ -437,91 +429,7 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-function handleKeyUp(e: KeyboardEvent) {
-  pointerHubStore.handlePanKeyUp(e)
-}
 
-// 缩放函数（工具栏按钮用）
-function zoomIn() {
-  setScale(scale.value + scaleStep)
-}
-
-function zoomOut() {
-  setScale(scale.value - scaleStep)
-}
-
-function resetZoom() {
-  setScale(1)
-}
-
-function setScale(newScale: number, center?: { x: number; y: number }) {
-  const oldScale = scale.value
-  newScale = Math.max(minScale, Math.min(maxScale, newScale))
-  if (Math.abs(newScale - oldScale) < 0.00001) return
-
-  const zoomCenter = center || viewportCenter.value
-  const scaleFactor = newScale / oldScale
-  const dx = (zoomCenter.x - panOffset.value.x) * (1 - scaleFactor)
-  const dy = (zoomCenter.y - panOffset.value.y) * (1 - scaleFactor)
-
-  scale.value = newScale
-  panOffset.value = {
-    x: panOffset.value.x + dx,
-    y: panOffset.value.y + dy
-  }
-}
-
-// 处理触控板手势
-function handleWheel(e: WheelEvent) {
-  e.preventDefault();
-  
-  const rect = wrapperRef.value?.getBoundingClientRect();
-  if (!rect) return;
-  
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-
-  // 检测是否是缩放手势（触控板双指捏合或 Command + 滚轮）
-  if (e.ctrlKey || e.metaKey) {
-    const delta = -e.deltaY;
-    const zoomFactor = Math.pow(1.01, delta);
-    
-    // 限制缩放范围
-    const newScale = Math.max(0.1, Math.min(3, scale.value * zoomFactor));
-    if (newScale !== scale.value) {
-      const scaleFactor = newScale / scale.value;
-      
-      // 计算新的偏移，保持鼠标位置不变
-      panOffset.value = {
-        x: panOffset.value.x + (mouseX - panOffset.value.x) * (1 - scaleFactor),
-        y: panOffset.value.y + (mouseY - panOffset.value.y) * (1 - scaleFactor)
-      };
-      
-      scale.value = newScale;
-    }
-    return;
-  }
-
-  // 处理平移，考虑设备像素比
-  const pixelRatio = window.devicePixelRatio || 1;
-  panOffset.value = {
-    x: panOffset.value.x - e.deltaX / pixelRatio,
-    y: panOffset.value.y - e.deltaY / pixelRatio
-  };
-}
-
-// 优化平移处理
-function startPan(e: MouseEvent) {
-  pointerHubStore.startPan(e)
-}
-
-function doPan(e: MouseEvent) {
-  pointerHubStore.doPan(e)
-}
-
-function endPan() {
-  pointerHubStore.endPan()
-}
 
 // 画布样式
 const canvasStyle = computed(() => ({
@@ -589,269 +497,10 @@ function handleUpdatePosition(id: string, updates: Record<string, any>) {
   emit('update', updatedComp);
 }
 
-// 处理拖拽
-function handleDragOver(e: DragEvent) {
-  e.preventDefault();
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'copy';
-  }
-
-  const customComponentId = e.dataTransfer?.getData('customComponentId') || ''
-  const componentType = e.dataTransfer?.getData('componentType') as CompType;
-  if (!customComponentId && !componentType) {
-    dropIndicator.value.show = false;
-    dropIndicator.value.containerId = null;
-    return;
-  }
-
-  const canvasPos = screenToCanvas(e.clientX, e.clientY);
-  const hit = findContainerHit(canvasPos.x, canvasPos.y);
-  if (hit) {
-    dropIndicator.value = {
-      show: true,
-      containerId: hit.containerId,
-      x: hit.x,
-      y: hit.y,
-      width: hit.width,
-      height: hit.height
-    };
-  } else {
-    dropIndicator.value.show = false;
-    dropIndicator.value.containerId = null;
-  }
-}
-
-function handleDragLeave() {
-  dropIndicator.value.show = false;
-  dropIndicator.value.containerId = null;
-}
-
-// 获取下一个可用的zIndex
-function getNextZIndex(): number {
-  if (props.components.length === 0) return 1;
-  const maxZIndex = Math.max(...props.components.map(c => c.props.zIndex || 1));
-  return maxZIndex + 1;
-}
-
-// 从屏幕坐标转换为画布坐标
-function screenToCanvas(screenX: number, screenY: number): { x: number, y: number } {
-  const wrapperRect = wrapperRef.value?.getBoundingClientRect();
-  if (!wrapperRect) return { x: 0, y: 0 };
-
-  // 计算相对于wrapper的坐标
-  const wrapperX = screenX - wrapperRect.left;
-  const wrapperY = screenY - wrapperRect.top;
-  
-  // 转换为画布坐标（考虑缩放和平移）
-  return {
-    x: (wrapperX - panOffset.value.x) / scale.value,
-    y: (wrapperY - panOffset.value.y) / scale.value
-  };
-}
-
-function handleDrop(e: DragEvent) {
-  e.preventDefault();
-  const customComponentId = e.dataTransfer?.getData('customComponentId') || ''
-  const componentType = e.dataTransfer?.getData('componentType') as CompType;
-  if (!customComponentId && !componentType) return;
-
-  // 使用统一的坐标转换函数
-  const canvasPos = screenToCanvas(e.clientX, e.clientY);
-
-  const hit = findContainerHit(canvasPos.x, canvasPos.y);
-
-  if (customComponentId) {
-    const def = customComponentsStore.getById(customComponentId)
-    if (!def) return
-
-    const buildDefaultsFromSchema = (schema: any): Record<string, any> => {
-      const res: Record<string, any> = {}
-      const src = (schema && typeof schema === 'object') ? schema : {}
-      for (const [k, s] of Object.entries(src)) {
-        const ss: any = s
-        if (ss && Object.prototype.hasOwnProperty.call(ss, 'manual')) {
-          res[k] = ss.default
-          continue
-        }
-        const t = ss?.type
-        if (t === 'number') res[k] = 0
-        else if (t === 'boolean') res[k] = false
-        else if (t === 'json') res[k] = null
-        else res[k] = ''
-      }
-      return res
-    }
-
-    const roots = importFromJSON(def.templateJson)
-    const root = roots[0]
-    if (!root) return
-
-    // 实例化：为该次拖入生成全新的唯一 id（并修正内部 comp: 绑定引用）
-    instantiateFromCustomComponentTemplate(root)
-
-    root.custom = {
-      defId: def.id,
-      props: buildDefaultsFromSchema((def as any).propsSchema),
-      state: buildDefaultsFromSchema((def as any).stateSchema)
-    }
-
-    if (hit) {
-      const container = pageStore.getComponentById(hit.containerId);
-      const layoutMode = (container?.props as any)?.layoutMode || 'manual';
-      if (layoutMode === 'manual') {
-        root.props.x = canvasPos.x - hit.x;
-        root.props.y = canvasPos.y - hit.y;
-      } else {
-        root.props.x = 0;
-        root.props.y = 0;
-      }
-      root.props.zIndex = 1;
-      emit('addToContainer', { containerId: hit.containerId, comp: root });
-    } else {
-      root.props.x = canvasPos.x;
-      root.props.y = canvasPos.y;
-      root.props.zIndex = getNextZIndex();
-      emit('add', root);
-    }
-
-    dropIndicator.value.show = false;
-    dropIndicator.value.containerId = null;
-    return;
-  }
-  if (hit) {
-    const container = pageStore.getComponentById(hit.containerId);
-    const layoutMode = (container?.props as any)?.layoutMode || 'manual';
-
-    const newComp = createComp(componentType, `新建${componentType}`);
-    if (layoutMode === 'manual') {
-      newComp.props.x = canvasPos.x - hit.x;
-      newComp.props.y = canvasPos.y - hit.y;
-    } else {
-      newComp.props.x = 0;
-      newComp.props.y = 0;
-    }
-    newComp.props.zIndex = 1;
-
-    history.addAction({
-      type: ActionType.ADD,
-      componentId: newComp.id,
-      data: {
-        after: newComp,
-        parentContainerId: hit.containerId
-      } as any
-    });
-
-    emit('addToContainer', { containerId: hit.containerId, comp: newComp });
-    dropIndicator.value.show = false;
-    dropIndicator.value.containerId = null;
-    return;
-  }
-
-  // 创建新组件
-  const newComp = createComp(componentType, `新建${componentType}`);
-  newComp.props.x = canvasPos.x;
-  newComp.props.y = canvasPos.y;
-  newComp.props.zIndex = getNextZIndex(); // 确保新组件有正确的zIndex
-
-  // 记录添加操作
-  history.addAction({
-    type: ActionType.ADD,
-    componentId: newComp.id,
-    data: {
-      after: newComp
-    }
-  });
-  
-  // 发出添加组件事件
-  emit('add', newComp);
-
-  dropIndicator.value.show = false;
-  dropIndicator.value.containerId = null;
-}
-
-const dropIndicator = ref<{ show: boolean; containerId: string | null; x: number; y: number; width: number; height: number }>({
-  show: false,
-  containerId: null,
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0
-});
-
-const dropIndicatorStyle = computed(() => ({
-  position: 'absolute',
-  left: `${dropIndicator.value.x}px`,
-  top: `${dropIndicator.value.y}px`,
-  width: `${dropIndicator.value.width}px`,
-  height: `${dropIndicator.value.height}px`,
-  border: '2px dashed #1890ff',
-  background: 'rgba(24, 144, 255, 0.06)',
-  pointerEvents: 'none',
-  boxSizing: 'border-box'
-} as any));
-
-function findContainerHit(canvasX: number, canvasY: number): { containerId: string; x: number; y: number; width: number; height: number } | null {
-  const candidates = getContainerHits()
-    .map((c) => ({ id: c.id, x: c.rect.x, y: c.rect.y, width: c.rect.width, height: c.rect.height, z: c.zIndex }))
-    .filter((r) => canvasX >= r.x && canvasX <= r.x + r.width && canvasY >= r.y && canvasY <= r.y + r.height)
-    .sort((a, b) => b.z - a.z)
-
-  const top = candidates[0]
-  if (!top) return null
-  return { containerId: top.id, x: top.x, y: top.y, width: top.width, height: top.height }
-}
-
-// 初始化画布居中
-function initializeCanvas() {
-  if (!wrapperRef.value) return;
-  
-  const rect = wrapperRef.value.getBoundingClientRect();
-  
-  // 使用动态画布尺寸
-  const currentCanvasWidth = canvasWidth.value;
-  const currentCanvasHeight = canvasHeight.value;
-  
-  // 计算适合视口的缩放比例，留出边距
-  const padding = 80; // 边距
-  const availableWidth = rect.width - padding * 2;
-  const availableHeight = rect.height - padding * 2;
-  
-  const scaleX = availableWidth / currentCanvasWidth;
-  const scaleY = availableHeight / currentCanvasHeight;
-  const fitScale = Math.min(scaleX, scaleY, 1); // 最大不超过100%
-  
-  // 设置缩放
-  scale.value = fitScale;
-  
-  // 计算缩放后的画布尺寸
-  const scaledWidth = currentCanvasWidth * fitScale;
-  const scaledHeight = currentCanvasHeight * fitScale;
-  
-  // 计算居中位置（画布左上角的位置）
-  const centerX = (rect.width - scaledWidth) / 2;
-  const centerY = (rect.height - scaledHeight) / 2;
-  
-  // 调试信息
-  if (DEBUG) {
-    console.log('[Board] Canvas initialization:', {
-      wrapperSize: { width: rect.width, height: rect.height },
-      canvasSize: { width: currentCanvasWidth, height: currentCanvasHeight },
-      scaledSize: { width: scaledWidth, height: scaledHeight },
-      scale: fitScale,
-      centerPosition: { x: centerX, y: centerY }
-    });
-  }
-  
-  panOffset.value = {
-    x: centerX,
-    y: centerY
-  };
-}
-
 // 生命周期钩子
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
-  window.addEventListener('keyup', handleKeyUp);
+  window.addEventListener('keyup', pointerHubStore.handlePanKeyUp);
 
   nextTick(() => {
     pointerHubStore.attach({
@@ -870,7 +519,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
-  window.removeEventListener('keyup', handleKeyUp);
+  window.removeEventListener('keyup', pointerHubStore.handlePanKeyUp);
   pointerHubStore.detach()
 });
 

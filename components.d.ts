@@ -16,6 +16,7 @@ declare module 'vue' {
     BorderProperties: typeof import('./src/components/properties/BorderProperties.vue')['default']
     BorderRadiusProperties: typeof import('./src/components/properties/BorderRadiusProperties.vue')['default']
     Button: typeof import('./src/components/comps/Button.vue')['default']
+    ComponentRenderer: typeof import('./src/components/comps/ComponentRenderer.vue')['default']
     Container: typeof import('./src/components/comps/Container.vue')['default']
     ContainerLayoutProperties: typeof import('./src/components/properties/ContainerLayoutProperties.vue')['default']
     Controls: typeof import('./src/components/layout/Controls.vue')['default']
