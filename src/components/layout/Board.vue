@@ -26,14 +26,15 @@
                  :style="contentStyle">
               <!-- 多选组件 - 放在底层但能接收事件 -->
               <MultiSelect 
+                v-if="editorStore.isDesignMode"
                 :components="props.components"
               />
 
               <!-- 拖动已有组件：600ms 激活容器拖入模式 + 影子预览 -->
-              <DropPreviewBox />
+              <DropPreviewBox v-if="editorStore.isDesignMode" />
 
               <!-- 从面板拖入新组件：虚拟落地框（保留旧逻辑） -->
-              <div v-if="dropIndicator.show" class="drop-indicator" :style="dropIndicatorStyle" />
+              <div v-if="dropIndicator.show && editorStore.isDesignMode" class="drop-indicator" :style="dropIndicatorStyle" />
               
               <!-- 组件渲染 - 提高层级 -->
               <template v-for="(comp, index) in props.components"
@@ -57,10 +58,9 @@
               </template>
               
               <!-- 其他组件保持原有层级 -->
-              <SnapLines 
-              />
+              <SnapLines v-if="editorStore.isDesignMode" />
               
-              <Controls 
+              <Controls v-if="editorStore.isDesignMode"
                 @update="handleUpdatePosition"
               />
               
@@ -82,7 +82,7 @@
     
     <!-- 右键菜单 -->
     <div 
-      v-if="contextMenu.show"
+      v-if="contextMenu.show && editorStore.isDesignMode"
       class="context-menu"
       :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
       @click.stop
@@ -148,6 +148,7 @@ import BoardToolbar from './BoardToolbar.vue';
 import { useSnaplineStore } from '../../stores/snapline';
 import { usePageStore } from '../../stores/page';
 import { useCustomComponentsStore } from '../../stores/customComponents'
+import { useEditorStore } from '../../stores/editor'
 
 import { useMessage } from 'naive-ui'
 
@@ -170,8 +171,6 @@ import {
   getRenderRepeatsForRoot,
   type RenderRepeat
 } from '../../utils/renderLoop'
-import { useEditorStore } from '../../stores/editor'
-
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLElement | null>(null);

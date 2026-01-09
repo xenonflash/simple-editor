@@ -7,6 +7,7 @@ import Board from '../components/layout/Board.vue';
 import FlowEditorModal from '../components/flow/FlowEditorModal.vue';
 import { usePageStore } from '../stores/page';
 import { useCustomComponentsStore } from '../stores/customComponents'
+import { useEditorStore } from '../stores/editor'
 import type { Comp } from '../components/comps/base';
 import type { PropSchema } from '../config/naive-ui-registry'
 import type { EventSpec } from '../types/event'
@@ -14,6 +15,7 @@ import type { EventSpec } from '../types/event'
 // 页面store
 const pageStore = usePageStore();
 const customComponentsStore = useCustomComponentsStore()
+const editorStore = useEditorStore()
 
 const isCustomEditMode = computed(() => pageStore.editorMode === 'custom-edit')
 const editingCustomDefId = ref<string | null>(null)
@@ -176,26 +178,31 @@ function handleDeleteComponent(id: string) {
       </div>
     </div>
     <div class="main">
-      <LeftPanel
-        :editingCustomDefName="editingCustomDefName"
-        :editingCustomPropsSchema="editingCustomPropsSchema"
-        :editingCustomStateSchema="editingCustomStateSchema"
-        :editingCustomEventsSchema="editingCustomEventsSchema"
-        @update-custom-props-schema="handleUpdateCustomPropsSchema"
-        @update-custom-state-schema="handleUpdateCustomStateSchema"
-        @update-custom-events-schema="handleUpdateCustomEventsSchema"
-        @open-flow-editor="handleOpenFlowEditor"
-        @edit-custom-component="handleEditCustomComponent"
-      />
-      <Board 
-             :components="components"
-              :bindingContext="customEditBindingContext"
-             @select="handleSelect"
-             @update="handleUpdate"
-             @add="handleAddComponent"
-              @addToContainer="handleAddComponentToContainer"
-             @delete="handleDeleteComponent" />
-      <PropertiesPanel :component="selectedComponent"
+      <div class="board-layer">
+        <Board 
+               :components="components"
+               :bindingContext="customEditBindingContext"
+               @select="handleSelect"
+               @update="handleUpdate"
+               @add="handleAddComponent"
+               @addToContainer="handleAddComponentToContainer"
+               @delete="handleDeleteComponent" />
+      </div>
+      <div class="panel-wrapper left-panel-wrapper" :class="{ hidden: editorStore.isPreviewMode }">
+        <LeftPanel
+          :editingCustomDefName="editingCustomDefName"
+          :editingCustomPropsSchema="editingCustomPropsSchema"
+          :editingCustomStateSchema="editingCustomStateSchema"
+          :editingCustomEventsSchema="editingCustomEventsSchema"
+          @update-custom-props-schema="handleUpdateCustomPropsSchema"
+          @update-custom-state-schema="handleUpdateCustomStateSchema"
+          @update-custom-events-schema="handleUpdateCustomEventsSchema"
+          @open-flow-editor="handleOpenFlowEditor"
+          @edit-custom-component="handleEditCustomComponent"
+        />
+      </div>
+      <div class="panel-wrapper right-panel-wrapper" :class="{ hidden: editorStore.isPreviewMode }">
+        <PropertiesPanel :component="selectedComponent"
                       :editingCustomDefId="editingCustomDefId"
                       :editingCustomDefName="editingCustomDefName"
                       :editingCustomPropsSchema="editingCustomPropsSchema"
@@ -203,6 +210,7 @@ function handleDeleteComponent(id: string) {
                       @update="handleUpdate"
                       @update-custom-props-schema="handleUpdateCustomPropsSchema"
                       @open-flow-editor="handleOpenFlowEditor" />
+      </div>
     </div>
     
     <FlowEditorModal 
@@ -247,8 +255,50 @@ function handleDeleteComponent(id: string) {
 
 .main {
   flex: 1;
-  display: flex;
+  position: relative;
   overflow: hidden;
-  min-height: 0; /* 关键：允许flex子项收缩 */
+  display: block;
+}
+
+.board-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.panel-wrapper {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  background: white;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 12px rgba(0,0,0,0.1);
+}
+
+.panel-wrapper.left-panel-wrapper {
+  left: 0;
+  width: 300px;
+  border-right: 1px solid #e5e5e5;
+  transform: translateX(0);
+}
+
+.panel-wrapper.right-panel-wrapper {
+  right: 0;
+  width: 240px;
+  border-left: 1px solid #e5e5e5;
+  transform: translateX(0);
+}
+
+.panel-wrapper.hidden {
+  pointer-events: none;
+}
+
+.panel-wrapper.left-panel-wrapper.hidden {
+  transform: translateX(-100%);
+}
+
+.panel-wrapper.right-panel-wrapper.hidden {
+  transform: translateX(100%);
 }
 </style>
