@@ -151,45 +151,6 @@
               <span class="unit">px</span>
             </div>
           </div>
-
-          <!-- 内边距 -->
-          <div class="property-row">
-            <label class="prop-label">内边距</label>
-            <div class="padding-inputs">
-              <input 
-                type="number" 
-                class="padding-input" 
-                :value="padding.top"
-                min="0"
-                @input="onPaddingChange('top', $event)"
-                placeholder="上"
-              />
-              <input 
-                type="number" 
-                class="padding-input" 
-                :value="padding.right"
-                min="0"
-                @input="onPaddingChange('right', $event)"
-                placeholder="右"
-              />
-              <input 
-                type="number" 
-                class="padding-input" 
-                :value="padding.bottom"
-                min="0"
-                @input="onPaddingChange('bottom', $event)"
-                placeholder="下"
-              />
-              <input 
-                type="number" 
-                class="padding-input" 
-                :value="padding.left"
-                min="0"
-                @input="onPaddingChange('left', $event)"
-                placeholder="左"
-              />
-            </div>
-          </div>
         </template>
       </div>
     </template>
@@ -206,7 +167,6 @@ const props = defineProps<{
   primaryAlign?: 'start' | 'center' | 'end' | 'between' | 'evenly'
   crossAlign?: 'start' | 'center' | 'end' | 'stretch'
   gap?: number
-  padding?: { top: number; right: number; bottom: number; left: number }
 }>()
 
 const emit = defineEmits<{
@@ -218,7 +178,6 @@ const direction = computed(() => props.direction || 'row')
 const primaryAlign = computed(() => props.primaryAlign || 'start')
 const crossAlign = computed(() => props.crossAlign || 'stretch')
 const gap = computed(() => props.gap ?? 8)
-const padding = computed(() => props.padding || { top: 8, right: 8, bottom: 8, left: 8 })
 
 function emitUpdate(updates: Record<string, any>) {
   emit('update', updates)
@@ -227,12 +186,6 @@ function emitUpdate(updates: Record<string, any>) {
 function onInputGap(e: Event) {
   const val = Number((e.target as HTMLInputElement).value)
   emitUpdate({ gap: isNaN(val) ? 0 : val })
-}
-
-function onPaddingChange(side: string, e: Event) {
-  const val = Number((e.target as HTMLInputElement).value)
-  const newPadding = { ...padding.value, [side]: isNaN(val) ? 0 : val }
-  emitUpdate({ padding: newPadding })
 }
 </script>
 
@@ -274,23 +227,28 @@ function onPaddingChange(side: string, e: Event) {
 
 .segmented-btn {
   flex: 1;
-  height: 26px;
+  height: 24px;
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   color: #666;
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .segmented-btn:hover {
   background: #f5f5f5;
+  color: #333;
 }
 
 .segmented-btn.active {
   background: #e6f7ff;
   color: #1890ff;
+  font-weight: 500;
 }
 
 .segmented-btn:not(:last-child) {
@@ -307,15 +265,16 @@ function onPaddingChange(side: string, e: Event) {
 .number-input {
   flex: 1;
   width: 100%;
-  height: 26px;
-  border: 1px solid #e5e5e5;
+  height: 24px;
+  border: 1px solid #d9d9d9;
   border-radius: 3px;
-  padding: 0 8px;
-  font-size: 11px;
+  padding: 0 4px;
+  font-size: 12px;
   outline: none;
   background: white;
   transition: all 0.2s;
   text-align: right;
+  color: #333;
 }
 
 .number-input:focus {
@@ -324,7 +283,7 @@ function onPaddingChange(side: string, e: Event) {
 }
 
 .unit {
-  font-size: 11px;
+  font-size: 12px;
   color: #999;
   flex-shrink: 0;
 }
@@ -337,9 +296,9 @@ function onPaddingChange(side: string, e: Event) {
 }
 
 .icon-btn {
-  width: 28px;
-  height: 26px;
-  border: 1px solid #e5e5e5;
+  width: 26px;
+  height: 24px;
+  border: 1px solid #d9d9d9;
   border-radius: 3px;
   background: #fff;
   cursor: pointer;
@@ -347,51 +306,32 @@ function onPaddingChange(side: string, e: Event) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 3px;
 }
 
 .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: #666;
+  fill: currentColor;
 }
 
 .icon-btn:hover {
-  border-color: #d9d9d9;
-  background: #fafafa;
+  border-color: #40a9ff;
+  color: #40a9ff;
+}
+
+.icon-btn:hover svg {
+  color: #40a9ff;
 }
 
 .icon-btn.active {
   background: #e6f7ff;
   border-color: #1890ff;
+  color: #1890ff;
 }
 
 .icon-btn.active svg {
   color: #1890ff;
-}
-
-.padding-inputs {
-  flex: 1;
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
-.padding-input {
-  width: 40px;
-  height: 26px;
-  border: 1px solid #e5e5e5;
-  border-radius: 3px;
-  padding: 0 4px;
-  font-size: 11px;
-  text-align: center;
-  outline: none;
-  background: white;
-  transition: all 0.2s;
-}
-
-.padding-input:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 </style>

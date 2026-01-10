@@ -63,9 +63,9 @@
           <ContainerLayoutProperties
             v-if="props.component.type === 'container'"
             :layoutMode="props.component.props.layoutMode"
-            :flexDirection="props.component.props.flexDirection"
-            :justifyContent="props.component.props.justifyContent"
-            :alignItems="props.component.props.alignItems"
+            :direction="props.component.props.direction"
+            :primaryAlign="props.component.props.primaryAlign"
+            :crossAlign="props.component.props.crossAlign"
             :gap="props.component.props.gap"
             @update="updateProps"
           />

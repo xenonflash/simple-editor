@@ -1,21 +1,33 @@
 <template>
   <div class="left-panel">
-    <n-tabs type="segment" class="main-tabs" animated>
-      <n-tab-pane name="page" tab="页面">
+    <!-- 主标签页导航 -->
+    <div class="tabs">
+      <button class="tab-button" :class="{ active: activeMainTab === 'page' }" @click="activeMainTab = 'page'">
+        页面
+      </button>
+      <button class="tab-button" :class="{ active: activeMainTab === 'components' }"
+        @click="activeMainTab = 'components'">
+        组件
+      </button>
+      <button class="tab-button" :class="{ active: activeMainTab === 'variables' }"
+        @click="activeMainTab = 'variables'">
+        {{ isCustomEditMode ? '数据' : '变量' }}
+      </button>
+      <button class="tab-button" :class="{ active: activeMainTab === 'flows' }" @click="activeMainTab = 'flows'">
+        逻辑
+      </button>
+    </div>
+
+    <!-- 标签页内容区域 -->
+    <div class="tab-content">
+      <!-- 页面 Tab -->
+      <div v-show="activeMainTab === 'page'" class="tab-pane-content">
         <div class="page-tab-content">
           <div class="page-tab-half">
             <div class="tree-content">
-              <div class="tree-title">{{ isCustomEditMode ? '子组件' : '组件树' }}</div>
-              <n-tree
-                block-line
-                draggable
-                :data="componentTreeData"
-                :selected-keys="selectedTreeKeys"
-                :multiple="true"
-                default-expand-all
-                @update:selected-keys="handleTreeSelect"
-                @drop="handleTreeDrop"
-              />
+              <div class="section-title">{{ isCustomEditMode ? '子组件' : '组件树' }}</div>
+              <n-tree block-line draggable :data="componentTreeData" :selected-keys="selectedTreeKeys" :multiple="true"
+                default-expand-all @update:selected-keys="handleTreeSelect" @drop="handleTreeDrop" />
               <div v-if="componentTreeData.length === 0" class="empty-tip">
                 暂无组件
               </div>
@@ -32,32 +44,27 @@
             </div>
           </template>
         </div>
-      </n-tab-pane>
+      </div>
 
-      <n-tab-pane name="components" tab="组件">
+      <!-- 组件 Tab -->
+      <div v-show="activeMainTab === 'components'" class="tab-pane-content">
         <div class="scroll-content">
           <n-collapse accordion v-model:expanded-names="componentsPanelExpanded">
             <n-collapse-item name="base" title="基础组件">
               <div class="component-list">
-                <div class="component-item"
-                     draggable="true"
-                     @dragstart="handleDragStart(CompType.CONTAINER)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.CONTAINER)">
                   <div class="icon">
                     <AppIcon name="box" />
                   </div>
                   <div class="name">容器</div>
                 </div>
-                <div class="component-item"
-                     draggable="true"
-                     @dragstart="handleDragStart(CompType.TEXT)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.TEXT)">
                   <div class="icon">
                     <AppIcon name="file-alt" />
                   </div>
                   <div class="name">文字</div>
                 </div>
-                <div class="component-item"
-                     draggable="true"
-                     @dragstart="handleDragStart(CompType.BUTTON)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.BUTTON)">
                   <div class="icon">
                     <AppIcon name="circle" />
                   </div>
@@ -68,11 +75,8 @@
 
             <n-collapse-item name="naive" title="Naive UI 组件">
               <div class="component-list">
-                <div v-for="item in naiveComponentRegistry"
-                     :key="item.type"
-                     class="component-item"
-                     draggable="true"
-                     @dragstart="handleDragStart(item.type)">
+                <div v-for="item in naiveComponentRegistry" :key="item.type" class="component-item" draggable="true"
+                  @dragstart="handleDragStart(item.type)">
                   <div class="icon">
                     <AppIcon :name="item.icon" />
                   </div>
@@ -83,24 +87,27 @@
 
             <n-collapse-item name="custom" title="自定义组件">
               <div class="component-list">
-                <div v-for="item in customComponentDefs"
-                     :key="item.id"
-                     class="component-item custom-item">
-                  <div class="custom-drag"
-                       draggable="true"
-                       @dragstart="handleCustomDragStart(item.id)">
+                <div v-for="item in customComponentDefs" :key="item.id" class="component-item custom-item">
+                  <div class="custom-drag" draggable="true" @dragstart="handleCustomDragStart(item.id)">
                     <div class="icon">
                       <AppIcon name="box" />
                     </div>
                     <div class="name">{{ item.name }}</div>
                   </div>
-                  <n-button size="tiny" quaternary circle class="custom-edit-btn" title="编辑组件" @click.stop="emit('edit-custom-component', item.id)">
-                    <template #icon><n-icon><Create /></n-icon></template>
+                  <n-button size="tiny" quaternary circle class="custom-edit-btn" title="编辑组件"
+                    @click.stop="emit('edit-custom-component', item.id)">
+                    <template #icon><n-icon>
+                        <Create />
+                      </n-icon></template>
                   </n-button>
-                  <n-popconfirm @positive-click="handleDeleteCustomComponent(item.id)" :positive-text="'删除'" :negative-text="'取消'">
+                  <n-popconfirm @positive-click="handleDeleteCustomComponent(item.id)" :positive-text="'删除'"
+                    :negative-text="'取消'">
                     <template #trigger>
-                      <n-button size="tiny" quaternary circle type="error" class="custom-delete-btn" title="删除组件" @click.stop>
-                        <template #icon><n-icon><Trash /></n-icon></template>
+                      <n-button size="tiny" quaternary circle type="error" class="custom-delete-btn" title="删除组件"
+                        @click.stop>
+                        <template #icon><n-icon>
+                            <Trash />
+                          </n-icon></template>
                       </n-button>
                     </template>
                     确定删除组件 {{ item.name }}?
@@ -111,13 +118,16 @@
             </n-collapse-item>
           </n-collapse>
         </div>
-      </n-tab-pane>
-      
-      <n-tab-pane name="variables" :tab="isCustomEditMode ? '数据' : '变量'">
+      </div>
+
+      <!-- 变量/数据 Tab -->
+      <div v-show="activeMainTab === 'variables'" class="tab-pane-content">
         <div v-if="!isCustomEditMode" class="variables-content">
           <div class="var-header">
-            <n-button block dashed @click="startAddVariable">
-              <template #icon><n-icon><Add /></n-icon></template>
+            <n-button block dashed size="small" @click="startAddVariable">
+              <template #icon><n-icon>
+                  <Add />
+                </n-icon></template>
               添加变量
             </n-button>
           </div>
@@ -131,12 +141,16 @@
               </div>
               <div class="var-actions">
                 <n-button size="tiny" quaternary circle @click="startEditVariable(v)">
-                  <template #icon><n-icon><Create /></n-icon></template>
+                  <template #icon><n-icon>
+                      <Create />
+                    </n-icon></template>
                 </n-button>
                 <n-popconfirm @positive-click="deleteVariable(v.name)">
                   <template #trigger>
                     <n-button size="tiny" quaternary circle type="error">
-                      <template #icon><n-icon><Trash /></n-icon></template>
+                      <template #icon><n-icon>
+                          <Trash />
+                        </n-icon></template>
                     </n-button>
                   </template>
                   确定删除变量 {{ v.name }}?
@@ -150,11 +164,29 @@
         </div>
 
         <div v-else class="variables-content">
-          <n-tabs type="segment" size="small" animated>
-            <n-tab-pane name="props" tab="Props">
+          <!-- 自定义组件数据子标签页 -->
+          <div class="sub-tabs">
+            <button class="sub-tab-button" :class="{ active: activeDataTab === 'props' }"
+              @click="activeDataTab = 'props'">
+              Props
+            </button>
+            <button class="sub-tab-button" :class="{ active: activeDataTab === 'state' }"
+              @click="activeDataTab = 'state'">
+              State
+            </button>
+            <button class="sub-tab-button" :class="{ active: activeDataTab === 'events' }"
+              @click="activeDataTab = 'events'">
+              Events
+            </button>
+          </div>
+
+          <div class="sub-tab-content">
+            <div v-show="activeDataTab === 'props'">
               <div class="var-header">
-                <n-button block dashed @click="startAddSchema('props')">
-                  <template #icon><n-icon><Add /></n-icon></template>
+                <n-button block dashed size="small" @click="startAddSchema('props')">
+                  <template #icon><n-icon>
+                      <Add />
+                    </n-icon></template>
                   添加参数
                 </n-button>
               </div>
@@ -167,12 +199,16 @@
                   </div>
                   <div class="var-actions">
                     <n-button size="tiny" quaternary circle @click.stop="startEditSchema('props', item.key)">
-                      <template #icon><n-icon><Create /></n-icon></template>
+                      <template #icon><n-icon>
+                          <Create />
+                        </n-icon></template>
                     </n-button>
                     <n-popconfirm @positive-click="removePropSchema(item.key)">
                       <template #trigger>
                         <n-button size="tiny" quaternary circle type="error" @click.stop>
-                          <template #icon><n-icon><Trash /></n-icon></template>
+                          <template #icon><n-icon>
+                              <Trash />
+                            </n-icon></template>
                         </n-button>
                       </template>
                       确定删除参数 {{ item.key }}?
@@ -180,15 +216,17 @@
                   </div>
                 </div>
                 <div v-if="propSchemaEntries.length === 0" class="empty-tip">
-                  暂未定义 Props（实例侧将不显示任何组件参数）
+                  暂未定义 Props
                 </div>
               </div>
-            </n-tab-pane>
+            </div>
 
-            <n-tab-pane name="state" tab="State">
+            <div v-show="activeDataTab === 'state'">
               <div class="var-header">
-                <n-button block dashed @click="startAddSchema('state')">
-                  <template #icon><n-icon><Add /></n-icon></template>
+                <n-button block dashed size="small" @click="startAddSchema('state')">
+                  <template #icon><n-icon>
+                      <Add />
+                    </n-icon></template>
                   添加状态
                 </n-button>
               </div>
@@ -201,12 +239,16 @@
                   </div>
                   <div class="var-actions">
                     <n-button size="tiny" quaternary circle @click.stop="startEditSchema('state', item.key)">
-                      <template #icon><n-icon><Create /></n-icon></template>
+                      <template #icon><n-icon>
+                          <Create />
+                        </n-icon></template>
                     </n-button>
                     <n-popconfirm @positive-click="removeStateSchema(item.key)">
                       <template #trigger>
                         <n-button size="tiny" quaternary circle type="error" @click.stop>
-                          <template #icon><n-icon><Trash /></n-icon></template>
+                          <template #icon><n-icon>
+                              <Trash />
+                            </n-icon></template>
                         </n-button>
                       </template>
                       确定删除状态 {{ item.key }}?
@@ -217,12 +259,14 @@
                   暂未定义 State
                 </div>
               </div>
-            </n-tab-pane>
+            </div>
 
-            <n-tab-pane name="events" tab="Events">
+            <div v-show="activeDataTab === 'events'">
               <div class="var-header">
-                <n-button block dashed @click="startAddEvent">
-                  <template #icon><n-icon><Add /></n-icon></template>
+                <n-button block dashed size="small" @click="startAddEvent">
+                  <template #icon><n-icon>
+                      <Add />
+                    </n-icon></template>
                   添加事件
                 </n-button>
               </div>
@@ -235,12 +279,16 @@
                   </div>
                   <div class="var-actions">
                     <n-button size="tiny" quaternary circle @click.stop="startEditEvent(item.key)">
-                      <template #icon><n-icon><Create /></n-icon></template>
+                      <template #icon><n-icon>
+                          <Create />
+                        </n-icon></template>
                     </n-button>
                     <n-popconfirm @positive-click="removeEventSchema(item.key)">
                       <template #trigger>
                         <n-button size="tiny" quaternary circle type="error" @click.stop>
-                          <template #icon><n-icon><Trash /></n-icon></template>
+                          <template #icon><n-icon>
+                              <Trash />
+                            </n-icon></template>
                         </n-button>
                       </template>
                       确定删除事件 {{ item.key }}?
@@ -251,36 +299,46 @@
                   暂未定义 Events
                 </div>
               </div>
-            </n-tab-pane>
-          </n-tabs>
+            </div>
+          </div>
         </div>
-      </n-tab-pane>
+      </div>
 
-      <n-tab-pane name="flows" tab="逻辑">
+      <!-- 逻辑(Flows) Tab -->
+      <div v-show="activeMainTab === 'flows'" class="tab-pane-content">
         <div class="variables-content">
           <div class="var-header">
-            <n-button block dashed @click="startAddFlow">
-              <template #icon><n-icon><Add /></n-icon></template>
+            <n-button block dashed size="small" @click="startAddFlow">
+              <template #icon><n-icon>
+                  <Add />
+                </n-icon></template>
               添加逻辑流
             </n-button>
           </div>
 
           <div class="var-list">
-            <div v-for="flow in flows" :key="flow.id" class="var-item" @click="openFlow(flow.id)" style="cursor: pointer">
+            <div v-for="flow in flows" :key="flow.id" class="var-item" @click="openFlow(flow.id)"
+              style="cursor: pointer">
               <div class="var-info">
                 <div class="var-name" style="display: flex; align-items: center; gap: 6px;">
-                  <n-icon><GitNetwork /></n-icon>
+                  <n-icon>
+                    <GitNetwork />
+                  </n-icon>
                   {{ flow.name }}
                 </div>
               </div>
               <div class="var-actions">
                 <n-button size="tiny" quaternary circle @click.stop="openFlow(flow.id)">
-                  <template #icon><n-icon><Create /></n-icon></template>
+                  <template #icon><n-icon>
+                      <Create />
+                    </n-icon></template>
                 </n-button>
                 <n-popconfirm @positive-click="deleteFlow(flow.id)">
                   <template #trigger>
                     <n-button size="tiny" quaternary circle type="error" @click.stop>
-                      <template #icon><n-icon><Trash /></n-icon></template>
+                      <template #icon><n-icon>
+                          <Trash />
+                        </n-icon></template>
                     </n-button>
                   </template>
                   确定删除逻辑流 {{ flow.name }}?
@@ -292,8 +350,8 @@
             </div>
           </div>
         </div>
-      </n-tab-pane>
-    </n-tabs>
+      </div>
+    </div>
 
     <!-- 变量编辑弹窗 -->
     <n-modal v-model:show="showModal" preset="dialog" :title="editingName ? '编辑变量' : '添加变量'">
@@ -328,7 +386,8 @@
     </n-modal>
 
     <!-- Schema 编辑弹窗（Props/State） -->
-    <n-modal v-model:show="showSchemaModal" preset="dialog" :title="schemaEditingKey ? '编辑' + (schemaEditingKind === 'props' ? '参数' : '状态') : '添加' + (schemaEditingKind === 'props' ? '参数' : '状态')">
+    <n-modal v-model:show="showSchemaModal" preset="dialog"
+      :title="schemaEditingKey ? '编辑' + (schemaEditingKind === 'props' ? '参数' : '状态') : '添加' + (schemaEditingKind === 'props' ? '参数' : '状态')">
       <n-form size="small" label-placement="left" label-width="70">
         <n-form-item label="Key">
           <n-input v-model:value="schemaForm.key" :disabled="!!schemaEditingKey" placeholder="例如: title" />
@@ -343,6 +402,7 @@
           <n-input v-model:value="schemaForm.defaultValue" type="textarea" :rows="3" placeholder="文本/JSON" />
         </n-form-item>
       </n-form>
+
       <template #action>
         <n-button size="small" @click="showSchemaModal = false">取消</n-button>
         <n-button size="small" type="primary" @click="saveSchema">保存</n-button>
@@ -367,7 +427,8 @@
           ]" />
         </n-form-item>
         <n-form-item label="参数定义" path="args">
-          <n-input v-model:value="eventForm.args" type="textarea" :rows="3" placeholder='JSON格式，例如: {"value": "number"}' />
+          <n-input v-model:value="eventForm.args" type="textarea" :rows="3"
+            placeholder='JSON格式，例如: {"value": "number"}' />
         </n-form-item>
       </n-form>
       <template #action>
@@ -382,12 +443,12 @@
 <script setup lang="ts">
 import { h, type VNode, ref, computed } from 'vue'
 import {
-  NTabs, NTabPane, NButton, NInput, NSelect, NIcon, NTag, NPopconfirm,
+  NButton, NInput, NSelect, NIcon, NTag, NPopconfirm,
   NTree, NCollapse, NCollapseItem, NForm, NFormItem, NModal,
   type TreeOption, type TreeDropInfo, useMessage
 } from 'naive-ui';
-import { 
-  Add, Trash, Create, Save, Close, GitNetwork, 
+import {
+  Add, Trash, Create, Save, Close, GitNetwork,
   CubeOutline, CubeSharp, Text, RadioButtonOn
 } from '@vicons/ionicons5';
 import AppIcon from '../icons/AppIcon.vue'
@@ -427,6 +488,10 @@ const variables = computed(() => currentPage.value?.variables || []);
 const flows = computed(() => currentPage.value?.flows || []);
 
 const componentsPanelExpanded = ref<string | null>('base');
+
+const activeMainTab = ref('page')
+const activeDataTab = ref('props')
+
 
 customComponentsStore.initializeFromLocalStorage()
 
@@ -625,7 +690,7 @@ function removeEventSchema(key: string) {
     const pages = getAllPagesSafe()
     const currentPageId = pageStore.currentPageId
     const currentPage = pages.find((p) => p.id === currentPageId)
-    
+
     if (currentPage && currentPage.components) {
       const usedInComponents: string[] = []
       const stack = [...currentPage.components]
@@ -633,14 +698,14 @@ function removeEventSchema(key: string) {
         const comp = stack.pop()
         if (comp.events) {
           for (const evtName in comp.events) {
-             const handlers = comp.events[evtName]
-             if (Array.isArray(handlers)) {
-               for (const h of handlers) {
-                 if (h.actions && h.actions.some((a: any) => a.type === 'emitEvent' && a.params?.eventName === key)) {
-                   usedInComponents.push(comp.name || comp.id)
-                 }
-               }
-             }
+            const handlers = comp.events[evtName]
+            if (Array.isArray(handlers)) {
+              for (const h of handlers) {
+                if (h.actions && h.actions.some((a: any) => a.type === 'emitEvent' && a.params?.eventName === key)) {
+                  usedInComponents.push(comp.name || comp.id)
+                }
+              }
+            }
           }
         }
         if (comp.children) stack.push(...comp.children)
@@ -671,11 +736,11 @@ function saveEvent() {
 
   let parsedArgs: Record<string, string> | undefined = undefined
   try {
-     const raw = eventForm.value.args.trim()
-     if (raw) parsedArgs = JSON.parse(raw)
+    const raw = eventForm.value.args.trim()
+    if (raw) parsedArgs = JSON.parse(raw)
   } catch (e) {
-     message.error('参数定义必须是合法的 JSON (例如 {"value": "number"})')
-     return
+    message.error('参数定义必须是合法的 JSON (例如 {"value": "number"})')
+    return
   }
 
   const next: Record<string, EventSpec> = { ...cur }
@@ -686,10 +751,10 @@ function saveEvent() {
     args: parsedArgs
   }
   delete (next[key] as any).id // clean up
-  
+
   // if editing key changed, delete old
   if (editingKey && editingKey !== key) {
-     delete next[editingKey]
+    delete next[editingKey]
   }
 
   emit('update-custom-events-schema', next)
@@ -799,7 +864,7 @@ function getComponentIcon(comp: Comp) {
   if (comp.custom?.defId) {
     return () => h(NIcon, { color: '#18a058' }, { default: () => h(CubeSharp) })
   }
-  
+
   // 基础组件
   if (comp.type === CompType.CONTAINER) {
     return () => h(NIcon, null, { default: () => h(CubeOutline) })
@@ -825,13 +890,13 @@ function getComponentIcon(comp: Comp) {
 function buildTreeNode(comp: Comp): ComponentTreeNode {
   const isCustom = !!comp.custom?.defId
   // 规则3：自定义组件不需要渲染内部子组件
-  const children = isCustom 
-    ? [] 
+  const children = isCustom
+    ? []
     : (comp.children || []).map(buildTreeNode)
 
   const loopItems = resolveLoopItemsForTree(comp)
   const loopChildren: ComponentTreeNode[] = []
-  
+
   // 只有非自定义组件才在树里显示循环展开（防止树太乱），或者也可以都显示
   // 这里暂时保持原逻辑，如果自定义组件有循环绑定，也显示出来
   if (loopItems) {
@@ -873,7 +938,7 @@ function buildTreeNode(comp: Comp): ComponentTreeNode {
   if (children.length > 0) mergedChildren.push(...children)
   if (mergedChildren.length > 0) node.children = mergedChildren
   else node.isLeaf = true // 没有子节点标记为叶子
-  
+
   return node
 }
 
@@ -887,7 +952,7 @@ const selectedTreeKeys = computed(() => pageStore.selectedComps.map((c) => c.id)
 function handleTreeSelect(keys: Array<string | number>, options: Array<TreeOption | null>) {
   if (!keys.length) return
   const lastKey = String(keys[keys.length - 1])
-  
+
   // 如果是循环组/项等辅助节点，不处理选中
   if (lastKey.includes('__loop__')) return
 
@@ -903,7 +968,7 @@ function handleTreeDrop(info: TreeDropInfo) {
 
   // 移动组件
   // dropPosition: 'before' | 'inside' | 'after'
-  
+
   // 1. 如果是 inside，则是移动到目标容器内
   if (dropPosition === 'inside') {
     // 检查目标是否是容器
@@ -918,7 +983,7 @@ function handleTreeDrop(info: TreeDropInfo) {
   // 首先找到目标的父节点 ID
   const parentId = pageStore.findParentContainerId(targetKey)
   const targetComp = (node as any).comp as Comp
-  
+
   // 需要计算目标在父容器中的 index
   let siblings: Comp[] = []
   if (!parentId) {
@@ -927,7 +992,7 @@ function handleTreeDrop(info: TreeDropInfo) {
     const parent = pageStore.getComponentById(parentId)
     siblings = parent?.children || []
   }
-  
+
   let targetIndex = siblings.findIndex(c => c.id === targetKey)
   if (targetIndex === -1) return
 
@@ -964,10 +1029,10 @@ function createFlow() {
     ],
     edges: []
   };
-  
+
   const updatedFlows = [...flows.value, newFlow];
   pageStore.updatePageProperties(currentPage.value!.id, { flows: updatedFlows });
-  
+
   showFlowModal.value = false;
   emit('open-flow-editor', newFlow.id);
 }
@@ -1039,7 +1104,7 @@ function cancelEdit() {
 
 function saveVariable() {
   if (!formValue.value.name) return;
-  
+
   const variableToSave: PageVariable = {
     ...formValue.value,
     defaultValue: parseDefaultValue(formValue.value.defaultValue, formValue.value.type)
@@ -1075,46 +1140,171 @@ function parseDefaultValue(value: string, type: string) {
 
 <style scoped>
 .left-panel {
-  width: 300px;
-  height: 100vh; /* 使用视口高度 */
-  max-height: 100vh; /* 限制最大高度 */
-  border-right: 1px solid #f0f0f0;
-  background: #fafafa;
+  width: 280px;
+  height: 100%;
+  border-right: 1px solid #e5e5e5;
+  background: #fff;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 防止溢出 */
+}
+
+/* Main Tabs */
+.tabs {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 0 16px;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.tab-button {
+  height: 100%;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  position: relative;
+  font-weight: 500;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tab-button:hover {
+  color: #000;
+}
+
+.tab-button.active {
+  color: #000;
+  font-weight: 600;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #000;
+  border-radius: 2px 2px 0 0;
+}
+
+/* Tab Content Area */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-pane-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Scrollable Areas */
+.scroll-content,
+.tree-content,
+.variables-content,
+.page-manager-wrap {
+  flex: 1;
+  overflow-y: overlay;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
+}
+
+.tree-content {
+  padding: 16px;
 }
 
 .scroll-content {
+  padding: 0;
+  /* Accordion inside handles padding */
+}
+
+/* Sub Tabs (Data/Variables) */
+.sub-tabs {
+  display: flex;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 4px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.sub-tab-button {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.sub-tab-button:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.sub-tab-button.active {
+  color: #000;
+  background: #f0f0f0;
+  font-weight: 500;
+}
+
+.sub-tab-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
-}
-/* 自定义滚动条样式 */
-.scroll-content::-webkit-scrollbar,
-.variables-content::-webkit-scrollbar,
-.tree-content::-webkit-scrollbar {
-  width: 6px;
+  padding: 12px 16px;
 }
 
-.scroll-content::-webkit-scrollbar-thumb,
-.variables-content::-webkit-scrollbar-thumb,
-.tree-content::-webkit-scrollbar-thumb {
-  background-color: #e0e0e0;
-  border-radius: 3px;
+/* Component Tree Section */
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
 }
 
-.scroll-content::-webkit-scrollbar-track,
-.variables-content::-webkit-scrollbar-track,
-.tree-content::-webkit-scrollbar-track {
-  background-color: transparent;
+/* Layout for Page Tab */
+.page-tab-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
+.page-tab-half {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-tab-divider {
+  height: 1px;
+  background: #e5e5e5;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* Component Grid */
 .component-list {
-  padding: 0 12px;
+  padding: 12px 16px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 12px;
 }
 
 .component-item {
@@ -1122,21 +1312,20 @@ function parseDefaultValue(value: string, type: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px 4px;
+  padding: 12px 8px;
   border-radius: 6px;
   cursor: grab;
   transition: all 0.2s ease;
-  background: white;
-  border: 1px solid #e8e8e8;
-  min-height: 56px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  min-height: 64px;
 }
 
 .component-item:hover {
-  background: #f5f5f5;
-  border-color: #1890ff;
-  color: #1890ff;
+  background: #fff;
+  border-color: #000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transform: translateY(-1px);
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
 }
 
 .component-item:active {
@@ -1157,6 +1346,8 @@ function parseDefaultValue(value: string, type: string) {
   cursor: default;
   flex-direction: row;
   justify-content: space-between;
+  padding: 8px 12px;
+  min-height: 48px;
 }
 
 .custom-drag {
@@ -1176,13 +1367,6 @@ function parseDefaultValue(value: string, type: string) {
 .custom-edit-btn {
   font-size: 16px;
   color: #666;
-}
-
-.tree-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
 }
 
 .data-header {
@@ -1268,95 +1452,40 @@ function parseDefaultValue(value: string, type: string) {
   text-align: center;
 }
 
-/* Tabs Styles */
-.main-tabs {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.n-tabs-pane-wrapper) {
-  flex: 1;
-  overflow: hidden;
-}
-
-:deep(.n-tab-pane) {
-  height: 100%;
-  padding: 0 !important;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-/* Variables Styles */
+/* Variable/Data Items */
 .variables-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.tree-content {
-  height: 100%;
-  overflow-y: auto;
-  padding: 12px;
-}
-
-.page-tab-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.page-tab-half {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.page-tab-divider {
-  height: 1px;
-  background: #f0f0f0;
-}
-
-.page-manager-wrap {
-  height: 100%;
-  overflow: hidden;
+  padding: 16px;
 }
 
 .var-header {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
-.var-form {
-  background: #f9f9f9;
-  padding: 12px;
-  border-radius: 4px;
-  border: 1px solid #eee;
+.var-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* List style */
 }
 
 .var-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s;
-}
-
-.var-item:hover {
-  background: #f5f5f5;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .var-info {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
 }
 
 .var-name {
-  font-weight: 500;
   font-size: 13px;
+  font-weight: 500;
+  color: #333;
 }
 
 .var-actions {
@@ -1373,7 +1502,23 @@ function parseDefaultValue(value: string, type: string) {
 .empty-tip {
   text-align: center;
   color: #999;
-  padding: 20px 0;
+  font-size: 12px;
+  padding: 24px 0;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
   font-size: 12px;
 }
 </style>
