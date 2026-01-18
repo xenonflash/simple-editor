@@ -219,7 +219,16 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function getComponentCanvasPosition(componentId: string): { x: number; y: number } | null {
-    const comp = findComponentInTree(componentId)
+    let comp = findComponentInTree(componentId)
+    
+    // 如果找不到组件，尝试解析是否为循环实例
+    if (!comp) {
+      const loopInfo = parseLoopInstanceId(componentId)
+      if (loopInfo.index !== null) {
+        comp = findComponentInTree(loopInfo.sourceId)
+      }
+    }
+    
     if (!comp) return null
 
     // 仅当组件处在非 absolute 的容器布局（default/flex 等）链路里时，props.x/y 无法可靠反映真实位置，才使用 DOM 测量值。

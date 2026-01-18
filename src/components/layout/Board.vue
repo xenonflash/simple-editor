@@ -159,7 +159,6 @@ import DropPreviewBox from './DropPreviewBox.vue'
 import { DROP_PREVIEW_STORE_KEY, useDropPreviewStore, type ContainerHit } from '../../stores/dropPreview'
 import { createCoordinateHelper, COORDINATE_HELPER_KEY } from '../../utils/coordinateHelper'
 import { usePointerHubStore } from '../../stores/pointerHub'
-import { getLoopSourceId } from '../../utils/loopInstance'
 import { useBoardContextMenu } from './useBoardContextMenu'
 import { useBoardZoom } from './useBoardZoom'
 import { useBoardDragDrop } from './useBoardDragDrop'
@@ -171,6 +170,7 @@ import {
   getRenderRepeatsForRoot,
   type RenderRepeat
 } from '../../utils/renderLoop'
+import { getLoopSourceId, parseLoopInstanceId } from '../../utils/loopInstance'
 // 引用
 const wrapperRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLElement | null>(null);
@@ -471,9 +471,40 @@ function handleUpdatePosition(id: string, updates: Record<string, any>) {
   // 预览模式下不处理更新
   if (editorStore.isPreviewMode) return
   
-  const normalizedId = getLoopSourceId(id)
+  const parsed = parseLoopInstanceId(id)
+  const normalizedId = parsed.sourceId
   const comp = pageStore.getComponentById(normalizedId);
   if (!comp) return;
+
+  // 如果是循环实例，将更新存储到 loopOverrides 中，而不是源组件属性
+  if (parsed.index !== null && parsed.index > 0) {
+    const raw: any = comp.props || {}
+    const currentOverrides = raw.loopOverrides || {}
+    const indexStr = String(parsed.index)
+    
+    // 获取之前的覆盖值或默认计算值
+    // 注意：这里我们只保存 difference? 不，保存绝对值最简单。
+    // 但是，getRenderRepeats 计算出的 currentVal 是 默认值(source + offset) 或 覆盖值。
+    // updates 包含的是 new value。
+    // 所以直接保存 new value 即可。
+    
+    const nextOverrides = {
+      ...currentOverrides,
+      [indexStr]: {
+        ...(currentOverrides[indexStr] || {}),
+        ...updates
+      }
+    }
+    
+    pageStore.updateComponentInCurrentPage({
+      ...comp,
+      props: {
+        ...raw,
+        loopOverrides: nextOverrides
+      }
+    })
+    return
+  }
 
   const oldProps = { ...comp.props };
   const newProps = { ...oldProps, ...updates };

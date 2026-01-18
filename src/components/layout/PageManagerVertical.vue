@@ -210,10 +210,12 @@ document.addEventListener('click', () => {
 }
 
 .panel-title {
-  padding: 20px 16px 16px;
-  font-size: 16px;
+  padding: 12px 16px 8px;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -222,7 +224,7 @@ document.addEventListener('click', () => {
 .add-page-btn {
   width: 24px;
   height: 24px;
-  border: 1px dashed #d0d0d0;
+  border: 1px solid transparent;
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
@@ -230,22 +232,21 @@ document.addEventListener('click', () => {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  color: #666;
+  color: #64748b;
 }
 
 .add-page-btn:hover {
-  border-color: #1890ff;
-  background: #f0f8ff;
-  color: #1890ff;
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 .page-list {
-  padding: 30px 16px;
+  padding: 8px 16px 16px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #e0e0e0 transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .page-list::-webkit-scrollbar {
@@ -269,24 +270,25 @@ document.addEventListener('click', () => {
   justify-content: space-between;
   padding: 12px;
   margin-bottom: 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: white;
-  border: 1px solid #e8e8e8;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
 .page-item:hover {
-  background: #f5f5f5;
-  border-color: #d9d9d9;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
 }
 
 .page-item.active {
-  background: #e6f7ff;
-  border-color: #1890ff;
-  box-shadow: 0 2px 4px rgba(24, 144, 255, 0.2);
+  background: #fff;
+  border-left: 3px solid #3b82f6;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.15);
+  padding-left: 9px;
 }
 
 .page-info {

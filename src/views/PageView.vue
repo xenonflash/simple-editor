@@ -62,7 +62,18 @@ function handleOpenFlowEditor(flowId?: string) {
 
 // 计算属性 - 直接从 store 获取
 const components = computed(() => pageStore.currentComponents);
-const selectedComponent = computed(() => pageStore.primarySelectedComp);
+const selectedComponent = computed(() => {
+  const comp = pageStore.primarySelectedComp
+  if (comp) return comp
+
+  // 支持选中循环渲染的实例，属性面板显示源组件
+  const ids = pageStore.selectedCompIds
+  if (ids.length === 1 && ids[0] && String(ids[0]).includes('__loop__')) {
+    const realId = String(ids[0]).split('__loop__')[0]
+    return pageStore.getComponentById(realId)
+  }
+  return null
+});
 
 // 初始化
 onMounted(() => {

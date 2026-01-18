@@ -18,7 +18,7 @@
               :offsetY="rep.offsetY"
               :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
-              @update="(payload) => emit('update', payload)"
+              @update="onChildUpdate"
             />
           </div>
         </template>
@@ -107,6 +107,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update', payload: { id: string; updates: Partial<CompProps> }): void
 }>()
+
+// 代理更新事件
+function onChildUpdate(payload: { id: string; updates: Partial<CompProps> }) {
+  emit('update', payload)
+}
 
 const pageStore = usePageStore()
 const effectiveLayoutMode = computed(() => props.layoutMode || 'manual')

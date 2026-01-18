@@ -803,22 +803,32 @@ type ComponentTreeNode = {
 }
 
 function resolveLoopItemsForTree(comp: Comp): any[] | null {
-  const binding = comp.bindings?.['loopData']
-  if (!binding) return null
-  const bindingRef = resolveBindingRef(binding, {
-    getVarValue: (name: string) => pageStore.getVariableValue(name),
-    getCompProp: (compId: string, prop: string) => pageStore.getComponentById(compId)?.props?.[prop],
-    context: undefined
-  })
-  if (!bindingRef) return null
-
-  // 1. 如果是变量绑定 (var:xxx)
-  if (bindingRef.type === 'var') {
-    const raw = pageStore.getVariableValue(bindingRef.varName)
-    if (Array.isArray(raw)) return raw
-    return null // 变量不是数组，或者未定义
+  const binding = comp.bindings?.['loopItems']
+  let loopItems = null
+  
+  if (binding) {
+    const bindingRef = resolveBindingRef(binding, {
+      getVarValue: (name: string) => pageStore.getVariableValue(name),
+      getCompProp: (compId: string, prop: string) => pageStore.getComponentById(compId)?.props?.[prop],
+      context: undefined
+    })
+    
+    // 1. 如果是变量绑定 (var:xxx)
+    if (bindingRef && bindingRef.type === 'var') {
+      const raw = pageStore.getVariableValue(bindingRef.varName)
+      if (Array.isArray(raw)) loopItems = raw
+    }
   }
-  // 暂时不支持从其他组件属性获取循环数据 (TODO)
+
+  // 如果有数据，返回数据
+  if (loopItems) return loopItems
+
+  // 如果没有数据，检查 loopCount mock
+  const loopCount = (comp.props as any)?.loopCount ?? 1
+  if (loopCount > 1) {
+    return Array.from({length: loopCount}, (_, i) => ({ _mockIndex: i }))
+  }
+
   return null
 }
 
@@ -905,8 +915,8 @@ function buildTreeNode(comp: Comp): ComponentTreeNode {
       loopChildren.push({
         key: `${comp.id}__loop__${i}`,
         label: `#${i} ${previewLoopItem(loopItems[i])}`,
-        isLeaf: true,
-        disabled: true // 循环生成的项在树里只读
+        isLeaf: true
+        // Allow selection
       })
     }
     if (loopItems.length > max) {
@@ -953,8 +963,16 @@ function handleTreeSelect(keys: Array<string | number>, options: Array<TreeOptio
   if (!keys.length) return
   const lastKey = String(keys[keys.length - 1])
 
-  // 如果是循环组/项等辅助节点，不处理选中
-  if (lastKey.includes('__loop__')) return
+  // 如果是循环组辅助节点，不处理选中
+  if (lastKey.includes('__loop__group')) return
+
+  // 修正：renderLoop 中第0个实例使用的是原始ID，树节点使用的是 suffix
+  if (lastKey.endsWith('__loop__0')) {
+    const realId = lastKey.split('__loop__0')[0]
+    // 确保是该组件的 loop__0 而不是名字恰好结尾
+    // 简单的判断：包含 __loop__
+    if (realId) lastKey = realId
+  }
 
   pageStore.selectComponent(lastKey)
 }
@@ -1142,55 +1160,58 @@ function parseDefaultValue(value: string, type: string) {
 .left-panel {
   width: 280px;
   height: 100%;
-  border-right: 1px solid #e5e5e5;
-  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
   display: flex;
   flex-direction: column;
 }
 
-/* Main Tabs */
+/* Main Tabs - Segmented Control Style */
 .tabs {
-  height: 48px;
+  margin: 12px 12px 8px;
+  padding: 4px;
+  background: #e2e8f0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 0 16px;
-  gap: 20px;
+  gap: 0;
   flex-shrink: 0;
+  height: auto;
+  border-bottom: none;
 }
 
 .tab-button {
-  height: 100%;
+  flex: 1;
+  height: 32px;
   border: none;
   background: none;
   font-size: 13px;
-  color: #555;
+  color: #64748b;
   cursor: pointer;
   position: relative;
   font-weight: 500;
   padding: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .tab-button:hover {
-  color: #000;
+  color: #334155;
+  background: rgba(255,255,255,0.5);
 }
 
 .tab-button.active {
-  color: #000;
+  color: #0f172a;
+  background: #fff;
   font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .tab-button.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: #000;
-  border-radius: 2px 2px 0 0;
+  display: none;
 }
 
 /* Tab Content Area */
@@ -1312,34 +1333,45 @@ function parseDefaultValue(value: string, type: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 8px;
-  border-radius: 6px;
+  padding: 16px 8px;
+  border-radius: 8px;
   cursor: grab;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: #fff;
-  border: 1px solid #e5e5e5;
-  min-height: 64px;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.06);
+  min-height: 80px;
 }
 
 .component-item:hover {
   background: #fff;
-  border-color: #000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
 }
 
 .component-item:active {
   cursor: grabbing;
   transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .icon {
-  width: 24px;
-  height: 24px;
-  margin-bottom: 4px;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.component-item:hover .icon {
+  background: #eff6ff;
+  color: #3b82f6;
+  transform: scale(1.05);
 }
 
 .custom-item {
@@ -1347,13 +1379,20 @@ function parseDefaultValue(value: string, type: string) {
   flex-direction: row;
   justify-content: space-between;
   padding: 8px 12px;
-  min-height: 48px;
+  min-height: 56px;
+}
+
+.custom-item .icon {
+  margin-bottom: 0;
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
 }
 
 .custom-drag {
   display: flex;
   align-items: center;
-  gap: 8px;
+  /* gap: 8px; Removed gap since we use margin on icon */
   flex: 1;
   min-width: 0;
   cursor: grab;

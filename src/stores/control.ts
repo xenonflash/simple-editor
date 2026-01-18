@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import type { Comp } from '../components/comps/base'
 import { usePageStore } from './page'
 import { CompType } from '../types/component'
+import { parseLoopInstanceId } from '../utils/loopInstance'
+import { LOOP_OFFSET_STEP } from '../utils/renderLoop'
 
 export enum HandleDir {
   TOP_LEFT = 'top-left',
@@ -125,6 +127,63 @@ function getComponentActualSize(comp: Comp): { width: number; height: number } {
   return { width, height }
 }
 
+// 获取 DOM 元素相对于画布内容区 (.canvas-content) 的位置和尺寸
+function getDomInfo(id: string): { x: number; y: number; width: number; height: number } | null {
+  // 优先尝试 ID，但因为 Vue props 可能会消费 id 导致未绑定到 DOM，所以也尝试 data-comp-id
+  let el = document.getElementById(id)
+  if (!el) {
+    el = document.querySelector(`[data-comp-id="${id}"]`) as HTMLElement
+  }
+  
+  if (!el) return null
+
+  const rect = el.getBoundingClientRect()
+  
+  // 查找画布内容容器
+  // 我们通过向上遍历找到 class 为 canvas-content 的祖先
+  let container = el.offsetParent as HTMLElement
+  while (container && !container.classList.contains('canvas-content')) {
+    container = container.offsetParent as HTMLElement
+  }
+  
+  // 如果找不到 canvas-content（可能未挂载或结构不同），尝试使用通用的 .canvas-content 查询
+  // 注意：这假设页面上只有一个活动的编辑器画布
+  if (!container) {
+    container = document.querySelector('.canvas-content') as HTMLElement
+  }
+  
+  if (!container) return null
+
+  const containerRect = container.getBoundingClientRect()
+  
+  // 计算缩放比例 (假设容器无旋转)
+  // 通过检查元素当前的offsetWidth与rect.width的关系？
+  // 不，更可靠的是直接用 rect 差值除以当前的全局 scale。
+  // 但是这里我们没有 scale 变量。
+  // 幸好：Controls 组件和 render 出来的组件都在同一个缩放容器 (.canvas-wrapper) 下的 (.canvas-content) 中。
+  // 所以它们处于相同的 transform context。
+  // 如果 Controls 和 组件 都是 .canvas-content 的子元素（Controls 使用 absolute 定位），
+  // 那么我们只需要它们在 .canvas-content 坐标系下的偏移。
+  
+  // offsetLeft/Top 的问题是它包含父级的边框等，且受 position 影响。
+  // getBoundingClientRect 是视口坐标。
+  // (elRect.x - containerRect.x) 是两者在屏幕上的像素距离（包含缩放）。
+  // 这个距离 = 原始距离 * scale。
+  // 所以我们需要 scale。
+  
+  // 尝试反推 scale: container 的 rect.width / offsetWidth
+  const scaleX = containerRect.width / container.offsetWidth
+  // 避免除以0
+  const scale = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1
+
+  return {
+    x: (rect.left - containerRect.left) / scale,
+    y: (rect.top - containerRect.top) / scale,
+    width: rect.width / scale,
+    height: rect.height / scale
+  }
+}
+
 export const useControlStore = defineStore('control', () => {
   const pageStore = usePageStore()
   
@@ -134,10 +193,60 @@ export const useControlStore = defineStore('control', () => {
     const result: ControlPoint[] = []
     
     selectedComps.forEach(comp => {
-      const { width, height } = getComponentActualSize(comp)
-      const pos = pageStore.getComponentCanvasPosition(comp.id)
-      const x = pos?.x ?? (comp.props.x || 0)
-      const y = pos?.y ?? (comp.props.y || 0)
+      // 优先尝试使用 DOM 测量值（解决 Flex/Flow 布局及循环实例定位问题）
+      const domInfo = getDomInfo(comp.id)
+      
+      let width, height, x, y
+      
+      if (domInfo) {
+        width = domInfo.width
+        height = domInfo.height
+        x = domInfo.x
+        y = domInfo.y
+      } else {
+        // 降级回退到 Props 计算逻辑
+        const size = getComponentActualSize(comp)
+        width = size.width
+        height = size.height
+        
+        const pos = pageStore.getComponentCanvasPosition(comp.id)
+        x = pos?.x ?? (comp.props.x || 0)
+        y = pos?.y ?? (comp.props.y || 0)
+
+        // 手动计算循环实例的偏移
+        // ... (旧逻辑保留作为 fallback)
+        const loopInfo = parseLoopInstanceId(comp.id)
+        if (loopInfo.index !== null && loopInfo.index > 0) {
+           // 源组件的局部坐标
+          const sourceLocalX = Number(comp.props.x) || 0
+          const sourceLocalY = Number(comp.props.y) || 0
+          
+          let instanceLocalX = sourceLocalX
+          let instanceLocalY = sourceLocalY
+          
+          const indexStr = String(loopInfo.index)
+          const overrides = (comp.props as any).loopOverrides?.[indexStr]
+          const hasOverrideX = overrides && Object.prototype.hasOwnProperty.call(overrides, 'x')
+          const hasOverrideY = overrides && Object.prototype.hasOwnProperty.call(overrides, 'y')
+          
+          const defaultOffset = loopInfo.index * LOOP_OFFSET_STEP
+          
+          if (hasOverrideX) {
+            instanceLocalX = Number(overrides.x)
+          } else {
+            instanceLocalX += defaultOffset
+          }
+
+          if (hasOverrideY) {
+            instanceLocalY = Number(overrides.y)
+          } else {
+            instanceLocalY += defaultOffset
+          }
+          
+          x = x - sourceLocalX + instanceLocalX
+          y = y - sourceLocalY + instanceLocalY
+        }
+      }
       
       // 1. 选中边框
       result.push({

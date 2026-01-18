@@ -4,7 +4,7 @@
  */
 import { usePageStore } from '@/stores/page'
 import { useEditorStore } from '@/stores/editor'
-import { resolveBindingRef } from '@/utils/bindingRef'
+import { resolveBindingRef, parseBindingRef } from '@/utils/bindingRef'
 import type { Comp } from '@/components/comps/base'
 
 // ==================== 类型定义 ====================
@@ -121,15 +121,61 @@ export function getLoopItems(
   resolver: BindingResolver
 ): any[] | null {
   const raw: any = getRenderedProps(comp, context, resolver)
-  const enabled = raw?.loopEnabled === true
-  if (!enabled) return null
   const items = raw?.loopItems
-  return Array.isArray(items) ? items : []
+  
+  if (Array.isArray(items)) {
+    return items
+  }
+  
+  // 如果没有绑定数据，使用 loopCount 生成 mock 数据 (默认为1，1视为非循环)
+  // 如果 loopCount > 1，生成 mock 数据
+  const loopCount = typeof raw?.loopCount === 'number' ? raw.loopCount : 1
+  if (loopCount !== 1) {
+    if (loopCount <= 0) return [] // 0 不渲染
+    
+    // 生成智能 Mock 数据
+    const mockTemplate: Record<string, any> = { _mockIndex: 0 }
+    
+    // 扫描组件绑定，查找 loop.item.XXX 的引用，自动生成 Mock 字段
+    if (comp.bindings) {
+      for (const [key, ref] of Object.entries(comp.bindings)) {
+        if (!ref) continue
+        // 解析绑定: var:loop.item.name -> name
+        const parsed = parseBindingRef(ref)
+        if (parsed.kind === 'var' && parsed.varName?.startsWith('loop.item.')) {
+          const fieldPath = parsed.varName.slice('loop.item.'.length)
+          // 简单的路径支持 (只取第一段，不支持深层嵌套mock)
+          const field = fieldPath.split('.')[0]
+          if (field) {
+            mockTemplate[field] = `Mock ${field}`
+          }
+        }
+      }
+    }
+
+    return Array.from({length: loopCount}, (_, i) => ({
+      ...mockTemplate,
+      _mockIndex: i,
+      // 也可以让某些字段带上索引
+      ...(Object.keys(mockTemplate).reduce((acc, k) => {
+        if (typeof mockTemplate[k] === 'string' && mockTemplate[k].startsWith('Mock ')) {
+          acc[k] = `${mockTemplate[k]} ${i + 1}`
+        }
+        return acc
+      }, {} as Record<string, any>))
+    }))
+  }
+
+  // 兼容旧属性: 仅当明确启用了且 loopCount 没接管时 (这里 loopCount=1)
+  // 但我们希望 loopCount=1 且 loopEnabled=true 且无 item 时 -> 返回 null (单例)
+  // 保持与 loopCount=1 一致
+  
+  return null
 }
 
 // ==================== 循环渲染核心 ====================
 
-const LOOP_OFFSET_STEP = 16
+export const LOOP_OFFSET_STEP = 16
 
 export type RenderRepeatsOptions = {
   comp: Comp
@@ -147,8 +193,7 @@ export type RenderRepeatsOptions = {
  */
 export function getRenderRepeats(options: RenderRepeatsOptions): RenderRepeat[] {
   const { comp, index, baseContext, resolver, isRoot = false } = options
-  const editorStore = useEditorStore()
-  
+
   const visible = isVisibleByRenderControl(comp, baseContext, resolver)
   const zIndex = isRoot
     ? ((comp.props as any)?.zIndex || index + 1000)
@@ -171,33 +216,58 @@ export function getRenderRepeats(options: RenderRepeatsOptions): RenderRepeat[] 
     }]
   }
 
-  // ⭐ 设计模式：只渲染第一个实例，简化编辑体验
-  const renderItems = editorStore.isDesignMode ? items.slice(0, 1) : items
+  // 渲染所有实例 (设计模式下也显示全部)
+  const renderItems = items
 
   return renderItems.map((item, i) => {
-    // 设计模式下 i 总是 0，无 offset；预览模式下正常 offset
-    const actualIndex = editorStore.isDesignMode ? 0 : i
+    const actualIndex = i
     const instanceId = actualIndex === 0 ? comp.id : `${comp.id}__loop__${actualIndex}`
-    const delta = actualIndex <= 0 ? 0 : actualIndex * LOOP_OFFSET_STEP
+    // 计算默认偏移
+    const defaultOffset = actualIndex <= 0 ? 0 : actualIndex * LOOP_OFFSET_STEP
+    
+    // 检查是否有属性覆盖 (loopOverrides)
+    const overrides = (comp.props as any)?.loopOverrides?.[String(actualIndex)] || {}
+    const hasOverrideX = Object.prototype.hasOwnProperty.call(overrides, 'x')
+    const hasOverrideY = Object.prototype.hasOwnProperty.call(overrides, 'y')
+
+    // 基础坐标 (源组件坐标)
+    const rawX: any = (comp.props as any)?.x
+    const rawY: any = (comp.props as any)?.y
+    const baseX = Number(rawX) || 0
+    const baseY = Number(rawY) || 0
+
+    // 最终坐标：优先使用 override，否则使用 base + defaultOffset
+    const finalX = hasOverrideX ? Number(overrides.x) : (baseX + defaultOffset)
+    const finalY = hasOverrideY ? Number(overrides.y) : (baseY + defaultOffset)
 
     let instanceComp: Comp = actualIndex === 0 ? comp : { ...comp, id: instanceId }
     
-    // NaiveWrapper 的定位依赖 comp.props.x/y，需要写入 offset
-    if (delta !== 0 && typeof comp.type === 'string' && comp.type.startsWith('n-')) {
-      const rawX: any = (comp.props as any)?.x
-      const rawY: any = (comp.props as any)?.y
-      const baseX = typeof rawX === 'number' ? rawX : Number(rawX)
-      const baseY = typeof rawY === 'number' ? rawY : Number(rawY)
-      instanceComp = {
+    // 应用 override props
+    instanceComp = {
         ...instanceComp,
         props: {
-          ...(comp.props || {}),
-          x: (Number.isFinite(baseX) ? baseX : 0) + delta,
-          y: (Number.isFinite(baseY) ? baseY : 0) + delta
+            ...(comp.props || {}),
+            ...overrides,
+            // 确保坐标正确覆盖
+            x: finalX,
+            y: finalY
         }
-      }
     }
-
+    
+    // 对于 NaiveWrapper 以外的组件，Renderer 也会读取 props.x/y。
+    // 但是现在的逻辑里，Renderer 处理 NaiveWrapper 以外的组件时，会叠加 rep.offsetX。
+    // 如果我们已经在这里计算了 finalX/finalY 并写入了 props.x/y，
+    // 那么 rep.offsetX 应该是 0 (因为偏移已经包含在 props.x 里了)，
+    // 或者我们保持 props.x 为 base，只通过 offset 控制？
+    //
+    // RenderLoop 返回的 RenderRepeat 包含 { offsetX, offsetY }。
+    // Container/Board 使用 ComponentRenderer，传入 offsetX。
+    // ComponentRenderer 计算 computedProps: x = rendered.x + offsetX。
+    // 
+    // 所以：
+    // 如果我们把 finalX 写在 instanceComp.props.x，那么 offsetX 应该设为 0。
+    // 只有这样，拖拽后保存的绝对坐标才能正确显示，且不会被重复加 offset。
+    
     return {
       key: instanceId,
       sourceId: comp.id,
@@ -206,8 +276,8 @@ export function getRenderRepeats(options: RenderRepeatsOptions): RenderRepeat[] 
       bindingContext: mergeBindingContext(baseContext, { loop: { item, index: actualIndex } }),
       visible,
       zIndex,
-      offsetX: delta,
-      offsetY: delta
+      offsetX: 0, // 坐标已经合并到 props 中，不再依赖外部 offset
+      offsetY: 0
     }
   })
 }

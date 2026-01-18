@@ -52,22 +52,24 @@
           </n-popover>
         </div>
 
-        <!-- 启用循环渲染 -->
+        <!-- 渲染数量 -->
         <div class="property-row">
           <div class="prop-label">
-            <span class="label-text">启用循环渲染</span>
+            <span class="label-text">渲染数量</span>
           </div>
           <div class="input-wrapper">
-            <div class="checkbox-wrapper">
-              <input type="checkbox"
-                     :checked="loopEnabledValue"
-                     @change="updateProps({ loopEnabled: ($event.target as HTMLInputElement).checked })" />
-            </div>
+             <n-input-number 
+               :value="localLoopCount" 
+               :min="0"
+               size="small"
+               placeholder="1"
+               @update:value="handleUpdateLoopCount"
+             />
           </div>
         </div>
 
-        <!-- 绑定循环数据 -->
-        <div v-if="loopEnabledValue" class="property-row">
+        <!-- 循环数据 -->
+        <div class="property-row">
           <div class="prop-label">
             <span class="label-text">循环数据</span>
             <span v-if="props.loopItemsBinding" class="bind-badge">
@@ -129,7 +131,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { NButton, NIcon, NPopover, NSelect } from 'naive-ui';
+import { NButton, NIcon, NPopover, NSelect, NInputNumber } from 'naive-ui';
 import { Link, LinkOutline } from '@vicons/ionicons5';
 import PropertySection from './PropertySection.vue';
 import VariablePanel from '../flow/VariablePanel.vue';
@@ -141,6 +143,7 @@ const props = withDefaults(
   defineProps<{
     renderVisible?: boolean | any;
     loopEnabled?: boolean | any;
+    loopCount?: number;
     renderVisibleBinding?: string;
     loopItemsBinding?: string;
     loopValidationMessage?: string;
@@ -150,6 +153,7 @@ const props = withDefaults(
   {
     renderVisible: true,
     loopEnabled: false,
+    loopCount: 1,
     renderVisibleBinding: '',
     loopItemsBinding: '',
     loopValidationMessage: '',
@@ -170,10 +174,17 @@ const renderVisibleValue = computed({
   set: (value: boolean) => updateProps({ renderVisible: value })
 });
 
-const loopEnabledValue = computed({
-  get: () => props.loopEnabled === true,
-  set: (value: boolean) => updateProps({ loopEnabled: value })
+const localLoopCount = ref(typeof props.loopCount === 'number' ? props.loopCount : 1);
+
+watch(() => props.loopCount, (val) => {
+  localLoopCount.value = typeof val === 'number' ? val : 1;
 });
+
+function handleUpdateLoopCount(v: number | null) {
+  const val = v ?? 0;
+  localLoopCount.value = val;
+  updateProps({ loopCount: val });
+}
 
 // 数组变量选项
 const arrayVariableOptions = computed(() => {
