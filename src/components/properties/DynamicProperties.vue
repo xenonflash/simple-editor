@@ -85,7 +85,10 @@
               tip="点击变量直接绑定"
               select-mode="value"
               confirmable
-              @select="(p) => p.value && handleBindPick(String(key), p.value)"
+              :allow-create="isCustomEditMode"
+              :allow-two-way="isCustomEditMode"
+              @select="(p) => p.value && handleBindPick(String(key), p.value, p.twoWay)"
+              @create-prop="handleCreateProp"
               @cancel="openKey = null"
             />
           </n-popover>
@@ -178,7 +181,10 @@
           tip="点击变量直接绑定"
           select-mode="value"
           confirmable
-          @select="(p) => p.value && handleBindPick(String(key), p.value)"
+          :allow-create="isCustomEditMode"
+          :allow-two-way="isCustomEditMode"
+          @select="(p) => p.value && handleBindPick(String(key), p.value, p.twoWay)"
+          @create-prop="handleCreateProp"
           @cancel="openKey = null"
         />
       </n-popover>
@@ -208,6 +214,7 @@ const props = withDefaults(
     loopAvailable?: boolean;
     loopItemSample?: any;
     title?: string;
+    isCustomEditMode?: boolean;
   }>(),
   {
     bindings: () => ({}),
@@ -216,11 +223,12 @@ const props = withDefaults(
     customPropsLabel: undefined,
     loopAvailable: false,
     loopItemSample: undefined,
-    title: undefined
+    title: undefined,
+    isCustomEditMode: false
   }
 );
 
-const emit = defineEmits(['update:modelValue', 'change', 'update:bindings']);
+const emit = defineEmits(['update:modelValue', 'change', 'update:bindings', 'create-prop']);
 const pageStore = usePageStore();
 
 const openKey = ref<string | null>(null)
@@ -247,16 +255,30 @@ function updateJsonValue(key: string, value: string) {
   }
 }
 
-function handleBindPick(key: string, value: string) {
+function handleBindPick(key: string, value: string, twoWay?: boolean) {
   if (value === '__unbind__') {
     emit('update:bindings', { [key]: null })
   } else {
-    emit('update:bindings', { [key]: value })
+    // Check if user requested two-way binding
+    // Usually only applicable if binding to a custom prop ('props.xxx')
+    let finalValue = value
+    if (twoWay) {
+        // Use prefix convention
+        finalValue = `v-model:${value.replace(/^ctx:/, '')}`
+    }
+    emit('update:bindings', { [key]: finalValue })
   }
   openKey.value = null
 }
 
+function handleCreateProp(payload: any) {
+    emit('create-prop', payload)
+}
+
 function formatBindingDisplay(binding: string): string {
+  if (binding.startsWith('v-model:')) {
+    return '🔄 ' + binding.replace('v-model:', '')
+  }
   return formatBindingRefDisplay(binding, {
     getComponentLabel: (componentId) => {
       const comp = pageStore.currentPage?.components?.find(c => c.id === componentId)

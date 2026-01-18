@@ -65,7 +65,15 @@ export function useBoardDragDrop(options: {
 
     const customComponentId = e.dataTransfer?.getData('customComponentId') || ''
     const componentType = e.dataTransfer?.getData('componentType') as CompType
-    if (!customComponentId && !componentType) {
+
+    // Check if types indicate a valid drag (since getData is restricted in dragover)
+    let hasValidType = false
+    if (e.dataTransfer?.types) {
+      const types = Array.from(e.dataTransfer.types).map(t => t.toLowerCase())
+      hasValidType = types.includes('customcomponentid') || types.includes('componenttype')
+    }
+
+    if (!customComponentId && !componentType && !hasValidType) {
       dropIndicator.value.show = false
       dropIndicator.value.containerId = null
       return

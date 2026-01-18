@@ -166,6 +166,7 @@ import { actionRegistry } from '../../config/actions';
 import { getNaiveConfig } from '../../config/naive-ui-registry';
 import { atomConfigs } from '../comps/atomConfig';
 import { usePageStore } from '../../stores/page';
+import { useCustomComponentsStore } from '../../stores/customComponents';
 import type { Comp, CompEventAction, CompEvent } from '../comps/base';
 import type { PageFlow } from '../../types/page';
 import type { EventSpec } from '../../types/event';
@@ -182,6 +183,7 @@ const emit = defineEmits<{
 }>();
 
 const pageStore = usePageStore();
+const customComponentsStore = useCustomComponentsStore();
 
 // Modal State
 const showActionModal = ref(false);
@@ -196,17 +198,33 @@ const flows = computed(() => (props.currentPage?.flows as PageFlow[]) || []);
 
 // 支持的事件
 const supportedEvents = computed(() => {
-  const naiveConfig = getNaiveConfig(props.component.type);
-  if (naiveConfig && naiveConfig.events) {
-    return naiveConfig.events;
-  }
-  
-  const atomConfig = atomConfigs[props.component.type];
-  if (atomConfig && atomConfig.events) {
-    return atomConfig.events;
+  const list: any[] = [];
+
+  // 1. 自定义组件实例：读取 eventsSchema
+  if (props.component.custom?.defId) {
+    const def = customComponentsStore.getById(props.component.custom.defId)
+    // 如果存在 edit schema 且当前是在编辑对应组件（ID匹配），则使用 edit schema？
+    // 这里简单起见，只要有 def 且有 eventsSchema 就展示
+    if (def?.eventsSchema) {
+      const customEvents = Object.entries(def.eventsSchema).map(([key, spec]) => ({
+        name: key,
+        label: spec.label || key
+      }))
+      list.push(...customEvents)
+    }
   }
 
-  return [];
+  const naiveConfig = getNaiveConfig(props.component.type);
+  if (naiveConfig && naiveConfig.events) {
+    list.push(...naiveConfig.events);
+  } else {
+    const atomConfig = atomConfigs[props.component.type];
+    if (atomConfig && atomConfig.events) {
+      list.push(...atomConfig.events);
+    }
+  }
+
+  return list;
 });
 
 function getEventBindCount(eventName: string): number {

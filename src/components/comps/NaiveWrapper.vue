@@ -161,7 +161,8 @@ const effectiveProps = computed(() => {
   if (props.comp.bindings) {
     Object.entries(props.comp.bindings).forEach(([propName, bindingRef]) => {
       if (typeof bindingRef !== 'string' || !bindingRef) return;
-      rawProps[propName] = resolveBindingRef(bindingRef, {
+      const realRef = bindingRef.startsWith('v-model:') ? bindingRef.substring(8) : bindingRef
+      rawProps[propName] = resolveBindingRef(realRef, {
         getVarValue: (name) => pageStore.getVariableValue(name),
         getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
         context: props.bindingContext

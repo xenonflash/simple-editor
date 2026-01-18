@@ -9,6 +9,7 @@ export type VariableTreeNode = {
   snippet?: string
   value?: string
   children?: VariableTreeNode[]
+  isList?: boolean // 标记是否为列表/数组类型
 }
 
 export type BuildPageVariableTreeOptions = {
@@ -84,8 +85,9 @@ function buildCustomPropsTree(customProps: Record<string, any>, basePath: string
     const v = customProps[k]
     const nextPath = `${basePath}.${k}`
     const nodeKey = `${keyPrefix}-${k}`
+    const isList = Array.isArray(v)
 
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
+    if (v && typeof v === 'object' && !isList) {
       const children = buildCustomPropsTree(v, nextPath, nodeKey)
       return {
         label: `${k} = ${previewValue(v)}`,
@@ -100,7 +102,8 @@ function buildCustomPropsTree(customProps: Record<string, any>, basePath: string
       key: nodeKey,
       isLeaf: true,
       desc: '自定义组件 props',
-      value: `ctx:${nextPath}`
+      value: `ctx:${nextPath}`,
+      isList
     }
   })
 }
@@ -111,8 +114,9 @@ function buildCtxObjectTree(obj: Record<string, any>, basePath: string, keyPrefi
     const v = obj[k]
     const nextPath = `${basePath}.${k}`
     const nodeKey = `${keyPrefix}-${k}`
+    const isList = Array.isArray(v)
 
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
+    if (v && typeof v === 'object' && !isList) {
       const children = buildCtxObjectTree(v, nextPath, nodeKey, desc)
       return {
         label: `${k} = ${previewValue(v)}`,
@@ -127,7 +131,8 @@ function buildCtxObjectTree(obj: Record<string, any>, basePath: string, keyPrefi
       key: nodeKey,
       isLeaf: true,
       desc,
-      value: `ctx:${nextPath}`
+      value: `ctx:${nextPath}`,
+      isList
     }
   })
 }
@@ -270,7 +275,8 @@ export function buildPageVariableTree(pageStore: ReturnType<typeof usePageStore>
     key: `page-var-${v.name}`,
     isLeaf: true,
     desc: '页面变量',
-    value: `var:${v.name}`
+    value: `var:${v.name}`,
+    isList: v.type === 'array'
   }))
 
   const components: VariableTreeNode[] = (pageStore.currentPage?.components || []).map((c) => {

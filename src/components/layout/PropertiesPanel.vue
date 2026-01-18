@@ -38,8 +38,10 @@
             :propsSchema="customDef.propsSchema || {}"
             :loopAvailable="loopContextInfo.available"
             :loopItemSample="loopContextInfo.itemSample"
+            :isCustomEditMode="isCustomEditMode"
             @change="updateCustomInstanceProps"
             @update:bindings="updateCustomInstanceBindings"
+            @create-prop="handleCreateProp"
           />
 
           <!-- 组件信息 -->
@@ -82,8 +84,10 @@
             :loopAvailable="loopContextInfo.available"
             :loopItemSample="loopContextInfo.itemSample"
             :propsSchema="naiveConfig.propsSchema"
+            :isCustomEditMode="isCustomEditMode"
             @change="updateProps"
             @update:bindings="updateBindings"
+            @create-prop="handleCreateProp"
           />
 
           <SpacingProperties v-bind="props.component.props"
@@ -161,13 +165,31 @@
       <div class="empty-icon">🎨</div>
       <p>暂无内容</p>
       <small>创建页面或添加组件开始编辑</small>
-     </div>
-   </div>
+    </div>
+
+    <!-- 快速绑定弹窗 -->
+    <n-modal v-model:show="showAutoBindModal" preset="dialog" title="快速绑定组件属性" style="width: 500px">
+      <div v-if="customMeta && customDef" class="auto-bind-content">
+        <p style="margin-bottom: 12px; font-size: 13px; color: #666;">
+          已绑定循环数据，可以在此快速将组件属性绑定到 item 字段。
+        </p>
+        <DynamicProperties
+          :modelValue="customMeta.props"
+          :bindings="customMeta.bindings"
+          :propsSchema="customDef.propsSchema || {}"
+          :loopAvailable="true"
+          :loopItemSample="showAutoBindModal ? (manualLoopItemSample || loopContextInfo.itemSample) : loopContextInfo.itemSample"
+          @change="updateCustomInstanceProps"
+          @update:bindings="updateCustomInstanceBindings"
+        />
+      </div>
+    </n-modal>
+  </div>
  </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { NButton, NIcon, NCheckbox, NPopover, NSelect } from 'naive-ui';
+import { NButton, NIcon, NCheckbox, NPopover, NSelect, NModal } from 'naive-ui';
 import { GitNetwork, Link, LinkOutline } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import ContainerLayoutProperties from '../properties/ContainerLayoutProperties.vue';
@@ -217,7 +239,8 @@ const editingDef = computed(() => {
 
 const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);
-
+const showAutoBindModal = ref(false);
+const manualLoopItemSample = ref<any>(undefined);
 
 // 渲染配置绑定更新
 function updateRenderBindings(key: string, value: string | null) {
@@ -233,6 +256,24 @@ function updateRenderBindings(key: string, value: string | null) {
     type: props.component.type,
     bindings: newBindings
   })
+
+  // 如果绑定了循环数据，且是自定义组件，自动弹出属性绑定框
+  if (key === 'loopItems' && value && customMeta.value) {
+    // 主动解析一次 sample，因为此时 props 还没更新回传，computed loopContextInfo 拿不到新绑定
+    const resolved = resolveBindingRef(value, {
+      getVarValue: (name) => pageStore.getVariableValue(name),
+      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
+      context: bindingContextForValidation.value
+    })
+
+    if (Array.isArray(resolved) && resolved.length > 0) {
+      manualLoopItemSample.value = resolved[0]
+    } else {
+      manualLoopItemSample.value = undefined
+    }
+
+    showAutoBindModal.value = true
+  }
 }
 
 const customMeta = computed(() => {
@@ -428,6 +469,24 @@ function updateCustomInstanceBindings(updates: Record<string, string | null>) {
       bindings: next
     }
   } as any)
+}
+
+function handleCreateProp(payload: { name: string; type: string; defaultValue: any }) {
+  if (!isCustomEditMode.value || !props.editingCustomPropsSchema) return
+  
+  const next = { ...props.editingCustomPropsSchema }
+  if (next[payload.name]) {
+    console.warn('Prop already exists:', payload.name)
+    return
+  }
+
+  next[payload.name] = {
+    label: payload.name,
+    type: payload.type as any,
+    default: payload.defaultValue
+  }
+  
+  emit('update-custom-props-schema', next)
 }
 
 // 更新属性

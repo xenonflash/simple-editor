@@ -52,19 +52,19 @@
           <n-collapse accordion v-model:expanded-names="componentsPanelExpanded">
             <n-collapse-item name="base" title="基础组件">
               <div class="component-list">
-                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.CONTAINER)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.CONTAINER, $event)">
                   <div class="icon">
                     <AppIcon name="box" />
                   </div>
                   <div class="name">容器</div>
                 </div>
-                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.TEXT)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.TEXT, $event)">
                   <div class="icon">
                     <AppIcon name="file-alt" />
                   </div>
                   <div class="name">文字</div>
                 </div>
-                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.BUTTON)">
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.BUTTON, $event)">
                   <div class="icon">
                     <AppIcon name="circle" />
                   </div>
@@ -76,7 +76,7 @@
             <n-collapse-item name="naive" title="Naive UI 组件">
               <div class="component-list">
                 <div v-for="item in naiveComponentRegistry" :key="item.type" class="component-item" draggable="true"
-                  @dragstart="handleDragStart(item.type)">
+                  @dragstart="handleDragStart(item.type, $event)">
                   <div class="icon">
                     <AppIcon :name="item.icon" />
                   </div>
@@ -88,7 +88,7 @@
             <n-collapse-item name="custom" title="自定义组件">
               <div class="component-list">
                 <div v-for="item in customComponentDefs" :key="item.id" class="component-item custom-item">
-                  <div class="custom-drag" draggable="true" @dragstart="handleCustomDragStart(item.id)">
+                  <div class="custom-drag" draggable="true" @dragstart="handleCustomDragStart(item.id, $event)">
                     <div class="icon">
                       <AppIcon name="box" />
                     </div>
@@ -1079,20 +1079,20 @@ const typeOptions = [
   { label: '对象', value: 'object' }
 ];
 
-function handleDragStart(type: CompType) {
+function handleDragStart(type: CompType, event?: DragEvent) {
   // 设置拖拽数据
-  const event = window.event as DragEvent;
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('componentType', type);
-    event.dataTransfer.effectAllowed = 'copy';
+  const e = event || (window.event as DragEvent);
+  if (e && e.dataTransfer) {
+    e.dataTransfer.setData('componentType', type);
+    e.dataTransfer.effectAllowed = 'copy';
   }
 }
 
-function handleCustomDragStart(customComponentId: string) {
-  const event = window.event as DragEvent
-  if (event.dataTransfer) {
-    event.dataTransfer.setData('customComponentId', customComponentId)
-    event.dataTransfer.effectAllowed = 'copy'
+function handleCustomDragStart(customComponentId: string, event?: DragEvent) {
+  const e = event || (window.event as DragEvent);
+  if (e && e.dataTransfer) {
+    e.dataTransfer.setData('customComponentId', customComponentId)
+    e.dataTransfer.effectAllowed = 'copy'
   }
 }
 

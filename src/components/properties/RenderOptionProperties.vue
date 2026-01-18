@@ -111,8 +111,8 @@
               </n-button>
             </template>
             <VariablePanel
-              :data="pageVariableTree"
-              tip="点击变量直接绑定"
+              :data="renderLoopBindingTree"
+              tip="点击变量直接绑定（只显示数组类型）"
               select-mode="value"
               confirmable
               @select="(p) => p.value && handleRenderBindPick('loopItems', p.value)"
@@ -185,6 +185,31 @@ function handleUpdateLoopCount(v: number | null) {
   localLoopCount.value = val;
   updateProps({ loopCount: val });
 }
+
+// 递归过滤变量树，只保留数组类型的节点（或其祖先）
+function filterTreeForArrays(nodes: VariableTreeNode[]): VariableTreeNode[] {
+  return nodes.map((node) => {
+    // 保留"取消绑定"选项
+    if (node.value === '__unbind__') return node
+    
+    // 如果节点本身被标记为列表，保留
+    if (node.isList) return node
+
+    // 如果有子节点，递归检查
+    if (node.children && node.children.length > 0) {
+      const filteredChildren = filterTreeForArrays(node.children)
+      if (filteredChildren.length > 0) {
+        return { ...node, children: filteredChildren }
+      }
+    }
+    
+    return null
+  }).filter(Boolean) as VariableTreeNode[]
+}
+
+const renderLoopBindingTree = computed(() => {
+  return filterTreeForArrays(props.pageVariableTree)
+})
 
 // 数组变量选项
 const arrayVariableOptions = computed(() => {

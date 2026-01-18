@@ -61,7 +61,8 @@ export function getCustomPropsBindingContext(
   if (hasBindings) {
     for (const [k, ref] of Object.entries(bindings)) {
       if (typeof ref !== 'string' || !ref) continue
-      effectiveProps[k] = resolveBindingRef(ref, {
+      const realRef = ref.startsWith('v-model:') ? ref.substring(8) : ref
+      effectiveProps[k] = resolveBindingRef(realRef, {
         ...resolver,
         context: baseContext
       })
@@ -88,7 +89,8 @@ export function getRenderedProps(
   if (comp.bindings) {
     for (const [propName, bindingRef] of Object.entries(comp.bindings)) {
       if (typeof bindingRef !== 'string' || !bindingRef) continue
-      raw[propName] = resolveBindingRef(bindingRef, {
+      const realRef = bindingRef.startsWith('v-model:') ? bindingRef.substring(8) : bindingRef
+      raw[propName] = resolveBindingRef(realRef, {
         ...resolver,
         context
       })
