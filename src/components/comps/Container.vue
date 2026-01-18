@@ -157,7 +157,11 @@ const coord = inject(COORDINATE_HELPER_KEY, null)
 
 const rootRef = ref<HTMLElement | null>(null)
 
-useMeasuredSize({ elementRef: rootRef, componentId: props.id })
+useMeasuredSize({ 
+  elementRef: rootRef, 
+  componentId: props.id,
+  bindingContext: props.bindingContext
+})
 
 function measureDescendantPositions() {
   if (!coord) return
@@ -166,6 +170,11 @@ function measureDescendantPositions() {
 
   // 仅在非 absolute 布局下需要依赖 DOM 布局位置
   if (effectiveLayoutMode.value === 'manual') return
+
+  // 关键修复：如果容器自身是循环实例副本（index > 0），则不负责测量子组件。
+  // 否则会导致多个容器副本同时尝试更新同一个源子组件的位置（因为子组件ID相同），引起无限循环和页面卡死。
+  const selfInfo = parseLoopInstanceId(props.id)
+  if (selfInfo.index !== null && selfInfo.index > 0) return
 
   const nodes = Array.from(el.querySelectorAll('[data-comp-id]')) as HTMLElement[]
   const patches: Comp[] = []

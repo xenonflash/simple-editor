@@ -474,13 +474,34 @@ export const usePageStore = defineStore('page', () => {
   }
 
   function selectComponents(componentIds: string[]) {
-    const normalized = editorMode.value === 'page'
-      ? componentIds.map((id) => findCustomComponentInstanceRootId(getLoopSourceId(id)) || getLoopSourceId(id))
-      : componentIds.map((id) => getLoopSourceId(id))
+    const components: Comp[] = []
+    const isPageMode = editorMode.value === 'page'
 
-    const components = normalized
-      .map((id) => findComponentInTree(id))
-      .filter(Boolean) as Comp[]
+    for (const rawId of componentIds) {
+      const info = parseLoopInstanceId(rawId)
+      let treeId = info.sourceId
+
+      if (isPageMode) {
+        const rootId = findCustomComponentInstanceRootId(treeId)
+        if (rootId) {
+          treeId = rootId
+        }
+      }
+
+      const component = findComponentInTree(treeId)
+      if (!component) continue
+
+      // loop 实例：允许以 instanceId 进行单独选中
+      // 如果发生了 custom instance root 提升，则只能选根，不能选 loop 实例
+      const selectedId = (info.index !== null && treeId === info.sourceId) ? rawId : treeId
+      
+      // 去重
+      if (components.some(c => c.id === selectedId)) continue
+
+      const selectedComp = selectedId === treeId ? component : ({ ...component, id: selectedId } as Comp)
+      components.push(selectedComp)
+    }
+
     selectedComps.value = components;
   }
 
@@ -1083,12 +1104,16 @@ export const usePageStore = defineStore('page', () => {
   function updateComponentInCurrentPage(component: Comp): boolean {
     if (!currentPage.value) return false;
 
+    // 兼容 loop 实例更新：将 ID 还原为 sourceId
+    const treeId = getLoopSourceId(component.id)
+    const updatePayload = { ...component, id: treeId }
+
     const res = mapComponentTree(currentPage.value.components, (c) => {
-      if (c.id !== component.id) return c
+      if (c.id !== treeId) return c
       return {
         ...c,
-        ...component,
-        props: { ...(c.props || {}), ...(component.props || {}) }
+        ...updatePayload,
+        props: { ...(c.props || {}), ...(updatePayload.props || {}) }
       }
     })
     if (!res.changed) return false
@@ -1113,7 +1138,8 @@ export const usePageStore = defineStore('page', () => {
     const updates = new Map<string, Comp>()
     for (const c of components) {
       if (!c || !c.id) continue
-      updates.set(c.id, c)
+      const treeId = getLoopSourceId(c.id)
+      updates.set(treeId, { ...c, id: treeId })
     }
     if (updates.size === 0) return false
 

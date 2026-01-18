@@ -7,6 +7,7 @@ export interface UseMeasuredSizeOptions {
   elementRef: Ref<HTMLElement | null>
   componentId: string
   threshold?: number
+  bindingContext?: any
 }
 
 /**
@@ -25,6 +26,9 @@ export function useMeasuredSize(options: UseMeasuredSizeOptions) {
     // loop 实例会同时渲染多份 DOM，不能把所有实例的测量值都写回同一个源组件，否则会抖动。
     // 约定：仅 index=0 的实例写回源组件，其他实例跳过。
     if (info.index !== null && info.index !== 0) return
+    
+    // Check for nested loop context
+    if (options.bindingContext?.loop?.index > 0) return
 
     const comp = pageStore.getComponentById(info.sourceId)
     if (!comp) return

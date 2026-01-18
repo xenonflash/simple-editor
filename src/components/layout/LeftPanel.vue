@@ -26,7 +26,7 @@
           <div class="page-tab-half">
             <div class="tree-content">
               <div class="section-title">{{ isCustomEditMode ? '子组件' : '组件树' }}</div>
-              <n-tree block-line draggable :data="componentTreeData" :selected-keys="selectedTreeKeys" :multiple="true"
+              <n-tree block-line draggable :data="componentTreeData" :selected-keys="selectedTreeKeys"
                 default-expand-all @update:selected-keys="handleTreeSelect" @drop="handleTreeDrop" />
               <div v-if="componentTreeData.length === 0" class="empty-tip">
                 暂无组件
@@ -449,7 +449,7 @@ import {
 } from 'naive-ui';
 import {
   Add, Trash, Create, Save, Close, GitNetwork,
-  CubeOutline, CubeSharp, Text, RadioButtonOn
+  CubeOutline, CubeSharp, Text, RadioButtonOn, Repeat
 } from '@vicons/ionicons5';
 import AppIcon from '../icons/AppIcon.vue'
 import { CompType } from '../comps/base';
@@ -936,14 +936,18 @@ function buildTreeNode(comp: Comp): ComponentTreeNode {
     comp
   }
 
+  // 显示循环信息：图标+数量
+  if (loopItems && loopItems.length > 0) {
+    node.suffix = () => h('span', { style: 'display: inline-flex; align-items: center; color: #18a058; font-size: 12px; margin-left: 4px;' }, [
+      h(NIcon, { size: 14, style: 'margin-right: 2px;' }, { default: () => h(Repeat) }),
+      loopItems.length
+    ])
+  }
+
   const mergedChildren: ComponentTreeNode[] = []
   if (loopChildren.length > 0) {
-    mergedChildren.push({
-      key: `${comp.id}__loop__group`,
-      label: `循环实例（${loopItems?.length ?? 0}）`,
-      children: loopChildren,
-      disabled: true
-    })
+    // 平铺显示循环实例，去掉父节点
+    mergedChildren.push(...loopChildren)
   }
   if (children.length > 0) mergedChildren.push(...children)
   if (mergedChildren.length > 0) node.children = mergedChildren
@@ -960,21 +964,15 @@ const componentTreeData = computed<ComponentTreeNode[]>(() => {
 const selectedTreeKeys = computed(() => pageStore.selectedComps.map((c) => c.id))
 
 function handleTreeSelect(keys: Array<string | number>, options: Array<TreeOption | null>) {
-  if (!keys.length) return
-  const lastKey = String(keys[keys.length - 1])
+  // 支持多选，并将选中的 keys 传递给 store
+  // 此时 keys 可能包含 loop 实例 ID (componentId__loop__N)
+  const validKeys = keys.map(String).filter(k => !k.includes('__loop__group')) // 兼容旧逻辑防御
 
-  // 如果是循环组辅助节点，不处理选中
-  if (lastKey.includes('__loop__group')) return
-
-  // 修正：renderLoop 中第0个实例使用的是原始ID，树节点使用的是 suffix
-  if (lastKey.endsWith('__loop__0')) {
-    const realId = lastKey.split('__loop__0')[0]
-    // 确保是该组件的 loop__0 而不是名字恰好结尾
-    // 简单的判断：包含 __loop__
-    if (realId) lastKey = realId
+  if (validKeys.length === 0) {
+    pageStore.selectComponent(null)
+  } else {
+    pageStore.selectComponents(validKeys)
   }
-
-  pageStore.selectComponent(lastKey)
 }
 
 function handleTreeDrop(info: TreeDropInfo) {

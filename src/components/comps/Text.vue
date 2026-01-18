@@ -65,6 +65,7 @@ const props = defineProps<{
   marginBottom?: number;
   marginLeft?: number;
   locked?: boolean;
+  bindingContext?: any;
 }>();
 
 const emit = defineEmits<{
@@ -75,7 +76,11 @@ const pageStore = usePageStore()
 
 const rootRef = ref<HTMLElement | null>(null)
 
-useMeasuredSize({ elementRef: rootRef, componentId: props.id })
+useMeasuredSize({ 
+  elementRef: rootRef, 
+  componentId: props.id,
+  bindingContext: props.bindingContext
+})
 
 // 计算是否选中
 const isSelected = computed(() => {

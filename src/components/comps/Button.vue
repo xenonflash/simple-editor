@@ -44,6 +44,7 @@ const props = defineProps<{
   scale?: number;
   inFlowLayout?: boolean;
   locked?: boolean;
+  bindingContext?: any;
 }>();
 
 const emit = defineEmits<{
@@ -54,7 +55,11 @@ const pageStore = usePageStore()
 
 const buttonRef = ref<HTMLElement | null>(null)
 
-useMeasuredSize({ elementRef: buttonRef, componentId: props.id })
+useMeasuredSize({ 
+  elementRef: buttonRef, 
+  componentId: props.id,
+  bindingContext: props.bindingContext
+})
 
 // 计算组件尺寸
 const componentSize = computed(() => {
