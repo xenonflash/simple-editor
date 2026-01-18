@@ -45,7 +45,8 @@ import {
   faAngleRight,
   faShoePrints,
   faFolder,
-  faImages
+  faImages,
+  faListUl
 } from '@fortawesome/free-solid-svg-icons'
 
 // 图标库初始化
@@ -95,7 +96,8 @@ export function initIcons() {
     faAngleRight,
     faShoePrints,
     faFolder,
-    faImages
+    faImages,
+    faListUl
   )
 }
 

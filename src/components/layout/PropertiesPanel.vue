@@ -72,6 +72,15 @@
             @update="updateProps"
           />
 
+          <ListProperties
+            v-if="props.component.type === 'list'"
+            :dataSource="props.component.props.dataSource"
+            :direction="props.component.props.direction"
+            :gap="props.component.props.gap"
+            :mockCount="props.component.props.mockCount"
+            @update="updateProps"
+          />
+
           <!-- Naive UI组件属性（只在没有自定义组件实例时显示）-->
           <DynamicProperties
             v-if="naiveConfig && !customMeta"
@@ -127,15 +136,11 @@
           <BackgroundProperties v-bind="props.component.props"
                            @update="updateProps" />
 
-          <!-- 渲染配置 -->
           <RenderOptionProperties
+            v-if="props.component.type !== 'list'"
             :renderVisible="(props.component.props as any)?.renderVisible"
-            :loopEnabled="(props.component.props as any)?.loopEnabled"
             :renderVisibleBinding="(props.component.bindings as any)?.renderVisible || ''"
-            :loopItemsBinding="(props.component.bindings as any)?.loopItems || ''"
-            :loopValidationMessage="loopValidationMessage"
             :pageVariableTree="pageVariableTree"
-            :arrayVariables="currentPage?.variables || []"
             @update="updateProps"
             @updateBindings="updateRenderBindings"
           />
@@ -193,6 +198,7 @@ import { NButton, NIcon, NCheckbox, NPopover, NSelect, NModal } from 'naive-ui';
 import { GitNetwork, Link, LinkOutline } from '@vicons/ionicons5';
 import LayoutProperties from '../properties/LayoutProperties.vue';
 import ContainerLayoutProperties from '../properties/ContainerLayoutProperties.vue';
+import ListProperties from '../properties/ListProperties.vue';
 import TextProperties from '../properties/TextProperties.vue';
 import BorderProperties from '../properties/BorderProperties.vue';
 import BorderRadiusProperties from '../properties/BorderRadiusProperties.vue';
@@ -256,24 +262,6 @@ function updateRenderBindings(key: string, value: string | null) {
     type: props.component.type,
     bindings: newBindings
   })
-
-  // 如果绑定了循环数据，且是自定义组件，自动弹出属性绑定框
-  if (key === 'loopItems' && value && customMeta.value) {
-    // 主动解析一次 sample，因为此时 props 还没更新回传，computed loopContextInfo 拿不到新绑定
-    const resolved = resolveBindingRef(value, {
-      getVarValue: (name) => pageStore.getVariableValue(name),
-      getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-      context: bindingContextForValidation.value
-    })
-
-    if (Array.isArray(resolved) && resolved.length > 0) {
-      manualLoopItemSample.value = resolved[0]
-    } else {
-      manualLoopItemSample.value = undefined
-    }
-
-    showAutoBindModal.value = true
-  }
 }
 
 const customMeta = computed(() => {
@@ -346,64 +334,9 @@ const bindingContextForValidation = computed(() => {
 })
 
 const loopContextInfo = computed(() => {
-  const selected = props.component
-  if (!selected) return { available: false, itemSample: undefined as any }
-
-  let cur: Comp | null = selected
-  while (cur) {
-    const enabled = (cur.props as any)?.loopEnabled === true
-    if (enabled) {
-      const ref = (cur.bindings as any)?.loopItems
-      const hasRef = typeof ref === 'string' && !!ref
-      const raw = (cur.props as any)?.loopItems
-
-      const resolved = hasRef
-        ? resolveBindingRef(ref, {
-            getVarValue: (name) => pageStore.getVariableValue(name),
-            getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-            context: bindingContextForValidation.value
-          })
-        : raw
-
-      if (Array.isArray(resolved)) {
-        return {
-          available: true,
-          itemSample: resolved.length > 0 ? resolved[0] : undefined
-        }
-      }
-    }
-
-    const parentId = pageStore.findParentContainerId(cur.id)
-    if (!parentId) break
-    cur = pageStore.getComponentById(parentId) || null
-  }
-
+  // LEGACY: Loop detection removed. 
+  // TODO: Implement detection for parent List component context if needed.
   return { available: false, itemSample: undefined as any }
-})
-
-const loopValidationMessage = computed(() => {
-  const comp = props.component
-  if (!comp) return ''
-
-  const loopEnabled = (comp.props as any)?.loopEnabled === true
-  if (!loopEnabled) return ''
-
-  const ref = (comp.bindings as any)?.loopItems
-  if (typeof ref !== 'string' || !ref) {
-    return '启用循环渲染后，需要将"数组数据"绑定到一个数组类型的数据源。'
-  }
-
-  const resolved = resolveBindingRef(ref, {
-    getVarValue: (name) => pageStore.getVariableValue(name),
-    getCompProp: (componentId, propKey) => pageStore.getComponentById(componentId)?.props?.[propKey],
-    context: bindingContextForValidation.value
-  })
-
-  if (!Array.isArray(resolved)) {
-    return '"数组数据"当前绑定的值不是数组，请改为绑定数组类型变量/上下文数据。'
-  }
-
-  return ''
 })
 
 // 页面变量树（用于渲染配置）
@@ -566,29 +499,36 @@ function handleOpenFlowEditor(flowId?: string) {
 
 /* 标签页样式 */
 .tabs {
-  height: 36px;
+  height: 44px; /* Increased height */
   display: flex;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 0 8px;
-  flex-shrink: 0; /* 防止标签页被压缩 */
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 16px;
+  flex-shrink: 0;
+  gap: 20px; /* Space between tabs */
+  background: #fff;
 }
 
 .tab-button {
-  height: 36px;
-  padding: 0 16px;
+  height: 100%;
+  padding: 0;
   border: none;
   background: none;
-  font-size: 11px;
-  color: #333;
+  font-size: 13px; /* Larger font */
+  color: #64748b; /* slate-500 */
   cursor: pointer;
   position: relative;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+
+.tab-button:hover {
+  color: #334155;
 }
 
 .tab-button.active {
-  color: #000;
+  color: #0f172a; /* slate-900 */
+  font-weight: 600;
 }
 
 .tab-button.active::after {
@@ -598,7 +538,8 @@ function handleOpenFlowEditor(flowId?: string) {
   right: 0;
   bottom: 0;
   height: 2px;
-  background: #000;
+  background: #0f172a;
+  border-radius: 2px 2px 0 0;
 }
 
 .tab-content {

@@ -37,24 +37,22 @@
               <div v-if="dropIndicator.show && editorStore.isDesignMode" class="drop-indicator" :style="dropIndicatorStyle" />
               
               <!-- 组件渲染 - 提高层级 -->
-              <template v-for="(comp, index) in props.components"
+              <template v-for="(comp) in props.components"
                         :key="comp.id">
-                  <template v-for="rep in getRenderRepeats(comp, index)" :key="rep.key">
                 <div class="component-wrapper"
-                     v-show="rep.visible"
-                     :style="{ zIndex: rep.zIndex }">
+                     v-show="comp.props.renderVisible !== false"
+                     :style="{ zIndex: comp.props.zIndex || 1 }">
                   <ComponentRenderer
-                    :comp="rep.comp"
-                    :instanceId="rep.instanceId"
-                    :bindingContext="rep.bindingContext"
+                    :comp="comp"
+                    :instanceId="comp.id"
+                    :bindingContext="{}"
                     :scale="scale"
-                    :offsetX="rep.offsetX"
-                    :offsetY="rep.offsetY"
-                    @contextmenu.prevent="showContextMenu($event, pageStore.getComponentById(rep.instanceId) || rep.comp)"
+                    :offsetX="0"
+                    :offsetY="0"
+                    @contextmenu.prevent="showContextMenu($event, comp)"
                     @update="(payload) => handleUpdatePosition(payload.id, payload.updates)"
                   />
                 </div>
-                  </template>
               </template>
               
               <!-- 其他组件保持原有层级 -->
@@ -167,7 +165,6 @@ import {
   getCustomPropsBindingContext,
   getRenderedProps as getRenderedPropsUtil,
   createBindingResolver,
-  getRenderRepeatsForRoot,
   type RenderRepeat
 } from '../../utils/renderLoop'
 import { getLoopSourceId, parseLoopInstanceId } from '../../utils/loopInstance'
@@ -215,11 +212,6 @@ function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
   return getRenderedPropsUtil(comp, ctx, resolver)
 }
 
-// 使用公共模块的循环渲染函数
-function getRenderRepeats(comp: Comp, index: number): RenderRepeat[] {
-  return getRenderRepeatsForRoot(comp, index, props.bindingContext)
-}
-
 function getContainerHits(): ContainerHit[] {
   const res: ContainerHit[] = []
   const stack: Comp[] = [...props.components]
@@ -227,7 +219,7 @@ function getContainerHits(): ContainerHit[] {
   while (stack.length > 0) {
     const c = stack.pop()!
     if (c.children && c.children.length > 0) stack.push(...c.children)
-    if (c.type !== 'container') continue
+    if (c.type !== 'container' && c.type !== 'list') continue
 
     const p: any = c.id ? pageStore.getComponentById(c.id)?.props ?? c.props : c.props
 

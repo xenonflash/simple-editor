@@ -6,22 +6,20 @@
        @mousedown.stop="onMouseDown"
        @click.stop>
     <template v-if="props.comp?.children?.length">
-      <template v-for="(child, index) in props.comp.children" :key="child.id">
-        <template v-for="rep in getRenderRepeatsForChild(child, index)" :key="rep.key">
-          <div class="child-wrapper" v-show="rep.visible" :style="{ zIndex: rep.zIndex }">
+      <template v-for="(child) in props.comp.children" :key="child.id">
+          <div class="child-wrapper" v-show="child.props.renderVisible !== false" :style="{ zIndex: child.props.zIndex }">
             <ComponentRenderer
-              :comp="rep.comp"
-              :instanceId="rep.instanceId"
-              :bindingContext="rep.bindingContext"
+              :comp="child"
+              :instanceId="child.id"
+              :bindingContext="props.comp.bindingContext"
               :scale="props.scale || 1"
-              :offsetX="rep.offsetX"
-              :offsetY="rep.offsetY"
+              :offsetX="0"
+              :offsetY="0"
               :inFlowLayout="effectiveLayoutMode !== 'manual'"
               :locked="lockedForChildren"
               @update="onChildUpdate"
             />
           </div>
-        </template>
       </template>
     </template>
     <slot />
@@ -43,7 +41,6 @@ import {
   getCustomPropsBindingContext,
   getRenderedProps as getRenderedPropsUtil,
   createBindingResolver,
-  getRenderRepeatsForChild as getRenderRepeatsForChildUtil,
   type RenderRepeat
 } from '../../utils/renderLoop'
 
@@ -302,11 +299,6 @@ function getRenderedProps(comp: Comp, context?: any): Record<string, any> {
   const ctx = context ?? localBindingContext.value
   const resolver = createBindingResolver(ctx)
   return getRenderedPropsUtil(comp, ctx, resolver)
-}
-
-// 使用公共模块的循环渲染函数
-function getRenderRepeatsForChild(child: Comp, index: number): RenderRepeat[] {
-  return getRenderRepeatsForChildUtil(child, index, localBindingContext.value)
 }
 
 // 计算容器样式

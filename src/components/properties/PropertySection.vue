@@ -79,39 +79,40 @@ onMounted(() => {
 
 <style scoped>
 .property-section {
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e7eb; /* slate-200 */
 }
 
 .section-header {
-  height: 28px;
+  height: 36px; /* Increased clickable area */
   padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fafafa;
-  border-bottom: 1px solid #f5f5f5;
+  background: #f8fafc; /* slate-50 */
   cursor: pointer;
   user-select: none;
+  transition: background 0.2s;
 }
 
 .section-header:hover {
-  background: #f5f5f5;
+  background: #f1f5f9; /* slate-100 */
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .collapse-arrow {
   font-size: 10px;
-  color: #999;
-  transition: transform 0.15s ease;
-  display: inline-block;
-  width: 10px;
-  text-align: center;
-  line-height: 1;
+  color: #94a3b8; /* slate-400 */
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
 }
 
 .collapse-arrow.expanded {
@@ -119,10 +120,9 @@ onMounted(() => {
 }
 
 .title-text {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
-  text-transform: uppercase;
+  color: #475569; /* slate-600 */
   letter-spacing: 0.3px;
 }
 
@@ -142,6 +142,6 @@ onMounted(() => {
 }
 
 .section-content {
-  padding: 8px 12px;
+  padding: 8px 12px 12px; /* Restore to more compact padding */
 }
 </style>

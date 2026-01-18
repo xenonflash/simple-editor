@@ -123,14 +123,6 @@ export interface CompStandardProps {
   // ==================== 渲染控制（核心数据结构） ====================
   /** 条件渲染：默认显示；false 则隐藏（类似 v-show） */
   renderVisible?: boolean;
-  /** 循环渲染开关 */
-  loopEnabled?: boolean;
-  /** 循环渲染数据源（通常通过 bindings 绑定到数组变量/上下文） */
-  loopItems?: any[];
-  /** 渲染数量 (默认为 1, 0表示不渲染) */
-  loopCount?: number;
-  /** 循环实例的属性覆盖 (index -> props) */
-  loopOverrides?: Record<number, Record<string, any>>;
 }
 
 // 基础属性接口（不包含id和type）
@@ -152,8 +144,6 @@ interface BaseProps {
   zIndex?: number;
   // 渲染控制
   renderVisible?: boolean;
-  loopEnabled?: boolean;
-  loopItems?: any[];
 }
 
 // 组件工厂函数

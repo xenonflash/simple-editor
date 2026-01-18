@@ -2,6 +2,7 @@ export enum CompType {
   CONTAINER = 'container',
   BUTTON = 'button',
   TEXT = 'text',
+  LIST = 'list',
   // Naive UI Components
   N_BUTTON = 'n-button',
   N_INPUT = 'n-input',

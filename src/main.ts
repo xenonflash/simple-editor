@@ -6,6 +6,9 @@ import App from './App.vue'
 import router from './router'
 import fontAwesomePlugin from './plugins/fontawesome'
 
+import './assets/main.css'
+import './assets/properties.css'
+
 const app = createApp(App)
 
 app.use(createPinia())

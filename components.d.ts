@@ -40,6 +40,8 @@ declare module 'vue' {
     InfoProperties: typeof import('./src/components/properties/InfoProperties.vue')['default']
     LayoutProperties: typeof import('./src/components/properties/LayoutProperties.vue')['default']
     LeftPanel: typeof import('./src/components/layout/LeftPanel.vue')['default']
+    List: typeof import('./src/components/comps/List.vue')['default']
+    ListProperties: typeof import('./src/components/properties/ListProperties.vue')['default']
     LogicActionNode: typeof import('./src/components/flow/nodes/LogicActionNode.vue')['default']
     LogicConditionNode: typeof import('./src/components/flow/nodes/LogicConditionNode.vue')['default']
     LogicStartNode: typeof import('./src/components/flow/nodes/LogicStartNode.vue')['default']

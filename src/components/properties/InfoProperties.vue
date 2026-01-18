@@ -43,6 +43,7 @@ const emit = defineEmits<{
 const componentTypeLabel = computed(() => {
   const t = props.type;
   if (t === CompType.CONTAINER) return '容器';
+  if (t === CompType.LIST) return '列表';
   if (t === CompType.TEXT) return '文字';
   if (t === CompType.BUTTON) return '按钮';
   if (typeof t === 'string' && t.startsWith('n-')) {

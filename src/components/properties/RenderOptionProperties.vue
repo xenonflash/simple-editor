@@ -51,79 +51,6 @@
             />
           </n-popover>
         </div>
-
-        <!-- 渲染数量 -->
-        <div class="property-row">
-          <div class="prop-label">
-            <span class="label-text">渲染数量</span>
-          </div>
-          <div class="input-wrapper">
-             <n-input-number 
-               :value="localLoopCount" 
-               :min="0"
-               size="small"
-               placeholder="1"
-               @update:value="handleUpdateLoopCount"
-             />
-          </div>
-        </div>
-
-        <!-- 循环数据 -->
-        <div class="property-row">
-          <div class="prop-label">
-            <span class="label-text">循环数据</span>
-            <span v-if="props.loopItemsBinding" class="bind-badge">
-              {{ formatBindingDisplay(props.loopItemsBinding) }}
-            </span>
-          </div>
-          <div class="input-wrapper">
-            <div v-if="props.loopItemsBinding" class="bound-placeholder" />
-            <n-select
-              v-else
-              size="small"
-              placeholder="选择数组变量"
-              :options="arrayVariableOptions"
-              :value="props.loopItemsBinding"
-              @update:value="updateLoopItemsBinding"
-              clearable
-            />
-          </div>
-          <n-popover
-            trigger="click"
-            placement="left"
-            :show-arrow="false"
-            style="width: 420px"
-            :show="renderBindingOpenKey === 'loopItems'"
-            @update:show="(v) => (renderBindingOpenKey = v ? 'loopItems' : null)"
-          >
-            <template #trigger>
-              <n-button
-                size="tiny"
-                quaternary
-                circle
-                :type="props.loopItemsBinding ? 'error' : 'default'"
-                class="bind-btn"
-                title="绑定变量"
-              >
-                <template #icon>
-                  <n-icon><Link v-if="props.loopItemsBinding" /><LinkOutline v-else /></n-icon>
-                </template>
-              </n-button>
-            </template>
-            <VariablePanel
-              :data="renderLoopBindingTree"
-              tip="点击变量直接绑定（只显示数组类型）"
-              select-mode="value"
-              confirmable
-              @select="(p) => p.value && handleRenderBindPick('loopItems', p.value)"
-              @cancel="renderBindingOpenKey = null"
-            />
-          </n-popover>
-        </div>
-
-        <div v-if="props.loopValidationMessage" class="loop-warning">
-          {{ props.loopValidationMessage }}
-        </div>
       </div>
     </template>
   </PropertySection>
@@ -142,22 +69,12 @@ import type { VariableTreeNode } from '../flow/variableTree';
 const props = withDefaults(
   defineProps<{
     renderVisible?: boolean | any;
-    loopEnabled?: boolean | any;
-    loopCount?: number;
     renderVisibleBinding?: string;
-    loopItemsBinding?: string;
-    loopValidationMessage?: string;
     pageVariableTree: VariableTreeNode[];
-    arrayVariables?: PageVariable[];
   }>(),
   {
     renderVisible: true,
-    loopEnabled: false,
-    loopCount: 1,
-    renderVisibleBinding: '',
-    loopItemsBinding: '',
-    loopValidationMessage: '',
-    arrayVariables: () => []
+    renderVisibleBinding: ''
   }
 );
 
@@ -174,57 +91,9 @@ const renderVisibleValue = computed({
   set: (value: boolean) => updateProps({ renderVisible: value })
 });
 
-const localLoopCount = ref(typeof props.loopCount === 'number' ? props.loopCount : 1);
-
-watch(() => props.loopCount, (val) => {
-  localLoopCount.value = typeof val === 'number' ? val : 1;
-});
-
-function handleUpdateLoopCount(v: number | null) {
-  const val = v ?? 0;
-  localLoopCount.value = val;
-  updateProps({ loopCount: val });
-}
-
-// 递归过滤变量树，只保留数组类型的节点（或其祖先）
-function filterTreeForArrays(nodes: VariableTreeNode[]): VariableTreeNode[] {
-  return nodes.map((node) => {
-    // 保留"取消绑定"选项
-    if (node.value === '__unbind__') return node
-    
-    // 如果节点本身被标记为列表，保留
-    if (node.isList) return node
-
-    // 如果有子节点，递归检查
-    if (node.children && node.children.length > 0) {
-      const filteredChildren = filterTreeForArrays(node.children)
-      if (filteredChildren.length > 0) {
-        return { ...node, children: filteredChildren }
-      }
-    }
-    
-    return null
-  }).filter(Boolean) as VariableTreeNode[]
-}
-
-const renderLoopBindingTree = computed(() => {
-  return filterTreeForArrays(props.pageVariableTree)
-})
-
-// 数组变量选项
-const arrayVariableOptions = computed(() => {
-  return props.arrayVariables
-    .filter(v => v.type === 'array')
-    .map(v => ({ label: v.name, value: `var:${v.name}` }))
-});
-
 // 更新方法
 function updateProps(updates: Record<string, any>) {
   emit('update', updates);
-}
-
-function updateLoopItemsBinding(value: string | null) {
-  emit('updateBindings', 'loopItems', value);
 }
 
 function handleRenderBindPick(key: string, value: string) {

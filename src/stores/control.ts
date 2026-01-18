@@ -4,7 +4,6 @@ import type { Comp } from '../components/comps/base'
 import { usePageStore } from './page'
 import { CompType } from '../types/component'
 import { parseLoopInstanceId } from '../utils/loopInstance'
-import { LOOP_OFFSET_STEP } from '../utils/renderLoop'
 
 export enum HandleDir {
   TOP_LEFT = 'top-left',
@@ -213,39 +212,8 @@ export const useControlStore = defineStore('control', () => {
         x = pos?.x ?? (comp.props.x || 0)
         y = pos?.y ?? (comp.props.y || 0)
 
-        // 手动计算循环实例的偏移
-        // ... (旧逻辑保留作为 fallback)
-        const loopInfo = parseLoopInstanceId(comp.id)
-        if (loopInfo.index !== null && loopInfo.index > 0) {
-           // 源组件的局部坐标
-          const sourceLocalX = Number(comp.props.x) || 0
-          const sourceLocalY = Number(comp.props.y) || 0
-          
-          let instanceLocalX = sourceLocalX
-          let instanceLocalY = sourceLocalY
-          
-          const indexStr = String(loopInfo.index)
-          const overrides = (comp.props as any).loopOverrides?.[indexStr]
-          const hasOverrideX = overrides && Object.prototype.hasOwnProperty.call(overrides, 'x')
-          const hasOverrideY = overrides && Object.prototype.hasOwnProperty.call(overrides, 'y')
-          
-          const defaultOffset = loopInfo.index * LOOP_OFFSET_STEP
-          
-          if (hasOverrideX) {
-            instanceLocalX = Number(overrides.x)
-          } else {
-            instanceLocalX += defaultOffset
-          }
-
-          if (hasOverrideY) {
-            instanceLocalY = Number(overrides.y)
-          } else {
-            instanceLocalY += defaultOffset
-          }
-          
-          x = x - sourceLocalX + instanceLocalX
-          y = y - sourceLocalY + instanceLocalY
-        }
+        // Legacy loop offset logic removed. 
+        // Position should rely on DOM measurement for List items.
       }
       
       // 1. 选中边框

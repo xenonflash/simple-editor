@@ -19,8 +19,7 @@ export const defaultBaseProps = {
   shadowSpread: 0,
   shadowColor: '#000000',
   zIndex: 1,
-  renderVisible: true,
-  loopEnabled: false
+  renderVisible: true
 }
 
 export interface AtomConfig {
@@ -68,6 +67,26 @@ export const atomConfigs: Partial<Record<CompType, AtomConfig>> = {
       CommonEvents.MOUNTED,
       CommonEvents.UNMOUNTED
     ]
+  },
+
+  [CompType.LIST]: {
+    defaultProps: {
+      width: 300,
+      height: 200,
+      widthSizing: 'fixed',
+      heightSizing: 'content',
+      gap: 8,
+      direction: 'column',
+      layoutMode: 'auto',
+      primaryAlign: 'start',
+      crossAlign: 'stretch',
+      padding: { top: 8, right: 8, bottom: 8, left: 8 },
+      backgroundColor: ''
+    },
+    size: { width: 300, height: 200 },
+    icon: '☰',
+    description: '列表组件，循环渲染子项',
+    isContainer: true
   },
   
   [CompType.BUTTON]: {

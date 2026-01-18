@@ -317,7 +317,7 @@ export function useBoardContextMenu(params: {
       return
     }
 
-    if (target.type !== CompType.CONTAINER || !target.children || target.children.length === 0) {
+    if ((target.type !== CompType.CONTAINER && target.type !== CompType.LIST) || !target.children || target.children.length === 0) {
       message.warning('所选组件不是容器或没有子组件')
       hideContextMenu()
       return

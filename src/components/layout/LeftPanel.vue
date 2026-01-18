@@ -58,6 +58,12 @@
                   </div>
                   <div class="name">容器</div>
                 </div>
+                <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.LIST, $event)">
+                  <div class="icon">
+                     <AppIcon name="list" />
+                  </div>
+                  <div class="name">列表</div>
+                </div>
                 <div class="component-item" draggable="true" @dragstart="handleDragStart(CompType.TEXT, $event)">
                   <div class="icon">
                     <AppIcon name="file-alt" />
@@ -860,6 +866,7 @@ function getComponentLabel(comp: Comp): string {
 
   // 3. 否则显示类型对应的中文名
   if (comp.type === CompType.CONTAINER) return '容器'
+  if (comp.type === CompType.LIST) return '列表'
   if (comp.type === CompType.BUTTON) return '按钮'
   if (comp.type === CompType.TEXT) return '文字'
   if (String(comp.type).startsWith('n-')) {
@@ -878,6 +885,9 @@ function getComponentIcon(comp: Comp) {
   // 基础组件
   if (comp.type === CompType.CONTAINER) {
     return () => h(NIcon, null, { default: () => h(CubeOutline) })
+  }
+  if (comp.type === CompType.LIST) {
+     return () => h(NIcon, null, { default: () => h(List) })
   }
   if (comp.type === CompType.TEXT) {
     return () => h(NIcon, null, { default: () => h(Text) })
@@ -987,9 +997,9 @@ function handleTreeDrop(info: TreeDropInfo) {
 
   // 1. 如果是 inside，则是移动到目标容器内
   if (dropPosition === 'inside') {
-    // 检查目标是否是容器
+    // 检查目标是否是容器或列表
     const targetComp = (node as any).comp as Comp
-    if (targetComp.type === CompType.CONTAINER) {
+    if (targetComp.type === CompType.CONTAINER || targetComp.type === CompType.LIST) {
       pageStore.moveComponent(dragKey, targetKey, 0)
     }
     return

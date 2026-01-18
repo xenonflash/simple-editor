@@ -1,0 +1,138 @@
+/* Properties Panel Global Styles */
+
+/* 统一输入框样式 */
+.properties-panel input[type="text"],
+.properties-panel input[type="number"],
+.properties-panel select,
+.properties-panel textarea {
+  border: 1px solid #e5e7eb !important; /* slate-200 */
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  font-size: 12px !important; /* Keep readability but compact */
+  color: #334155 !important; /* slate-700 */
+  transition: all 0.2s ease;
+  background: #fff !important;
+  height: 24px !important; /* Back to compact size */
+  line-height: normal;
+  box-sizing: border-box; /* Ensure padding doesn't add to width/height */
+}
+
+.properties-panel textarea {
+  height: auto !important;
+  min-height: 60px;
+  padding: 8px !important;
+}
+
+.properties-panel input:hover,
+.properties-panel select:hover,
+.properties-panel textarea:hover {
+  border-color: #cbd5e1 !important; /* slate-300 */
+}
+
+.properties-panel input:focus,
+.properties-panel select:focus,
+.properties-panel textarea:focus {
+  border-color: #000 !important; /* Black */
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1) !important;
+  outline: none !important;
+}
+
+/* 统一按钮样式 */
+.properties-panel button {
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+/* 按钮组样式优化 */
+.properties-panel .buttons {
+  display: flex !important;
+  gap: 2px !important;
+  background: #f1f5f9; /* slate-100 */
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.properties-panel .buttons button {
+  border: none !important;
+  background: transparent !important;
+  color: #64748b !important; /* slate-500 */
+  border-radius: 4px !important;
+  height: 24px !important;
+  width: 28px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.properties-panel .buttons button:hover {
+  background: rgba(255,255,255,0.8) !important;
+  color: #000 !important;
+}
+
+.properties-panel .buttons button.active {
+  background: #fff !important;
+  color: #000 !important; /* Black */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  font-weight: 600;
+}
+
+/* placeholder binding */
+.properties-panel .bound-placeholder {
+  border: 1px dashed #cbd5e1 !important;
+  background: #f8fafc;
+  border-radius: 6px !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
+/* Label styling enhancement */
+.properties-panel .property-row {
+  margin-bottom: 8px !important; /* Reduced vertical spacing */
+}
+
+.properties-panel .prop-label,
+.properties-panel .property-label {
+    font-size: 12px; /* Restore compact font size */
+    color: #475569; /* slate-600 */
+    width: 64px; /* Fixed width for alignment */
+    flex-shrink: 0;
+    font-weight: 500;
+}
+
+.properties-panel .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #333; /* slate-600 */
+  cursor: pointer;
+  user-select: none;
+}
+
+.properties-panel input[type="checkbox"] {
+  height: 14px !important;
+  width: 14px !important;
+  border-radius: 4px !important;
+  accent-color: #000;
+}
+
+/* Scrollbar refinement */
+.properties-panel ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.properties-panel ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.properties-panel ::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.properties-panel ::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
