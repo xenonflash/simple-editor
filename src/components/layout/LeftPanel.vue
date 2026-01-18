@@ -455,7 +455,7 @@ import {
 } from 'naive-ui';
 import {
   Add, Trash, Create, Save, Close, GitNetwork,
-  CubeOutline, CubeSharp, Text, RadioButtonOn, Repeat
+  CubeOutline, CubeSharp, Text, RadioButtonOn, Repeat, List
 } from '@vicons/ionicons5';
 import AppIcon from '../icons/AppIcon.vue'
 import { CompType } from '../comps/base';

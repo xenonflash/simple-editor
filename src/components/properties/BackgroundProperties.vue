@@ -295,8 +295,8 @@ watch(props, (newProps) => {
 }
 
 .direction-btn.active {
-  border-color: #1890ff;
-  background: #1890ff;
+  border-color: #000;
+  background: #000;
   color: white;
 }
 

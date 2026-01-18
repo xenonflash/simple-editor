@@ -186,8 +186,8 @@ function updateValue(key: string, event: Event) {
 }
 
 .style-option input[type="radio"]:checked + .style-preview {
-  border-color: #1890ff;
-  background-color: #e6f7ff;
+  border-color: #000;
+  background-color: #f3f4f6;
 }
 
 .style-line {
@@ -236,8 +236,8 @@ input[type="color"]:hover {
 input[type="number"]:focus,
 input[type="text"]:focus,
 input[type="color"]:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 ::-webkit-inner-spin-button {

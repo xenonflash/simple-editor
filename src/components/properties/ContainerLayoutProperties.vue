@@ -246,8 +246,8 @@ function onInputGap(e: Event) {
 }
 
 .segmented-btn.active {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: #f3f4f6;
+  color: #000;
   font-weight: 500;
 }
 
@@ -278,8 +278,8 @@ function onInputGap(e: Event) {
 }
 
 .number-input:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .unit {
@@ -317,21 +317,21 @@ function onInputGap(e: Event) {
 }
 
 .icon-btn:hover {
-  border-color: #40a9ff;
-  color: #40a9ff;
+  border-color: #666;
+  color: #666;
 }
 
 .icon-btn:hover svg {
-  color: #40a9ff;
+  color: #333;
 }
 
 .icon-btn.active {
-  background: #e6f7ff;
-  border-color: #1890ff;
-  color: #1890ff;
+  background: #f3f4f6;
+  border-color: #000;
+  color: #000;
 }
 
 .icon-btn.active svg {
-  color: #1890ff;
+  color: #000;
 }
 </style>

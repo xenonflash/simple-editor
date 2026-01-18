@@ -220,13 +220,13 @@ function toggleLink() {
 }
 
 .radius-slider::-webkit-slider-thumb:hover {
-  border-color: #40a9ff;
+  border-color: #666;
   transform: scale(1.1);
 }
 
 .radius-slider::-webkit-slider-thumb:active {
-  border-color: #1890ff;
-  background: #e6f7ff;
+  border-color: #000;
+  background: #f3f4f6;
 }
 
 .all-radius-input {
@@ -260,8 +260,8 @@ function toggleLink() {
 .preview-box {
   width: 100%;
   height: 100%;
-  border: 1px solid #1890ff;
-  background: rgba(24, 144, 255, 0.1);
+  border: 1px solid #000;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .radius-item {
@@ -314,7 +314,7 @@ function toggleLink() {
 }
 
 .link-button.active {
-  color: #1890ff;
+  color: #000;
 }
 
 .link-icon {

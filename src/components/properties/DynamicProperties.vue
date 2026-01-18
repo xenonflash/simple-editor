@@ -375,8 +375,8 @@ function formatBindingDisplay(binding: string): string {
 .property-row input[type="text"]:focus,
 .property-row input[type="number"]:focus,
 .property-row select:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .property-row input[type="text"]:disabled,
@@ -431,7 +431,7 @@ function formatBindingDisplay(binding: string): string {
 }
 
 .json-textarea:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 </style>

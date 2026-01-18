@@ -163,8 +163,8 @@ function formatBindingDisplay(binding: string): string {
 
 .bound-placeholder {
   font-size: 10px;
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.1);
+  color: #333;
+  background: rgba(0, 0, 0, 0.06);
   padding: 2px 6px;
   border-radius: 3px;
   overflow: hidden;
@@ -186,7 +186,7 @@ function formatBindingDisplay(binding: string): string {
   outline: none;
 }
 .base-input:focus {
-  border-color: #1890ff;
+  border-color: #000;
 }
 
 .input-group {
@@ -233,7 +233,7 @@ function formatBindingDisplay(binding: string): string {
 
 .segmented-btn.active {
   background: #fff;
-  color: #1890ff;
+  color: #000;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   font-weight: 500;
 }

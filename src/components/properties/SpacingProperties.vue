@@ -194,13 +194,13 @@ function updateMargin(key: string, event: Event) {
 }
 
 .spacing-input input:hover {
-  border-color: #40a9ff;
+  border-color: #666;
 }
 
 .spacing-input input:focus {
-  border-color: #1890ff;
+  border-color: #000;
   outline: none;
-  box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .center-icon {

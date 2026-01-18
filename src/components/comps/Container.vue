@@ -11,7 +11,7 @@
             <ComponentRenderer
               :comp="child"
               :instanceId="child.id"
-              :bindingContext="props.comp.bindingContext"
+              :bindingContext="localBindingContext"
               :scale="props.scale || 1"
               :offsetX="0"
               :offsetY="0"

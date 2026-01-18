@@ -140,8 +140,8 @@ input[type="number"] {
 }
 
 input[type="number"]:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 input[type="number"][disabled] {
@@ -183,8 +183,8 @@ input[type="number"][disabled] {
 }
 
 .size-btn.active {
-  border-color: #1890ff;
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.05);
+  border-color: #000;
+  color: #000;
+  background: rgba(0, 0, 0, 0.05);
 }
 </style>

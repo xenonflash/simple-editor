@@ -25,7 +25,7 @@
                <div class="child-wrapper" :style="{ zIndex: (child.props.zIndex || 1) }">
                  <ComponentRenderer
                    :comp="child"
-                   :instanceId="`${child.id}__${index}`"
+                   :instanceId="`${child.id}__loop__${index}`"
                    :bindingContext="createItemContext(item, index)"
                    :scale="props.scale || 1"
                    :offsetX="0"

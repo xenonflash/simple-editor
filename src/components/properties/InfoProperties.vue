@@ -94,8 +94,8 @@ function updateName(event: Event) {
 }
 
 .name-input:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .name-input::placeholder {
