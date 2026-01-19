@@ -41,7 +41,7 @@
                         :key="comp.id">
                 <div class="component-wrapper"
                      v-show="comp.props.renderVisible !== false"
-                     :style="{ zIndex: comp.props.zIndex || 1 }">
+                     :style="getComponentWrapperStyle(comp)">
                   <ComponentRenderer
                     :comp="comp"
                     :instanceId="comp.id"
@@ -49,6 +49,7 @@
                     :scale="scale"
                     :offsetX="0"
                     :offsetY="0"
+                    :inFlowLayout="pageStore.currentPage?.layoutMode === 'flow'"
                     @contextmenu.prevent="showContextMenu($event, comp)"
                     @update="(payload) => handleUpdatePosition(payload.id, payload.updates)"
                   />
@@ -130,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, provide } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, watch, nextTick, provide, type CSSProperties } from 'vue';
 import { storeToRefs } from 'pinia'
 import ComponentRenderer from '../comps/ComponentRenderer.vue';
 import Ruler from './Ruler.vue';
@@ -423,21 +424,60 @@ function handleKeyDown(e: KeyboardEvent) {
 
 
 // 画布样式
-const canvasStyle = computed(() => ({
-  transform: `scale3d(${scale.value}, ${scale.value}, 1)`,
-  transformOrigin: '0 0',
-  position: 'absolute' as const,
-  left: `${panOffset.value.x}px`,
-  top: `${panOffset.value.y}px`,
-  width: `${canvasWidth.value}px`,
-  height: `${canvasHeight.value}px`,
-  background: pageStore.currentPage?.backgroundColor || 'white',
-  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
-}));
+const canvasStyle = computed(() => {
+  const page = pageStore.currentPage;
+  const isFlow = page?.layoutMode === 'flow';
+  
+  const width = isFlow ? '100%' : `${canvasWidth.value}px`;
+  // Flow mode usually wants auto height (docs flow), but Canvas mode wants fixed height.
+  // We'll let flow mode be min-height full, height auto.
+  const height = isFlow ? 'auto' : `${canvasHeight.value}px`;
+  const minHeight = isFlow ? '100%' : 'auto';
 
-const contentStyle = computed(() => ({
-  transform: `translate(0, 0)`,
-}));
+  // For Flow Mode, we might want the canvas container (white bg) to fill the viewport width-wise?
+  // Actually if user sets 'flow', the "Canvas Size" (W/H) settings from Page might become irrelevant or act as max-width?
+  // Let's assume Flow mode fills the wrapper (viewport) and grows vertically.
+  
+  return {
+    transform: `scale3d(${scale.value}, ${scale.value}, 1)`,
+    transformOrigin: '0 0',
+    position: 'absolute' as const,
+    left: `${panOffset.value.x}px`,
+    top: `${panOffset.value.y}px`,
+    width,
+    height,
+    minHeight,
+    background: page?.backgroundColor || 'white',
+    boxShadow: isFlow ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.15)', // Flow mode often fills screen, maybe shadow looks weird if full width
+    // But usually Board has margins around canvas.
+    display: isFlow ? 'flex' : 'block',
+    flexDirection: 'column', // Canvas itself is the "Body" usually
+    boxSizing: 'border-box',
+    overflow: 'hidden'
+  } as any
+});
+
+const contentStyle = computed(() => {
+  const page = pageStore.currentPage;
+  if (page?.layoutMode === 'flow') {
+    return {
+      flex: 1,
+      display: 'flex',
+      flexDirection: page.layoutDirection || 'column',
+      justifyContent: page.layoutJustifyContent || 'start',
+      alignItems: page.layoutAlignItems || 'stretch',
+      gap: `${page.layoutGap || 0}px`,
+      padding: `${page.padding?.top||0}px ${page.padding?.right||0}px ${page.padding?.bottom||0}px ${page.padding?.left||0}px`,
+      transform: `translate(0, 0)`,
+      width: '100%',
+      // minHeight: '100%' 
+    };
+  }
+  return {
+    transform: `translate(0, 0)`,
+    // Canvas mode styles if any special
+  };
+});
 
 // 处理画布点击
 function handleCanvasClick(e: MouseEvent) {
@@ -459,6 +499,26 @@ function handleCanvasClick(e: MouseEvent) {
 }
 
 // 处理组件位置更新
+function getComponentWrapperStyle(comp: Comp): CSSProperties {
+  const isFlow = pageStore.currentPage?.layoutMode === 'flow';
+  
+  if (isFlow) {
+    return {
+       zIndex: comp.props.zIndex || 1,
+       position: 'relative',
+       inset: 'auto',
+       flexGrow: comp.props.flexGrow || 0,
+       flexShrink: comp.props.flexShrink || 0,
+       flexBasis: comp.props.flexBasis,
+       alignSelf: comp.props.alignSelf,
+    };
+  }
+  
+  return {
+    zIndex: comp.props.zIndex || 1
+  };
+}
+
 function handleUpdatePosition(id: string, updates: Record<string, any>) {
   // 预览模式下不处理更新
   if (editorStore.isPreviewMode) return

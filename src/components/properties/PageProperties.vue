@@ -91,6 +91,28 @@
       </template>
     </PropertySection>
 
+    <!-- 页面布局 (使用新组件) -->
+    <PropertySection title="页面布局">
+      <template #content>
+        <FlexLayoutSettings 
+          :modeValue="page.layoutMode"
+          :direction="page.layoutDirection"
+          :justify="page.layoutJustifyContent"
+          :align="page.layoutAlignItems"
+          :gap="page.layoutGap"
+          
+          modeKey="layoutMode"
+          justifyKey="layoutJustifyContent"
+          alignKey="layoutAlignItems"
+          
+          :modes="{ manual: 'canvas', auto: 'flow' }"
+          :labels="{ manual: '画布 (Canvas)', auto: '流式 (Flow)' }"
+          
+          @update="handleLayoutUpdate"
+        />
+      </template>
+    </PropertySection>
+
     <!-- 内边距 -->
     <PropertySection title="内边距">
       <template #content>
@@ -184,6 +206,7 @@ import { computed } from 'vue';
 import type { Page } from '../../types/page';
 import { usePageStore } from '../../stores/page';
 import PropertySection from './PropertySection.vue';
+import FlexLayoutSettings from './FlexLayoutSettings.vue';
 
 const pageStore = usePageStore();
 
@@ -191,9 +214,20 @@ const props = defineProps<{
   page: Page;
 }>();
 
+function handleLayoutUpdate(updates: any) {
+    pageStore.updatePageProperties(props.page.id, updates);
+}
+
 // 更新页面属性
-function updateProperty(key: keyof Page, $event: Event) {
-  let value: any = ($event.target as HTMLInputElement).value;
+function updateProperty(key: keyof Page, valueOrEvent: any) {
+  let value: any;
+  
+  if (valueOrEvent instanceof Event || (valueOrEvent && valueOrEvent.target)) {
+      value = (valueOrEvent.target as HTMLInputElement).value;
+  } else {
+      value = valueOrEvent;
+  }
+
   if (['width', 'height'].includes(key)) {
     value = parseInt(value);
   }
@@ -384,5 +418,72 @@ input[type="number"]::-webkit-inner-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+.segmented-wrapper {
+  background: #f5f5f5;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.segmented-control {
+  display: flex;
+  width: 100%;
+}
+
+.segmented-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.segmented-btn.active {
+  background: white;
+  color: #000;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  font-weight: 500;
+}
+
+.align-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  border-color: #d9d9d9;
+  background: #fafafa;
+}
+
+.icon-btn.active {
+  background: #eff6ff; 
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 </style>

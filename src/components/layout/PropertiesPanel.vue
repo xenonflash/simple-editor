@@ -60,6 +60,11 @@
             :height="props.component.props.height"
             :widthSizing="props.component.props.widthSizing"
             :heightSizing="props.component.props.heightSizing"
+            :parentLayoutMode="parentLayoutMode"
+            :flexGrow="props.component.props.flexGrow"
+            :flexShrink="props.component.props.flexShrink"
+            :flexBasis="props.component.props.flexBasis"
+            :alignSelf="props.component.props.alignSelf"
             @update="updateProps" />
 
           <ContainerLayoutProperties
@@ -242,6 +247,39 @@ const editingDef = computed(() => {
     name: props.editingCustomDefName || ''
   }
 })
+
+function findParentRecursive(comps: Comp[], targetId: string): Comp | null {
+  for (const comp of comps) {
+    if (comp.children) {
+       if (comp.children.some(c => c.id === targetId)) return comp;
+       const found = findParentRecursive(comp.children, targetId);
+       if (found) return found;
+    }
+  }
+  return null;
+}
+
+const parentLayoutMode = computed(() => {
+  if (!props.component || !currentPage.value) return 'manual';
+  
+  // Check if root child
+  if (currentPage.value.components.some(c => c.id === props.component!.id)) {
+     return currentPage.value.layoutMode === 'flow' ? 'flow' : 'manual';
+  }
+
+  // Check parent container
+  const parent = findParentRecursive(currentPage.value.components, props.component!.id);
+  if (parent) {
+    if (parent.type === 'container') {
+      return (parent.props as any).layoutMode === 'auto' ? 'flow' : 'manual';
+    } 
+    if (parent.type === 'list') {
+      return 'flow';
+    }
+  }
+  
+  return 'manual';
+});
 
 const activeTab = ref('properties');
 const naiveConfig = computed(() => props.component ? getNaiveConfig(props.component.type) : undefined);

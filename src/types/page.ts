@@ -23,15 +23,27 @@ export interface Page {
   flows: PageFlow[];
   createdAt: Date;
   updatedAt: Date;
+  
+  // 画布模式属性
   width: number;
   height: number;
+  backgroundColor: string;
+  
+  // 布局系统
+  layoutMode?: 'canvas' | 'flow'; // canvas=自由布局, flow=流式布局
+  
+  // Flow 模式布局属性
+  layoutDirection?: 'row' | 'column';
+  layoutJustifyContent?: string; // start, center, end, between, evenly, around
+  layoutAlignItems?: string;    // start, center, end, stretch
+  layoutGap?: number;
+  
   padding: {
     top: number;
     right: number;
     bottom: number;
     left: number;
-  },
-  backgroundColor: string;
+  };
 }
 
 // 创建新页面的工厂函数
@@ -46,15 +58,25 @@ export function createPage(name: string = '新页面', description: string = '')
     flows: [],
     createdAt: now,
     updatedAt: now,
+    
+    // 默认 Canvas 模式
     width: 1280,
-    height: 800, // 从 720 改为 800
+    height: 800,
+    backgroundColor: '#ffffff',
+    layoutMode: 'canvas',
+    
+    // 默认 Flow 参数
+    layoutDirection: 'column',
+    layoutJustifyContent: 'start',
+    layoutAlignItems: 'stretch', // column方向下stretch即为横向撑满
+    layoutGap: 10,
+    
     padding: {
       top: 0,
       right: 0,
       bottom: 0,
       left: 0,
-    },
-    backgroundColor: '#fff',
+    }
   };
 }
 

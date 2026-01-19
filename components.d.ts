@@ -26,6 +26,7 @@ declare module 'vue' {
     DynamicProperties: typeof import('./src/components/properties/DynamicProperties.vue')['default']
     EventTab: typeof import('./src/components/layout/EventTab.vue')['default']
     FieldEdit: typeof import('./src/components/data/FieldEdit.vue')['default']
+    FlexLayoutSettings: typeof import('./src/components/properties/FlexLayoutSettings.vue')['default']
     FlowCanvas: typeof import('./src/components/flow/FlowCanvas.vue')['default']
     FlowEditorModal: typeof import('./src/components/flow/FlowEditorModal.vue')['default']
     FlowNodePanel: typeof import('./src/components/flow/FlowNodePanel.vue')['default']
