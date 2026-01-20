@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch } from 'vue'
+import { computed, inject, ref, watch, type CSSProperties } from 'vue'
 import type { Comp } from './base'
 import { useDraggable } from '../../utils/dragHelper'
 import { usePageStore } from '../../stores/page'
@@ -180,13 +180,11 @@ const autoLayoutStyle = computed(() => ({
 }))
 
 // Item Style
-const itemStyle = computed(() => ({
-   position: 'relative', // Items establish coordinate system for absolute children
+const itemStyle = computed<CSSProperties>(() => ({
+   position: 'relative' as const,
    flexShrink: 0,
-   // If manual layout inside, we need size.
-   // Typically list items auto-size or fixed height.
    minHeight: '40px',
-   border: editorStore.isDesignMode ? '1px dashed rgba(0,0,0,0.1)' : 'none' // Guide lines only in design mode
+   border: editorStore.isDesignMode ? '1px dashed rgba(0,0,0,0.1)' : 'none'
 }))
 
 // 3. Selection & Dragging
@@ -209,15 +207,13 @@ function onMouseDown(e: MouseEvent) {
 // 4. Child Updates
 function onChildUpdate(payload: any) {
     if (payload.id && !payload.id.includes('__')) throw new Error("List child update ID mismatch")
-    // If a child in a list changes, we're likely updating the Template (the Source Child)
-    // payload.updates should be applied to the 'source' child comp definition
     const [sourceId, _idx] = payload.id.split('__')
     
-    // Check if it's a layout update or prop update?
-    // In strict list mode, children usually don't move X/Y if flow layout.
-    // If manual layout inside item, they can move.
-    
-    pageStore.updateComponentUnsafe(sourceId, payload.updates)
+    const sourceComp = pageStore.getComponentById(sourceId)
+    if (sourceComp) {
+      const updated = { ...sourceComp, props: { ...sourceComp.props, ...payload.updates } }
+      pageStore.updateComponentInCurrentPage(updated)
+    }
 }
 
 const lockedForChildren = computed(() => false) // Allow editing children

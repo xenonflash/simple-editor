@@ -802,6 +802,7 @@ type ComponentTreeNode = {
   key: string
   label: string
   prefix?: () => VNode
+  suffix?: () => VNode
   children?: ComponentTreeNode[]
   isLeaf?: boolean
   disabled?: boolean

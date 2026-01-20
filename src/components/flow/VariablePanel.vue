@@ -150,7 +150,7 @@ function handleCreate() {
             <div style="margin-top: 4px">
                <n-input v-if="newPropType === 'string'" v-model:value="newPropDefault" placeholder="默认值" size="tiny" />
                <n-input v-if="newPropType === 'color'" v-model:value="newPropDefault" placeholder="#000000" size="tiny" />
-               <n-input v-if="newPropType === 'number'" v-model:value="newPropDefault" type="number" placeholder="0" size="tiny" />
+                <n-input v-if="newPropType === 'number'" v-model:value="newPropDefault" placeholder="0" size="tiny" />
                <n-select v-if="newPropType === 'boolean'" v-model:value="newPropDefault" size="tiny" :options="[{label:'False', value: 'false'}, {label:'True', value: 'true'}]" />
             </div>
 

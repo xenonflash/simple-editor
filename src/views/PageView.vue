@@ -70,7 +70,7 @@ const selectedComponent = computed(() => {
   const ids = pageStore.selectedCompIds
   if (ids.length === 1 && ids[0] && String(ids[0]).includes('__loop__')) {
     const realId = String(ids[0]).split('__loop__')[0]
-    return pageStore.getComponentById(realId)
+    return pageStore.getComponentById(realId) || null
   }
   return null
 });

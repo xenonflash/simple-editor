@@ -73,6 +73,8 @@ export interface Comp {
   isContainer?: boolean;
   icon?: string;
   description?: string;
+  /** @internal Binding context for list loop items */
+  bindingContext?: Record<string, any>;
 }
 
 // 组件属性定义 (标准属性集合)
